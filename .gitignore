@@ -1,1 +1,6 @@
+# Builds
 /target
+
+# IDEs
+/.vscode
+/.ideia
