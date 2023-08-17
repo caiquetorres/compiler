@@ -12,13 +12,13 @@ pub trait Node: ToString {
 
 pub trait ExpressionNode: Node {}
 
-impl Display for dyn ExpressionNode {
+impl Display for dyn Node {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut queue: VecDeque<Box<&dyn Node>> = VecDeque::new();
+        let mut queue: VecDeque<&dyn Node> = VecDeque::new();
         let mut depth_queue: VecDeque<usize> = VecDeque::new();
 
         depth_queue.push_back(0);
-        queue.push_back(Box::new(self.as_node()));
+        queue.push_back(self);
 
         while !queue.is_empty() {
             let node = queue.pop_back().unwrap();
@@ -28,7 +28,7 @@ impl Display for dyn ExpressionNode {
             write!(f, "{}{}\n", "  ".repeat(depth), node.to_string())?;
 
             for child in node.get_children() {
-                queue.push_back(Box::new(child));
+                queue.push_back(child);
                 depth_queue.push_back(depth + 1);
             }
         }
