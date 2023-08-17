@@ -2,6 +2,8 @@ mod cli;
 mod lang;
 
 use cli::command_line_parser::CommandLineParser;
+use lang::parser::Parser;
+use std::io::{self, Write};
 
 fn main() {
     let mut parser = CommandLineParser::new();
@@ -24,6 +26,22 @@ fn main() {
     }
 }
 
-fn repl() {}
+fn repl() {
+    loop {
+        let mut input = String::new();
+
+        print!("> ");
+
+        io::stdout().flush().unwrap();
+        io::stdin().read_line(&mut input).unwrap();
+
+        let text = input.trim();
+
+        let parser = Parser::new(text);
+        let tree = parser.parse();
+
+        println!("{}", tree);
+    }
+}
 
 fn compile() {}
