@@ -1,51 +1,59 @@
 use super::{kind::Kind, token::Token};
 
+// As a vector we should tokenize the values when creating or something like that before allowing the structure to be iterated. That way we can add the EndOfFileToken.
+
 pub struct Lexer {
-    position: usize,
+    current_position: usize,
     current_char: char,
     text: String,
 }
 
-// REVIEW: We need to refactor this code.
 impl Lexer {
     pub fn new(text: &str) -> Self {
         Self {
-            position: 0,
+            current_position: 0,
             current_char: text.chars().next().unwrap(),
             text: String::from(text),
         }
     }
 
-    pub fn next_token(&mut self) -> Token {
-        // REVIEW: Should we convert this code into an iterator?
-        if self.position > self.text.len() - 1 {
-            return Token::new(Kind::EndOfFileToken, "\0");
+    fn next_char(&mut self) {
+        self.current_position += 1;
+        match self.text.chars().nth(self.current_position) {
+            Some(c) => self.current_char = c,
+            None => (), // REVIEW: Should we do something here?
+        }
+    }
+}
+
+impl Iterator for Lexer {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_position > self.text.len() - 1 {
+            return None;
         }
 
         if self.current_char.is_digit(10) {
-            let start = self.position as usize;
+            let start = self.current_position;
 
-            while self.current_char.is_digit(10) && self.position < self.text.len() {
-                self.next();
+            while self.current_char.is_digit(10) && self.current_position < self.text.len() {
+                self.next_char();
             }
 
-            let end = self.position as usize;
-
-            let text = &*self.text;
-            return Token::new(Kind::NumberToken, &(*text)[start..end]);
+            let end = self.current_position;
+            return Some(Token::new(Kind::NumberToken, &self.text[start..end]));
         }
 
-        if self.current_char == ' ' {
-            let start = self.position as usize;
+        if self.current_char.is_whitespace() {
+            let start = self.current_position;
 
-            while self.current_char == ' ' && self.position < self.text.len() {
-                self.next();
+            while self.current_char.is_whitespace() && self.current_position < self.text.len() {
+                self.next_char();
             }
 
-            let end = self.position as usize;
-
-            let text = &self.text[start..end];
-            return Token::new(Kind::WhiteSpaceToken, text);
+            let end = self.current_position;
+            return Some(Token::new(Kind::WhiteSpaceToken, &self.text[start..end]));
         }
 
         let token = match self.current_char {
@@ -56,19 +64,11 @@ impl Lexer {
             '(' => Token::new(Kind::OpenParenthesisToken, "("),
             ')' => Token::new(Kind::CloseParenthesisToken, ")"),
             ':' => Token::new(Kind::SemicolonToken, ";"),
-            _ => Token::new(Kind::BadToken, ""),
+            _ => Token::new(Kind::BadToken, &format!("{}", self.current_char)[..]), // REVIEW: Is that conversion right?
         };
 
-        self.next();
+        self.next_char();
 
-        return token;
-    }
-
-    fn next(&mut self) {
-        self.position += 1;
-
-        if self.position < self.text.len() {
-            self.current_char = self.text.chars().nth(self.position).unwrap();
-        }
+        Some(token)
     }
 }

@@ -38,9 +38,11 @@ fn repl() {
         let text = input.trim();
 
         let parser = Parser::new(text);
-        let tree = parser.parse();
 
-        println!("{}", tree);
+        match parser.parse() {
+            Ok(tree) => println!("{}", tree),
+            Err(err) => eprintln!("{}", err),
+        };
     }
 }
 
