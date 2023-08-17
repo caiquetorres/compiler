@@ -6,3 +6,4 @@ pub mod number_expression_node;
 pub mod operator_node;
 pub mod parser;
 pub mod token;
+pub mod tree;
