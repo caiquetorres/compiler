@@ -1,4 +1,5 @@
 mod cli;
+mod lang;
 
 use cli::command_line_parser::CommandLineParser;
 
