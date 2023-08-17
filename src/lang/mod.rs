@@ -1,3 +1,4 @@
+pub mod binary_expression_node;
 pub mod kind;
 pub mod lexer;
 pub mod node;
