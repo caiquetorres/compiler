@@ -15,10 +15,10 @@ impl ParsedOptions {
         self.parsed_options.get(key).is_some()
     }
 
-    pub fn get(&self, key: &str) -> Result<&str, &str> {
-        self.parsed_options
-            .get(key)
-            .ok_or("The key does not exist")
-            .map(|x| x.as_str())
-    }
+    // pub fn get(&self, key: &str) -> Result<&str, &str> {
+    //     self.parsed_options
+    //         .get(key)
+    //         .ok_or("The key does not exist")
+    //         .map(|x| x.as_str())
+    // }
 }
