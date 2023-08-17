@@ -1,6 +1,7 @@
 use super::{
-    binary_expression_node::BinaryExpressionNode, kind::Kind, lexer::Lexer, node::ExpressionNode,
+    binary_expression_node::BinaryExpressionNode, kind::Kind, lexer::Lexer, node::Node,
     number_expression_node::NumberExpressionNode, operator_node::OperatorNode, token::Token,
+    tree::Tree,
 };
 
 pub struct Parser {
@@ -15,7 +16,13 @@ impl Parser {
     }
 
     // REVIEW: Currently the parser is just parsing binary expressions such as "2 + 2"
-    pub fn parse(&self) -> Result<Box<dyn ExpressionNode>, String> {
+    pub fn parse(&self) -> Result<Tree, String> {
+        let binary_expression = self.parse_binary_expression()?;
+        let tree = Tree::new(binary_expression);
+        return Ok(tree);
+    }
+
+    fn parse_binary_expression(&self) -> Result<Box<dyn Node>, String> {
         let lexer = Lexer::new(&self.text);
 
         let tokens = lexer
@@ -34,8 +41,7 @@ impl Parser {
         let mut position: usize = 0;
         let mut token = tokens[position].clone();
 
-        let left_token = token.clone();
-        let mut left: Box<dyn ExpressionNode> = Box::new(NumberExpressionNode::new(left_token));
+        let root_token = token;
 
         position += 1;
         token = tokens
@@ -43,7 +49,8 @@ impl Parser {
             .ok_or("Error while parsing")?
             .to_owned();
 
-        // REVIEW: Should we replace for a match-expression?
+        let mut binary_expression: Option<Box<BinaryExpressionNode>> = None;
+
         while token.kind == Kind::PlusToken || token.kind == Kind::MinusToken {
             let operator_token = tokens[position].clone();
             let operator_node = OperatorNode::new(operator_token);
@@ -57,11 +64,19 @@ impl Parser {
             let right_token = token.clone();
             let right = Box::new(NumberExpressionNode::new(right_token));
 
-            left = Box::new(BinaryExpressionNode::new(
-                left,
-                Box::new(operator_node),
-                right,
-            ));
+            if binary_expression.is_some() {
+                binary_expression = Some(Box::new(BinaryExpressionNode::new(
+                    binary_expression.unwrap(),
+                    Box::new(operator_node),
+                    right,
+                )));
+            } else {
+                binary_expression = Some(Box::new(BinaryExpressionNode::new(
+                    Box::new(NumberExpressionNode::new(root_token.clone())),
+                    Box::new(operator_node),
+                    right,
+                )));
+            }
 
             position += 1;
             match tokens.get(position) {
@@ -70,6 +85,10 @@ impl Parser {
             }
         }
 
-        Ok(left)
+        if binary_expression.is_none() {
+            Ok(Box::new(NumberExpressionNode::new(root_token)))
+        } else {
+            Ok(binary_expression.unwrap())
+        }
     }
 }
