@@ -1,6 +1,6 @@
 <expression> ::= <term> | <expression> "+" <term> | <expression> "-" <term>
 <term> ::= <factor> | <term> "*" <factor> | <term> "/" <factor> | <term> "%" <factor>
-<factor> ::= ::= <unary_operator> <factor> | <number> | "(" <expression> ")"
+<factor> ::= <unary_operator> <factor> | <number> | "(" <expression> ")"
 <unary_operator> ::= "+" | "-"
 
 <number> ::= <digit>+
