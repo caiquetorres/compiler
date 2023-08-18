@@ -18,15 +18,7 @@ impl ToString for NumberExpressionNode {
 }
 
 impl Node for NumberExpressionNode {
-    fn as_node(&self) -> &dyn Node {
-        return self;
-    }
-
     fn get_children(&self) -> Vec<&dyn Node> {
         vec![]
-    }
-
-    fn get_token(&self) -> &Token {
-        &self.token
     }
 }

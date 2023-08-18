@@ -1,12 +1,6 @@
 use std::{collections::VecDeque, fmt::Display};
 
-use super::token::Token;
-
 pub trait Node: ToString {
-    fn as_node(&self) -> &dyn Node;
-
-    fn get_token(&self) -> &Token;
-
     fn get_children(&self) -> Vec<&dyn Node>;
 }
 

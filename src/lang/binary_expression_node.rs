@@ -1,7 +1,7 @@
 use super::{kind::Kind, node::Node, operator_node::OperatorNode, token::Token};
 
 pub struct BinaryExpressionNode {
-    token: Token,
+    pub token: Token,
     pub left: Box<dyn Node>,
     pub operator: Box<OperatorNode>,
     pub right: Box<dyn Node>,
@@ -25,19 +25,11 @@ impl ToString for BinaryExpressionNode {
 }
 
 impl Node for BinaryExpressionNode {
-    fn as_node(&self) -> &dyn Node {
-        return self;
-    }
-
     fn get_children(&self) -> Vec<&dyn Node> {
         vec![
-            self.left.as_ref().as_node(),
+            self.left.as_ref(),
             self.operator.as_ref(),
-            self.right.as_ref().as_node(),
+            self.right.as_ref(),
         ]
-    }
-
-    fn get_token(&self) -> &Token {
-        &self.token
     }
 }

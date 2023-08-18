@@ -18,15 +18,7 @@ impl ToString for OperatorNode {
 }
 
 impl Node for OperatorNode {
-    fn as_node(&self) -> &dyn Node {
-        return self;
-    }
-
     fn get_children(&self) -> Vec<&dyn Node> {
         vec![]
-    }
-
-    fn get_token(&self) -> &Token {
-        &self.token
     }
 }
