@@ -1,7 +1,4 @@
-use super::{
-    node::{ExpressionNode, Node},
-    token::Token,
-};
+use super::{node::Node, token::Token};
 
 #[derive(Debug)]
 pub struct NumberExpressionNode {
@@ -33,5 +30,3 @@ impl Node for NumberExpressionNode {
         &self.token
     }
 }
-
-impl ExpressionNode for NumberExpressionNode {}

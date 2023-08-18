@@ -41,15 +41,13 @@ impl Parser {
         let mut position: usize = 0;
         let mut token = tokens[position].clone();
 
-        let root_token = token;
+        let mut node: Box<dyn Node> = Box::new(NumberExpressionNode::new(token.clone()));
 
         position += 1;
         token = tokens
             .get(position)
             .ok_or("Error while parsing")?
             .to_owned();
-
-        let mut binary_expression: Option<Box<BinaryExpressionNode>> = None;
 
         while token.kind == Kind::PlusToken || token.kind == Kind::MinusToken {
             let operator_token = tokens[position].clone();
@@ -64,19 +62,11 @@ impl Parser {
             let right_token = token.clone();
             let right = Box::new(NumberExpressionNode::new(right_token));
 
-            if binary_expression.is_some() {
-                binary_expression = Some(Box::new(BinaryExpressionNode::new(
-                    binary_expression.unwrap(),
-                    Box::new(operator_node),
-                    right,
-                )));
-            } else {
-                binary_expression = Some(Box::new(BinaryExpressionNode::new(
-                    Box::new(NumberExpressionNode::new(root_token.clone())),
-                    Box::new(operator_node),
-                    right,
-                )));
-            }
+            node = Box::new(BinaryExpressionNode::new(
+                node,
+                Box::new(operator_node),
+                right,
+            ));
 
             position += 1;
             match tokens.get(position) {
@@ -85,10 +75,6 @@ impl Parser {
             }
         }
 
-        if binary_expression.is_none() {
-            Ok(Box::new(NumberExpressionNode::new(root_token)))
-        } else {
-            Ok(binary_expression.unwrap())
-        }
+        Ok(node)
     }
 }

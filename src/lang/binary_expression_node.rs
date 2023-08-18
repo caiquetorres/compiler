@@ -1,23 +1,14 @@
-use super::{
-    kind::Kind,
-    node::{ExpressionNode, Node},
-    operator_node::OperatorNode,
-    token::Token,
-};
+use super::{kind::Kind, node::Node, operator_node::OperatorNode, token::Token};
 
 pub struct BinaryExpressionNode {
     token: Token,
-    pub left: Box<dyn ExpressionNode>,
+    pub left: Box<dyn Node>,
     pub operator: Box<OperatorNode>,
-    pub right: Box<dyn ExpressionNode>,
+    pub right: Box<dyn Node>,
 }
 
 impl BinaryExpressionNode {
-    pub fn new(
-        left: Box<dyn ExpressionNode>,
-        operator: Box<OperatorNode>,
-        right: Box<dyn ExpressionNode>,
-    ) -> Self {
+    pub fn new(left: Box<dyn Node>, operator: Box<OperatorNode>, right: Box<dyn Node>) -> Self {
         Self {
             left,
             operator,
@@ -50,5 +41,3 @@ impl Node for BinaryExpressionNode {
         &self.token
     }
 }
-
-impl ExpressionNode for BinaryExpressionNode {}

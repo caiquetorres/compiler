@@ -10,8 +10,6 @@ pub trait Node: ToString {
     fn get_children(&self) -> Vec<&dyn Node>;
 }
 
-pub trait ExpressionNode: Node {}
-
 impl Display for dyn Node {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut queue: VecDeque<&dyn Node> = VecDeque::new();
