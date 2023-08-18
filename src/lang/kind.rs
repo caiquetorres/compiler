@@ -14,6 +14,7 @@ pub enum Kind {
     CloseParenthesisToken,
     SemicolonToken,
     BinaryExpression,
+    ParenthesizedExpression,
 }
 
 impl Display for Kind {

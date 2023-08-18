@@ -4,6 +4,8 @@ pub mod lexer;
 pub mod node;
 pub mod number_expression_node;
 pub mod operator_node;
+pub mod parenthesis_node;
+pub mod parenthesized_expression_node;
 pub mod parser;
 pub mod token;
 pub mod tree;
