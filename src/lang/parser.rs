@@ -99,7 +99,7 @@ impl Parser {
             Kind::NumberToken => Box::new(NumberExpressionNode::new(token)),
             Kind::PlusToken | Kind::MinusToken => Box::new(UnaryExpressionNode::new(
                 Box::new(OperatorNode::new(self.current_token())),
-                self.parse_expression(),
+                self.parse_factor(),
             )),
             _ => {
                 let open_parenthesis_node = Box::new(ParenthesisNode::new(self.current_token()));
