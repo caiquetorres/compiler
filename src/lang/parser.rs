@@ -1,7 +1,9 @@
+use crate::lang::parenthesis_node::ParenthesisNode;
+
 use super::{
     binary_expression_node::BinaryExpressionNode, kind::Kind, lexer::Lexer, node::Node,
-    number_expression_node::NumberExpressionNode, operator_node::OperatorNode, token::Token,
-    tree::Tree,
+    number_expression_node::NumberExpressionNode, operator_node::OperatorNode,
+    parenthesized_expression_node::ParenthesizedExpressionNode, token::Token, tree::Tree,
 };
 
 pub struct Parser {
@@ -54,19 +56,14 @@ impl Parser {
     }
 
     fn parse_expression(&mut self) -> Box<dyn Node> {
-        self.parse_term()
-    }
-
-    /// Parses + and -.
-    fn parse_term(&mut self) -> Box<dyn Node> {
-        let mut left: Box<dyn Node> = self.parse_factor();
+        let mut left: Box<dyn Node> = self.parse_term();
 
         let mut token = self.current_token();
         while token.kind == Kind::PlusToken || token.kind == Kind::MinusToken {
             let operator_token = self.current_token();
             let operator = Box::new(OperatorNode::new(operator_token));
 
-            let right = self.parse_factor();
+            let right = self.parse_term();
             left = Box::new(BinaryExpressionNode::new(left, operator, right));
             token = self.current_token();
         }
@@ -74,24 +71,41 @@ impl Parser {
         left
     }
 
-    /// Parses * and /.
-    fn parse_factor(&mut self) -> Box<dyn Node> {
-        let mut token = self.next_token();
-        let mut left: Box<dyn Node> = Box::new(NumberExpressionNode::new(token));
+    fn parse_term(&mut self) -> Box<dyn Node> {
+        let mut left = self.parse_factor();
 
-        token = self.next_token();
-        while token.kind == Kind::StarToken || token.kind == Kind::SlashToken {
+        let mut token = self.next_token();
+        while token.kind == Kind::StarToken
+            || token.kind == Kind::SlashToken
+            || token.kind == Kind::ModToken
+        {
             let operator_token = self.current_token();
             let operator = Box::new(OperatorNode::new(operator_token));
 
-            let right_token = self.next_token();
-            let right = Box::new(NumberExpressionNode::new(right_token));
-
+            let right = self.parse_factor();
             left = Box::new(BinaryExpressionNode::new(left, operator, right));
 
             token = self.next_token();
         }
 
         left
+    }
+
+    fn parse_factor(&mut self) -> Box<dyn Node> {
+        let token = self.next_token();
+
+        if token.kind == Kind::NumberToken {
+            return Box::new(NumberExpressionNode::new(token));
+        }
+
+        let open_parenthesis_node = Box::new(ParenthesisNode::new(self.current_token()));
+        let expression = self.parse_expression();
+        let close_parenthesis_node = Box::new(ParenthesisNode::new(self.current_token()));
+
+        Box::new(ParenthesizedExpressionNode::new(
+            open_parenthesis_node,
+            expression,
+            close_parenthesis_node,
+        ))
     }
 }
