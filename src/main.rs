@@ -37,8 +37,7 @@ fn repl() {
 
         let text = input.trim();
 
-        let parser = Parser::new(text);
-
+        let mut parser = Parser::new(text);
         match parser.parse() {
             Ok(tree) => println!("{}", tree),
             Err(err) => eprintln!("{}", err),

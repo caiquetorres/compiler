@@ -5,76 +5,93 @@ use super::{
 };
 
 pub struct Parser {
-    text: String,
+    current_position: isize,
+    tokens: Vec<Token>,
 }
 
 impl Parser {
     pub fn new(text: &str) -> Self {
-        Self {
-            text: String::from(text),
-        }
-    }
-
-    // REVIEW: Currently the parser is just parsing binary expressions such as "2 + 2"
-    pub fn parse(&self) -> Result<Tree, String> {
-        let binary_expression = self.parse_binary_expression()?;
-        let tree = Tree::new(binary_expression);
-        return Ok(tree);
-    }
-
-    fn parse_binary_expression(&self) -> Result<Box<dyn Node>, String> {
-        let lexer = Lexer::new(&self.text);
+        let lexer = Lexer::new(text);
 
         let tokens = lexer
             .filter(|token| token.kind != Kind::WhiteSpaceToken)
             .collect::<Vec<Token>>();
 
-        // REVIEW: Should we improve this logic?
-        let bad_token = tokens.iter().find(|token| token.kind == Kind::BadToken);
+        Self {
+            current_position: -1,
+            tokens,
+        }
+    }
+
+    pub fn parse(&mut self) -> Result<Tree, String> {
+        let bad_token = self
+            .tokens
+            .iter()
+            .find(|token| token.kind == Kind::BadToken);
 
         if bad_token.is_some() {
             return Err(format!("Bad token: {}", bad_token.unwrap().text));
         }
 
-        // REVIEW: Is there any possibility of the text being empty?
+        let binary_expression = self.parse_expression();
+        let tree = Tree::new(binary_expression);
+        return Ok(tree);
+    }
 
-        let mut position: usize = 0;
-        let mut token = tokens[position].clone();
+    fn current_token(&self) -> Token {
+        match self.tokens.get(self.current_position as usize) {
+            Some(token) => token.clone(),
+            None => Token::new(Kind::EndOfFileToken, ""),
+        }
+    }
 
-        let mut node: Box<dyn Node> = Box::new(NumberExpressionNode::new(token.clone()));
+    fn next_token(&mut self) -> Token {
+        self.current_position += 1;
+        match self.tokens.get(self.current_position as usize) {
+            Some(token) => token.clone(),
+            None => Token::new(Kind::EndOfFileToken, ""),
+        }
+    }
 
-        position += 1;
-        token = tokens
-            .get(position)
-            .ok_or("Error while parsing")?
-            .to_owned();
+    fn parse_expression(&mut self) -> Box<dyn Node> {
+        self.parse_term()
+    }
 
+    /// Parses + and -.
+    fn parse_term(&mut self) -> Box<dyn Node> {
+        let mut left: Box<dyn Node> = self.parse_factor();
+
+        let mut token = self.current_token();
         while token.kind == Kind::PlusToken || token.kind == Kind::MinusToken {
-            let operator_token = tokens[position].clone();
-            let operator_node = OperatorNode::new(operator_token);
+            let operator_token = self.current_token();
+            let operator = Box::new(OperatorNode::new(operator_token));
 
-            position += 1;
-            token = tokens
-                .get(position)
-                .ok_or("Error while parsing")?
-                .to_owned();
-
-            let right_token = token.clone();
-            let right = Box::new(NumberExpressionNode::new(right_token));
-
-            node = Box::new(BinaryExpressionNode::new(
-                node,
-                Box::new(operator_node),
-                right,
-            ));
-
-            position += 1;
-            match tokens.get(position) {
-                Some(t) => token = t.to_owned(),
-                None => break,
-            }
+            let right = self.parse_factor();
+            left = Box::new(BinaryExpressionNode::new(left, operator, right));
+            token = self.current_token();
         }
 
-        Ok(node)
+        left
+    }
+
+    /// Parses * and /.
+    fn parse_factor(&mut self) -> Box<dyn Node> {
+        let mut token = self.next_token();
+        let mut left: Box<dyn Node> = Box::new(NumberExpressionNode::new(token));
+
+        token = self.next_token();
+        while token.kind == Kind::StarToken || token.kind == Kind::SlashToken {
+            let operator_token = self.current_token();
+            let operator = Box::new(OperatorNode::new(operator_token));
+
+            let right_token = self.next_token();
+            let right = Box::new(NumberExpressionNode::new(right_token));
+
+            left = Box::new(BinaryExpressionNode::new(left, operator, right));
+
+            token = self.next_token();
+        }
+
+        left
     }
 }
