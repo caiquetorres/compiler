@@ -61,6 +61,7 @@ impl Iterator for Lexer {
             '-' => Token::new(Kind::MinusToken, "-"),
             '*' => Token::new(Kind::StarToken, "*"),
             '/' => Token::new(Kind::SlashToken, "/"),
+            '%' => Token::new(Kind::ModToken, "%"),
             '(' => Token::new(Kind::OpenParenthesisToken, "("),
             ')' => Token::new(Kind::CloseParenthesisToken, ")"),
             ':' => Token::new(Kind::SemicolonToken, ";"),

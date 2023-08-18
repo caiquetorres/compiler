@@ -9,6 +9,7 @@ pub enum Kind {
     MinusToken,
     StarToken,
     SlashToken,
+    ModToken,
     WhiteSpaceToken,
     OpenParenthesisToken,
     CloseParenthesisToken,
