@@ -9,3 +9,4 @@ pub mod parenthesized_expression_node;
 pub mod parser;
 pub mod token;
 pub mod tree;
+pub mod unary_expression_node;

@@ -15,6 +15,7 @@ pub enum Kind {
     CloseParenthesisToken,
     SemicolonToken,
     BinaryExpression,
+    UnaryExpression,
     ParenthesizedExpression,
 }
 
