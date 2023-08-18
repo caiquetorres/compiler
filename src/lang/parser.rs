@@ -4,6 +4,7 @@ use super::{
     binary_expression_node::BinaryExpressionNode, kind::Kind, lexer::Lexer, node::Node,
     number_expression_node::NumberExpressionNode, operator_node::OperatorNode,
     parenthesized_expression_node::ParenthesizedExpressionNode, token::Token, tree::Tree,
+    unary_expression_node::UnaryExpressionNode,
 };
 
 pub struct Parser {
@@ -35,8 +36,8 @@ impl Parser {
             return Err(format!("Bad token: {}", bad_token.unwrap().text));
         }
 
-        let binary_expression = self.parse_expression();
-        let tree = Tree::new(binary_expression);
+        let expression = self.parse_expression();
+        let tree = Tree::new(expression);
         return Ok(tree);
     }
 
@@ -94,18 +95,23 @@ impl Parser {
     fn parse_factor(&mut self) -> Box<dyn Node> {
         let token = self.next_token();
 
-        if token.kind == Kind::NumberToken {
-            return Box::new(NumberExpressionNode::new(token));
+        match token.kind {
+            Kind::NumberToken => Box::new(NumberExpressionNode::new(token)),
+            Kind::PlusToken | Kind::MinusToken => Box::new(UnaryExpressionNode::new(
+                Box::new(OperatorNode::new(self.current_token())),
+                self.parse_expression(),
+            )),
+            _ => {
+                let open_parenthesis_node = Box::new(ParenthesisNode::new(self.current_token()));
+                let expression = self.parse_expression();
+                let close_parenthesis_node = Box::new(ParenthesisNode::new(self.current_token()));
+
+                Box::new(ParenthesizedExpressionNode::new(
+                    open_parenthesis_node,
+                    expression,
+                    close_parenthesis_node,
+                ))
+            }
         }
-
-        let open_parenthesis_node = Box::new(ParenthesisNode::new(self.current_token()));
-        let expression = self.parse_expression();
-        let close_parenthesis_node = Box::new(ParenthesisNode::new(self.current_token()));
-
-        Box::new(ParenthesizedExpressionNode::new(
-            open_parenthesis_node,
-            expression,
-            close_parenthesis_node,
-        ))
     }
 }
