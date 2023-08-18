@@ -4,6 +4,7 @@ pub trait Node: ToString {
     fn get_children(&self) -> Vec<&dyn Node>;
 }
 
+// REVIEW: Should we move this for the Tree struct?
 impl Display for dyn Node {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut queue: VecDeque<&dyn Node> = VecDeque::new();
@@ -17,9 +18,11 @@ impl Display for dyn Node {
             let depth = depth_queue.pop_back().unwrap();
 
             // TODO: We need to improve this visualization. A suggestion would be https://pt.wikipedia.org/wiki/Tree
+
             write!(f, "{}{}\n", "  ".repeat(depth), node.to_string())?;
 
-            for child in node.get_children() {
+            // REVIEW: Is this cloning the entire array and its elements?
+            for child in node.get_children().iter().rev().cloned() {
                 queue.push_back(child);
                 depth_queue.push_back(depth + 1);
             }
