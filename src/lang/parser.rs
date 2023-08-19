@@ -36,7 +36,7 @@ impl Parser {
             return Err(format!("Bad token: {}", bad_token.unwrap().text));
         }
 
-        let expression = self.parse_expression();
+        let expression = self.parse_expression()?;
         let tree = Tree::new(expression);
         return Ok(tree);
     }
@@ -56,24 +56,24 @@ impl Parser {
         }
     }
 
-    fn parse_expression(&mut self) -> Box<dyn Node> {
-        let mut left: Box<dyn Node> = self.parse_term();
+    fn parse_expression(&mut self) -> Result<Box<dyn Node>, String> {
+        let mut left: Box<dyn Node> = self.parse_term()?;
 
         let mut token = self.current_token();
         while token.kind == Kind::PlusToken || token.kind == Kind::MinusToken {
             let operator_token = self.current_token();
             let operator = Box::new(OperatorNode::new(operator_token));
 
-            let right = self.parse_term();
+            let right = self.parse_term()?;
             left = Box::new(BinaryExpressionNode::new(left, operator, right));
             token = self.current_token();
         }
 
-        left
+        Ok(left)
     }
 
-    fn parse_term(&mut self) -> Box<dyn Node> {
-        let mut left = self.parse_factor();
+    fn parse_term(&mut self) -> Result<Box<dyn Node>, String> {
+        let mut left = self.parse_factor()?;
 
         let mut token = self.next_token();
         while token.kind == Kind::StarToken
@@ -83,35 +83,42 @@ impl Parser {
             let operator_token = self.current_token();
             let operator = Box::new(OperatorNode::new(operator_token));
 
-            let right = self.parse_factor();
+            let right = self.parse_factor()?;
             left = Box::new(BinaryExpressionNode::new(left, operator, right));
 
             token = self.next_token();
         }
 
-        left
+        Ok(left)
     }
 
-    fn parse_factor(&mut self) -> Box<dyn Node> {
+    fn parse_factor(&mut self) -> Result<Box<dyn Node>, String> {
         let token = self.next_token();
 
         match token.kind {
-            Kind::NumberToken => Box::new(NumberExpressionNode::new(token)),
-            Kind::PlusToken | Kind::MinusToken => Box::new(UnaryExpressionNode::new(
+            Kind::NumberToken => Ok(Box::new(NumberExpressionNode::new(token))),
+            Kind::PlusToken | Kind::MinusToken => Ok(Box::new(UnaryExpressionNode::new(
                 Box::new(OperatorNode::new(self.current_token())),
-                self.parse_factor(),
-            )),
-            _ => {
+                self.parse_factor()?,
+            ))),
+            Kind::OpenParenthesisToken => {
                 let open_parenthesis_node = Box::new(ParenthesisNode::new(self.current_token()));
-                let expression = self.parse_expression();
-                let close_parenthesis_node = Box::new(ParenthesisNode::new(self.current_token()));
+                let expression = self.parse_expression()?;
 
-                Box::new(ParenthesizedExpressionNode::new(
-                    open_parenthesis_node,
-                    expression,
-                    close_parenthesis_node,
-                ))
+                let token = self.current_token();
+                if token.kind != Kind::CloseParenthesisToken {
+                    Err(format!("Close parenthesis expected"))
+                } else {
+                    let close_parenthesis_node = Box::new(ParenthesisNode::new(token));
+
+                    Ok(Box::new(ParenthesizedExpressionNode::new(
+                        open_parenthesis_node,
+                        expression,
+                        close_parenthesis_node,
+                    )))
+                }
             }
+            _ => Err(format!("Invalid or missing token")),
         }
     }
 }
