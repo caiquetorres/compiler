@@ -15,7 +15,7 @@ impl LiteralExpressionNode {
 
 impl ToString for LiteralExpressionNode {
     fn to_string(&self) -> String {
-        format!("LiteralExpressionNode {{ number: {} }}", self.token.text)
+        format!("LiteralExpressionNode {{ value: {} }}", self.token.text)
     }
 }
 
