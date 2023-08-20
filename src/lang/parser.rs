@@ -6,6 +6,21 @@ use super::{
     token::Token, tree::Tree, unary_expression_node::UnaryExpressionNode,
 };
 
+fn get_unary_operator_precedence(kind: Kind) -> u8 {
+    match kind {
+        Kind::PlusToken | Kind::MinusToken => 1,
+        _ => 0,
+    }
+}
+
+fn get_binary_operator_precedence(kind: Kind) -> u8 {
+    match kind {
+        Kind::SlashToken | Kind::StarToken | Kind::ModToken => 2,
+        Kind::MinusToken | Kind::PlusToken => 1,
+        _ => 0,
+    }
+}
+
 pub struct Parser {
     current_position: isize,
     tokens: Vec<Token>,
@@ -50,7 +65,7 @@ impl Parser {
         return Ok(tree);
     }
 
-    fn current_token(&self) -> Token {
+    fn current_token(&mut self) -> Token {
         match self.tokens.get(self.current_position as usize) {
             Some(token) => token.clone(),
             None => Token::new(Kind::EndOfFileToken, ""),
@@ -66,10 +81,22 @@ impl Parser {
     }
 
     fn parse_expression(&mut self, parent_precedence: u8) -> Result<Box<dyn Node>, String> {
-        let mut left: Box<dyn Node> = self.parse_factor()?;
+        let mut left: Box<dyn Node>;
+        let mut token = self.next_token();
 
-        let operator_token = self.next_token();
-        let mut precedence = get_binary_operator_precedence(operator_token.kind);
+        // Checks whether the current token is unary or not.
+        let unary_precedence = get_unary_operator_precedence(token.kind);
+        if unary_precedence != 0 && unary_precedence >= parent_precedence {
+            left = Box::new(UnaryExpressionNode::new(
+                Box::new(OperatorNode::new(token)),
+                self.parse_expression(unary_precedence)?,
+            ));
+        } else {
+            left = self.parse_factor()?;
+        }
+
+        token = self.next_token();
+        let mut precedence = get_binary_operator_precedence(token.kind);
 
         while precedence != 0 && precedence > parent_precedence {
             let operator_token = self.current_token();
@@ -84,42 +111,30 @@ impl Parser {
     }
 
     fn parse_factor(&mut self) -> Result<Box<dyn Node>, String> {
-        let token = self.next_token();
+        let mut token = self.current_token();
 
         match token.kind {
             Kind::NumberToken | Kind::TrueToken | Kind::FalseToken => {
                 Ok(Box::new(LiteralExpressionNode::new(token)))
             }
-            Kind::PlusToken | Kind::MinusToken => Ok(Box::new(UnaryExpressionNode::new(
-                Box::new(OperatorNode::new(self.current_token())),
-                self.parse_factor()?,
-            ))),
             Kind::OpenParenthesisToken => {
-                let open_parenthesis_node = Box::new(ParenthesisNode::new(self.current_token()));
+                let open_parenthesis_node = Box::new(ParenthesisNode::new(token));
                 let expression = self.parse_expression(0)?;
 
-                let token = self.current_token();
-                if token.kind != Kind::CloseParenthesisToken {
-                    Err(format!("Close parenthesis expected"))
-                } else {
-                    let close_parenthesis_node = Box::new(ParenthesisNode::new(token));
+                token = self.current_token();
 
-                    Ok(Box::new(ParenthesizedExpressionNode::new(
+                if token.kind == Kind::CloseParenthesisToken {
+                    let close_parenthesis_node = Box::new(ParenthesisNode::new(token));
+                    return Ok(Box::new(ParenthesizedExpressionNode::new(
                         open_parenthesis_node,
                         expression,
                         close_parenthesis_node,
-                    )))
+                    )));
                 }
+
+                Err(format!("Close parenthesis expected"))
             }
             _ => Err(format!("Operator or expression expected")),
         }
-    }
-}
-
-fn get_binary_operator_precedence(kind: Kind) -> u8 {
-    match kind {
-        Kind::SlashToken | Kind::StarToken | Kind::ModToken => 2,
-        Kind::MinusToken | Kind::PlusToken => 1,
-        _ => 0,
     }
 }
