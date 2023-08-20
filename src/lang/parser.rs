@@ -1,10 +1,9 @@
-use crate::lang::parenthesis_node::ParenthesisNode;
+use crate::lang::{binary_expression_node::BinaryExpressionNode, operator_node::OperatorNode};
 
 use super::{
-    binary_expression_node::BinaryExpressionNode, kind::Kind, lexer::Lexer,
-    literal_expression_node::LiteralExpressionNode, node::Node, operator_node::OperatorNode,
-    parenthesized_expression_node::ParenthesizedExpressionNode, token::Token, tree::Tree,
-    unary_expression_node::UnaryExpressionNode,
+    kind::Kind, lexer::Lexer, literal_expression_node::LiteralExpressionNode, node::Node,
+    parenthesis_node::ParenthesisNode, parenthesized_expression_node::ParenthesizedExpressionNode,
+    token::Token, tree::Tree, unary_expression_node::UnaryExpressionNode,
 };
 
 pub struct Parser {
@@ -46,7 +45,7 @@ impl Parser {
             return Err(format!("Bad token: {}", bad_token.unwrap().text));
         }
 
-        let expression = self.parse_expression()?;
+        let expression = self.parse_expression(0)?;
         let tree = Tree::new(expression);
         return Ok(tree);
     }
@@ -66,39 +65,19 @@ impl Parser {
         }
     }
 
-    fn parse_expression(&mut self) -> Result<Box<dyn Node>, String> {
-        let mut left: Box<dyn Node> = self.parse_term()?;
+    fn parse_expression(&mut self, parent_precedence: u8) -> Result<Box<dyn Node>, String> {
+        let mut left: Box<dyn Node> = self.parse_factor()?;
 
-        let mut token = self.current_token();
+        let operator_token = self.next_token();
+        let mut precedence = get_binary_operator_precedence(operator_token.kind);
 
-        while token.kind == Kind::PlusToken || token.kind == Kind::MinusToken {
+        while precedence != 0 && precedence > parent_precedence {
             let operator_token = self.current_token();
             let operator = Box::new(OperatorNode::new(operator_token));
+            let right = self.parse_expression(precedence)?;
 
-            let right = self.parse_term()?;
             left = Box::new(BinaryExpressionNode::new(left, operator, right));
-            token = self.current_token();
-        }
-
-        Ok(left)
-    }
-
-    fn parse_term(&mut self) -> Result<Box<dyn Node>, String> {
-        let mut left = self.parse_factor()?;
-
-        let mut token = self.next_token();
-
-        while token.kind == Kind::StarToken
-            || token.kind == Kind::SlashToken
-            || token.kind == Kind::ModToken
-        {
-            let operator_token = self.current_token();
-            let operator = Box::new(OperatorNode::new(operator_token));
-
-            let right = self.parse_factor()?;
-            left = Box::new(BinaryExpressionNode::new(left, operator, right));
-
-            token = self.next_token();
+            precedence = get_binary_operator_precedence(self.current_token().kind);
         }
 
         Ok(left)
@@ -117,7 +96,7 @@ impl Parser {
             ))),
             Kind::OpenParenthesisToken => {
                 let open_parenthesis_node = Box::new(ParenthesisNode::new(self.current_token()));
-                let expression = self.parse_expression()?;
+                let expression = self.parse_expression(0)?;
 
                 let token = self.current_token();
                 if token.kind != Kind::CloseParenthesisToken {
@@ -134,5 +113,13 @@ impl Parser {
             }
             _ => Err(format!("Operator or expression expected")),
         }
+    }
+}
+
+fn get_binary_operator_precedence(kind: Kind) -> u8 {
+    match kind {
+        Kind::SlashToken | Kind::StarToken | Kind::ModToken => 2,
+        Kind::MinusToken | Kind::PlusToken => 1,
+        _ => 0,
     }
 }
