@@ -25,7 +25,7 @@ fn get_binary_operator_precedence(kind: Kind) -> u8 {
 }
 
 pub struct Parser {
-    current_position: isize,
+    current_position: usize,
     tokens: Vec<Token>,
 }
 
@@ -48,7 +48,7 @@ impl Parser {
         tokens.push(Token::new(Kind::EndOfFileToken, ""));
 
         Self {
-            current_position: -1,
+            current_position: 0,
             tokens,
         }
     }
@@ -76,28 +76,19 @@ impl Parser {
     }
 
     fn next_token(&mut self) -> Token {
+        let token = self.current_token();
         self.current_position += 1;
-        match self.tokens.get(self.current_position as usize) {
-            Some(token) => token.clone(),
-            None => Token::new(Kind::EndOfFileToken, ""),
-        }
-    }
-
-    fn get_next_token(&mut self) -> Token {
-        // REVIEW: We need to remove this method.
-        match self.tokens.get((self.current_position + 1) as usize) {
-            Some(token) => token.clone(),
-            None => Token::new(Kind::EndOfFileToken, ""),
-        }
+        token
     }
 
     fn parse_expression(&mut self, parent_precedence: u8) -> Result<Box<dyn Node>, String> {
         let mut left: Box<dyn Node>;
-        let mut token = self.next_token();
+        let mut token = self.current_token();
 
         // Checks whether the current token is unary or not.
         let unary_precedence = get_unary_operator_precedence(token.kind);
         if unary_precedence != 0 && unary_precedence >= parent_precedence {
+            token = self.next_token();
             left = Box::new(UnaryExpressionNode::new(
                 Box::new(OperatorNode::new(token)),
                 self.parse_expression(unary_precedence)?,
@@ -106,7 +97,7 @@ impl Parser {
             left = self.parse_factor()?;
         }
 
-        token = self.get_next_token();
+        token = self.current_token();
         let mut precedence = get_binary_operator_precedence(token.kind);
 
         while precedence != 0 && precedence > parent_precedence {
@@ -116,7 +107,7 @@ impl Parser {
 
             left = Box::new(BinaryExpressionNode::new(left, operator, right));
 
-            token = self.get_next_token();
+            token = self.current_token();
             precedence = get_binary_operator_precedence(token.kind);
         }
 
@@ -124,7 +115,7 @@ impl Parser {
     }
 
     fn parse_factor(&mut self) -> Result<Box<dyn Node>, String> {
-        let mut token = self.current_token();
+        let mut token = self.next_token();
 
         match token.kind {
             Kind::NumberToken | Kind::TrueToken | Kind::FalseToken => {
