@@ -8,15 +8,18 @@ use super::{
 
 fn get_unary_operator_precedence(kind: Kind) -> u8 {
     match kind {
-        Kind::PlusToken | Kind::MinusToken => 1,
+        Kind::PlusToken | Kind::MinusToken | Kind::LogicalNotToken | Kind::BitwiseNotToken => 6,
         _ => 0,
     }
 }
 
 fn get_binary_operator_precedence(kind: Kind) -> u8 {
     match kind {
-        Kind::SlashToken | Kind::StarToken | Kind::ModToken => 2,
-        Kind::MinusToken | Kind::PlusToken => 1,
+        Kind::SlashToken | Kind::StarToken | Kind::ModToken => 5,
+        Kind::MinusToken | Kind::PlusToken => 4,
+        Kind::BitwiseAndToken => 3,
+        Kind::BitwiseXorToken => 2,
+        Kind::BitwiseOrToken => 1,
         _ => 0,
     }
 }
@@ -80,6 +83,14 @@ impl Parser {
         }
     }
 
+    fn get_next_token(&mut self) -> Token {
+        // REVIEW: We need to remove this method.
+        match self.tokens.get((self.current_position + 1) as usize) {
+            Some(token) => token.clone(),
+            None => Token::new(Kind::EndOfFileToken, ""),
+        }
+    }
+
     fn parse_expression(&mut self, parent_precedence: u8) -> Result<Box<dyn Node>, String> {
         let mut left: Box<dyn Node>;
         let mut token = self.next_token();
@@ -95,16 +106,18 @@ impl Parser {
             left = self.parse_factor()?;
         }
 
-        token = self.next_token();
+        token = self.get_next_token();
         let mut precedence = get_binary_operator_precedence(token.kind);
 
         while precedence != 0 && precedence > parent_precedence {
-            let operator_token = self.current_token();
+            let operator_token = self.next_token();
             let operator = Box::new(OperatorNode::new(operator_token));
             let right = self.parse_expression(precedence)?;
 
             left = Box::new(BinaryExpressionNode::new(left, operator, right));
-            precedence = get_binary_operator_precedence(self.current_token().kind);
+
+            token = self.get_next_token();
+            precedence = get_binary_operator_precedence(token.kind);
         }
 
         Ok(left)
@@ -121,7 +134,7 @@ impl Parser {
                 let open_parenthesis_node = Box::new(ParenthesisNode::new(token));
                 let expression = self.parse_expression(0)?;
 
-                token = self.current_token();
+                token = self.next_token();
 
                 if token.kind == Kind::CloseParenthesisToken {
                     let close_parenthesis_node = Box::new(ParenthesisNode::new(token));

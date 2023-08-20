@@ -70,6 +70,11 @@ impl Lexer {
             '(' => Token::new(Kind::OpenParenthesisToken, "("),
             ')' => Token::new(Kind::CloseParenthesisToken, ")"),
             ':' => Token::new(Kind::SemicolonToken, ";"),
+            '!' => Token::new(Kind::LogicalNotToken, "!"),
+            '~' => Token::new(Kind::BitwiseNotToken, "~"),
+            '&' => Token::new(Kind::BitwiseAndToken, "&"),
+            '^' => Token::new(Kind::BitwiseXorToken, "^"),
+            '|' => Token::new(Kind::BitwiseOrToken, "|"),
             _ => Token::new(Kind::BadToken, &format!("{}", self.current_char())[..]), // REVIEW: Is that conversion right?
         };
 
