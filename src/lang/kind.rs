@@ -17,6 +17,8 @@ pub enum Kind {
     BinaryExpression,
     UnaryExpression,
     ParenthesizedExpression,
+    TrueToken,
+    FalseToken,
 }
 
 impl Display for Kind {

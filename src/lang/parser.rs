@@ -1,8 +1,8 @@
 use crate::lang::parenthesis_node::ParenthesisNode;
 
 use super::{
-    binary_expression_node::BinaryExpressionNode, kind::Kind, lexer::Lexer, node::Node,
-    number_expression_node::NumberExpressionNode, operator_node::OperatorNode,
+    binary_expression_node::BinaryExpressionNode, kind::Kind, lexer::Lexer,
+    literal_expression_node::LiteralExpressionNode, node::Node, operator_node::OperatorNode,
     parenthesized_expression_node::ParenthesizedExpressionNode, token::Token, tree::Tree,
     unary_expression_node::UnaryExpressionNode,
 };
@@ -14,11 +14,21 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(text: &str) -> Self {
-        let lexer = Lexer::new(text);
+        let mut lexer = Lexer::new(text);
+        let mut tokens: Vec<Token> = vec![];
 
-        let tokens = lexer
-            .filter(|token| token.kind != Kind::WhiteSpaceToken)
-            .collect::<Vec<Token>>();
+        let mut token = lexer.next();
+        while token.kind != Kind::EndOfFileToken {
+            if token.kind == Kind::WhiteSpaceToken {
+                token = lexer.next();
+                continue;
+            }
+
+            tokens.push(token);
+            token = lexer.next();
+        }
+
+        tokens.push(Token::new(Kind::EndOfFileToken, ""));
 
         Self {
             current_position: -1,
@@ -60,6 +70,7 @@ impl Parser {
         let mut left: Box<dyn Node> = self.parse_term()?;
 
         let mut token = self.current_token();
+
         while token.kind == Kind::PlusToken || token.kind == Kind::MinusToken {
             let operator_token = self.current_token();
             let operator = Box::new(OperatorNode::new(operator_token));
@@ -76,6 +87,7 @@ impl Parser {
         let mut left = self.parse_factor()?;
 
         let mut token = self.next_token();
+
         while token.kind == Kind::StarToken
             || token.kind == Kind::SlashToken
             || token.kind == Kind::ModToken
@@ -96,7 +108,9 @@ impl Parser {
         let token = self.next_token();
 
         match token.kind {
-            Kind::NumberToken => Ok(Box::new(NumberExpressionNode::new(token))),
+            Kind::NumberToken | Kind::TrueToken | Kind::FalseToken => {
+                Ok(Box::new(LiteralExpressionNode::new(token)))
+            }
             Kind::PlusToken | Kind::MinusToken => Ok(Box::new(UnaryExpressionNode::new(
                 Box::new(OperatorNode::new(self.current_token())),
                 self.parse_factor()?,
@@ -118,7 +132,7 @@ impl Parser {
                     )))
                 }
             }
-            _ => Err(format!("Invalid or missing token")),
+            _ => Err(format!("Operator or expression expected")),
         }
     }
 }
