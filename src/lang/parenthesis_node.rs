@@ -22,6 +22,10 @@ impl ToString for ParenthesisNode {
 }
 
 impl Node for ParenthesisNode {
+    fn get_token(&self) -> &Token {
+        &self.token
+    }
+
     fn get_children(&self) -> Vec<&dyn Node> {
         vec![]
     }

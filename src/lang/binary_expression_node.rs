@@ -25,6 +25,10 @@ impl ToString for BinaryExpressionNode {
 }
 
 impl Node for BinaryExpressionNode {
+    fn get_token(&self) -> &Token {
+        &self.token
+    }
+
     fn get_children(&self) -> Vec<&dyn Node> {
         vec![
             self.left.as_ref(),

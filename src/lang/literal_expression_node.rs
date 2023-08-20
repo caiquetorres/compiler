@@ -1,23 +1,25 @@
 use super::{node::Node, token::Token};
 
+//REVIEW: Should we rename to just LiteralNode?
+
 #[derive(Debug)]
-pub struct OperatorNode {
+pub struct LiteralExpressionNode {
     pub token: Token,
 }
 
-impl OperatorNode {
+impl LiteralExpressionNode {
     pub fn new(token: Token) -> Self {
         Self { token }
     }
 }
 
-impl ToString for OperatorNode {
+impl ToString for LiteralExpressionNode {
     fn to_string(&self) -> String {
-        format!("OperatorNode {{ operator: {:?} }}", self.token.text)
+        format!("LiteralExpressionNode {{ number: {} }}", self.token.text)
     }
 }
 
-impl Node for OperatorNode {
+impl Node for LiteralExpressionNode {
     fn get_token(&self) -> &Token {
         &self.token
     }

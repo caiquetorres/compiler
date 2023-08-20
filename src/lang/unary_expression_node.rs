@@ -23,6 +23,10 @@ impl ToString for UnaryExpressionNode {
 }
 
 impl Node for UnaryExpressionNode {
+    fn get_token(&self) -> &Token {
+        &self.token
+    }
+
     fn get_children(&self) -> Vec<&dyn Node> {
         vec![self.operator.as_ref(), self.child.as_ref()]
     }

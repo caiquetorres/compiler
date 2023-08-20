@@ -29,6 +29,10 @@ impl ToString for ParenthesizedExpressionNode {
 }
 
 impl Node for ParenthesizedExpressionNode {
+    fn get_token(&self) -> &Token {
+        &self.token
+    }
+
     fn get_children(&self) -> Vec<&dyn Node> {
         vec![
             self.open_parenthesis.as_ref(),
