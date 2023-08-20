@@ -1,9 +1,12 @@
 mod cli;
 mod lang;
 
-use cli::command_line_parser::CommandLineParser;
+use cli::{command_line_parser::CommandLineParser, parsed_options::ParsedOptions};
 use lang::parser::Parser;
-use std::io::{self, Write};
+use std::{
+    fs,
+    io::{self, Write},
+};
 
 fn main() {
     let mut parser = CommandLineParser::new();
@@ -22,7 +25,7 @@ fn main() {
     if options.has("--repl") {
         repl();
     } else if options.has("--compile") {
-        compile();
+        compile(&options);
     }
 }
 
@@ -45,4 +48,22 @@ fn repl() {
     }
 }
 
-fn compile() {}
+fn compile(options: &ParsedOptions) {
+    if !options.has("--compile") {
+        ()
+    } else {
+        let path = options.get("--compile").unwrap();
+        let result = fs::read_to_string(path);
+
+        match result {
+            Ok(text) => {
+                let mut parser = Parser::new(&text[..]);
+                match parser.parse() {
+                    Ok(tree) => println!("{}", tree),
+                    Err(err) => eprintln!("{}", err),
+                };
+            }
+            Err(_) => (),
+        }
+    }
+}
