@@ -1,6 +1,5 @@
 use super::{node::Node, token::Token};
 
-#[derive(Debug)]
 pub struct ParenthesisNode {
     pub token: Token,
 }
