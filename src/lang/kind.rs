@@ -52,6 +52,7 @@ pub enum Kind {
 
     // Statements
     BlockStatement,
+    VariableAssignment,
 }
 
 impl Display for Kind {

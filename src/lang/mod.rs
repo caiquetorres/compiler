@@ -16,3 +16,4 @@ pub mod semicolon_node;
 pub mod token;
 pub mod tree;
 pub mod unary_expression_node;
+pub mod variable_declaration_statement_node;
