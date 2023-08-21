@@ -8,7 +8,8 @@ We are actively working on building the foundational components of the compiler,
 
 - **Lexer and tokenization**
 - **Parser and syntax analysis**
-- **Recognizing binary mathematical expressions**
+  - **Recognizing char expressions**
+  - **Assignment statements**
 
 Stay tuned for updates as we make progress on the project!
 
