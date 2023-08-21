@@ -34,10 +34,6 @@ impl Node for ParenthesizedExpressionNode {
     }
 
     fn get_children(&self) -> Vec<&dyn Node> {
-        vec![
-            self.open_parenthesis.as_ref(),
-            self.expression.as_ref(),
-            self.close_parenthesis.as_ref(),
-        ]
+        vec![self.expression.as_ref()]
     }
 }
