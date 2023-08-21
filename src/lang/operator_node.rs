@@ -13,7 +13,7 @@ impl OperatorNode {
 
 impl ToString for OperatorNode {
     fn to_string(&self) -> String {
-        format!("OperatorNode {{ operator: {:?} }}", self.token.text)
+        format!("OperatorNode {{ operator: {:} }}", self.token.text)
     }
 }
 
