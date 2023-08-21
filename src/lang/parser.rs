@@ -1,9 +1,15 @@
-use crate::lang::{binary_expression_node::BinaryExpressionNode, operator_node::OperatorNode};
+use crate::lang::{
+    assignment_operator_node::AssignmentOperatorNode, binary_expression_node::BinaryExpressionNode,
+    brace_node::BraceNode, let_node::LetNode, operator_node::OperatorNode,
+    semicolon_node::SemicolonNode,
+};
 
 use super::{
-    kind::Kind, lexer::Lexer, literal_expression_node::LiteralExpressionNode, node::Node,
+    block_statement_node::BlockStatementNode, identifier_node::IdentifierNode, kind::Kind,
+    lexer::Lexer, literal_expression_node::LiteralExpressionNode, node::Node,
     parenthesis_node::ParenthesisNode, parenthesized_expression_node::ParenthesizedExpressionNode,
     token::Token, tree::Tree, unary_expression_node::UnaryExpressionNode,
+    variable_declaration_statement_node::VariableDeclarationStatementNode,
 };
 
 fn get_unary_operator_precedence(kind: Kind) -> u32 {
@@ -70,7 +76,7 @@ impl Parser {
             return Err(format!("Bad token: {}", bad_token.unwrap().text));
         }
 
-        let expression = self.parse_expression(0)?;
+        let expression = self.parse_block()?;
         let tree = Tree::new(expression);
         return Ok(tree);
     }
@@ -86,6 +92,78 @@ impl Parser {
         let token = self.current_token();
         self.current_position += 1;
         token
+    }
+
+    fn parse_block(&mut self) -> Result<Box<dyn Node>, String> {
+        let token = self.current_token();
+
+        if token.kind != Kind::OpenBracesToken {
+            return Err("Block expected".to_string());
+        }
+
+        let open_brace_token = self.next_token();
+        let open_brace_node = Box::new(BraceNode::new(open_brace_token));
+
+        let mut statements: Vec<Box<dyn Node>> = vec![];
+
+        while self.current_token().kind != Kind::CloseBracesToken {
+            let statement = self.parse_statement()?;
+            statements.push(statement);
+        }
+
+        let close_brace_token = self.next_token();
+        let close_brace_node = Box::new(BraceNode::new(close_brace_token));
+
+        Ok(Box::new(BlockStatementNode::new(
+            open_brace_node,
+            statements,
+            close_brace_node,
+        )))
+    }
+
+    fn parse_statement(&mut self) -> Result<Box<dyn Node>, String> {
+        match self.current_token().kind {
+            Kind::OpenBracesToken => self.parse_block(),
+            Kind::LetToken => {
+                let mut token = self.next_token();
+                let let_node = Box::new(LetNode::new(token));
+
+                token = self.next_token();
+
+                if token.kind != Kind::IdentifierToken {
+                    return Err("Expected identifier".to_string());
+                }
+
+                let id_node = Box::new(IdentifierNode::new(token));
+
+                token = self.next_token();
+
+                if token.kind != Kind::EqualsToken {
+                    return Err("Assignment operator expected".to_string());
+                }
+
+                let assignment_node = Box::new(AssignmentOperatorNode::new(token));
+
+                let expression_node = self.parse_expression(0)?;
+
+                token = self.next_token();
+
+                if token.kind != Kind::SemicolonToken {
+                    return Err("Semicolon expected".to_string());
+                }
+
+                let semicolon_node = Box::new(SemicolonNode::new(token));
+
+                Ok(Box::new(VariableDeclarationStatementNode::new(
+                    let_node,
+                    id_node,
+                    assignment_node,
+                    expression_node,
+                    semicolon_node,
+                )))
+            }
+            _ => Err("Expected statement".to_string()),
+        }
     }
 
     fn parse_expression(&mut self, parent_precedence: u32) -> Result<Box<dyn Node>, String> {
@@ -125,6 +203,7 @@ impl Parser {
         let mut token = self.next_token();
 
         match token.kind {
+            Kind::IdentifierToken => Ok(Box::new(IdentifierNode::new(token))),
             Kind::NumberToken | Kind::TrueToken | Kind::FalseToken => {
                 Ok(Box::new(LiteralExpressionNode::new(token)))
             }
@@ -145,7 +224,7 @@ impl Parser {
 
                 Err(format!("Close parenthesis expected"))
             }
-            _ => Err(format!("Operator or expression expected")),
+            _ => Err(format!("Expression expected")),
         }
     }
 }

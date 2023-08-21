@@ -40,7 +40,9 @@ impl Lexer {
             '%' => Token::new(Kind::ModToken, "%"),
             '(' => Token::new(Kind::OpenParenthesisToken, "("),
             ')' => Token::new(Kind::CloseParenthesisToken, ")"),
-            ':' => Token::new(Kind::SemicolonToken, ";"),
+            '{' => Token::new(Kind::OpenBracesToken, "{"),
+            '}' => Token::new(Kind::CloseBracesToken, "}"),
+            ';' => Token::new(Kind::SemicolonToken, ";"),
             '!' => {
                 if self.current_char() == '=' {
                     self.next_char();
@@ -55,8 +57,7 @@ impl Lexer {
                     self.next_char();
                     Token::new(Kind::LogicalEquals, "==")
                 } else {
-                    // TODO: Implement assignments
-                    Token::new(Kind::BadToken, "=")
+                    Token::new(Kind::EqualsToken, "=")
                 }
             }
             '<' => {
@@ -121,12 +122,11 @@ impl Lexer {
         let end = self.current_position;
         let text = &self.text[start..end];
 
-        if text == "true" {
-            return Token::new(Kind::TrueToken, text);
-        } else if text == "false" {
-            return Token::new(Kind::FalseToken, text);
-        } else {
-            return Token::new(Kind::NameToken, text);
+        match text {
+            "true" => Token::new(Kind::TrueToken, "true"),
+            "false" => Token::new(Kind::FalseToken, "false"),
+            "let" => Token::new(Kind::LetToken, "let"),
+            _ => Token::new(Kind::IdentifierToken, text),
         }
     }
 
