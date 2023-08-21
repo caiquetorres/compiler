@@ -5,6 +5,9 @@ pub enum Kind {
     BadToken,
     EndOfFileToken,
     NumberToken,
+    TrueToken,
+    FalseToken,
+    NameToken,
 
     // Operators
     PlusToken,
@@ -12,8 +15,19 @@ pub enum Kind {
     StarToken,
     SlashToken,
     ModToken,
-    // LogicalAnd, LogicalOr, Relational, (<=, <, >, >=) Equality (==, !=)
+
+    // Logical
     LogicalNotToken,
+    LogicalAndToken,
+    LogicalOrToken,
+    LogicalEquals,
+    LogicalNotEquals,
+    LogicalGreaterThan,
+    LogicalGreaterThanOrEquals,
+    LogicalLessThan,
+    LogicalLessThanOrEquals,
+
+    // Bitwise
     BitwiseNotToken,
     BitwiseAndToken,
     BitwiseXorToken,
@@ -28,8 +42,6 @@ pub enum Kind {
     BinaryExpression,
     UnaryExpression,
     ParenthesizedExpression,
-    TrueToken,
-    FalseToken,
 }
 
 impl Display for Kind {

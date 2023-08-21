@@ -16,52 +16,23 @@ impl Lexer {
     }
 
     pub fn next(&mut self) -> Token {
-        if self.current_position > self.text.len() - 1 {
+        if self.current_char() == '\0' {
             return Token::new(Kind::EndOfFileToken, "");
         }
 
         if self.current_char().is_digit(10) {
-            let start = self.current_position;
-
-            while self.current_char().is_digit(10) && self.current_position < self.text.len() {
-                self.next_char();
-            }
-
-            let end = self.current_position;
-            return Token::new(Kind::NumberToken, &self.text[start..end]);
+            return self.read_digit();
         }
 
         if self.current_char().is_alphabetic() {
-            let start = self.current_position;
-
-            while self.current_char().is_alphabetic() {
-                self.next_char();
-            }
-
-            let end = self.current_position;
-            let word = &self.text[start..end];
-
-            // TODO: Add more keywords or create some logic for validating them.
-
-            if word == "true" {
-                return Token::new(Kind::TrueToken, word);
-            }
-
-            return Token::new(Kind::FalseToken, word);
+            return self.read_keyword_or_identifier();
         }
 
         if self.current_char().is_whitespace() {
-            let start = self.current_position;
-
-            while self.current_char().is_whitespace() && self.current_position < self.text.len() {
-                self.next_char();
-            }
-
-            let end = self.current_position;
-            return Token::new(Kind::WhiteSpaceToken, &self.text[start..end]);
+            return self.read_whitespace();
         }
 
-        let token = match self.current_char() {
+        let token = match self.next_char() {
             '+' => Token::new(Kind::PlusToken, "+"),
             '-' => Token::new(Kind::MinusToken, "-"),
             '*' => Token::new(Kind::StarToken, "*"),
@@ -70,15 +41,59 @@ impl Lexer {
             '(' => Token::new(Kind::OpenParenthesisToken, "("),
             ')' => Token::new(Kind::CloseParenthesisToken, ")"),
             ':' => Token::new(Kind::SemicolonToken, ";"),
-            '!' => Token::new(Kind::LogicalNotToken, "!"),
+            '!' => {
+                if self.current_char() == '=' {
+                    self.next_char();
+                    Token::new(Kind::LogicalNotEquals, "!=")
+                } else {
+                    Token::new(Kind::LogicalNotToken, "!")
+                }
+            }
             '~' => Token::new(Kind::BitwiseNotToken, "~"),
-            '&' => Token::new(Kind::BitwiseAndToken, "&"),
+            '=' => {
+                if self.current_char() == '=' {
+                    self.next_char();
+                    Token::new(Kind::LogicalEquals, "==")
+                } else {
+                    // TODO: Implement assignments
+                    Token::new(Kind::BadToken, "=")
+                }
+            }
+            '<' => {
+                if self.current_char() == '=' {
+                    self.next_char();
+                    Token::new(Kind::LogicalLessThanOrEquals, "<=")
+                } else {
+                    Token::new(Kind::LogicalLessThan, "<")
+                }
+            }
+            '>' => {
+                if self.current_char() == '=' {
+                    self.next_char();
+                    Token::new(Kind::LogicalGreaterThanOrEquals, ">=")
+                } else {
+                    Token::new(Kind::LogicalGreaterThan, ">")
+                }
+            }
+            '&' => {
+                if self.current_char() != '&' {
+                    Token::new(Kind::BitwiseAndToken, "&")
+                } else {
+                    self.next_char();
+                    Token::new(Kind::LogicalAndToken, "&&")
+                }
+            }
+            '|' => {
+                if self.current_char() != '|' {
+                    Token::new(Kind::BitwiseOrToken, "|")
+                } else {
+                    self.next_char();
+                    Token::new(Kind::LogicalOrToken, "||")
+                }
+            }
             '^' => Token::new(Kind::BitwiseXorToken, "^"),
-            '|' => Token::new(Kind::BitwiseOrToken, "|"),
             _ => Token::new(Kind::BadToken, &format!("{}", self.current_char())[..]), // REVIEW: Is that conversion right?
         };
-
-        self.next_char();
 
         token
     }
@@ -90,11 +105,52 @@ impl Lexer {
         }
     }
 
-    fn next_char(&mut self) {
+    fn next_char(&mut self) -> char {
+        let c = self.current_char();
         self.current_position += 1;
-        match self.text.chars().nth(self.current_position) {
-            Some(_) => (),
-            None => (),
+        c
+    }
+
+    fn read_keyword_or_identifier(&mut self) -> Token {
+        let start = self.current_position;
+
+        while self.current_char().is_alphanumeric() && self.current_char() != '\0' {
+            self.next_char();
         }
+
+        let end = self.current_position;
+        let text = &self.text[start..end];
+
+        if text == "true" {
+            return Token::new(Kind::TrueToken, text);
+        } else if text == "false" {
+            return Token::new(Kind::FalseToken, text);
+        } else {
+            return Token::new(Kind::NameToken, text);
+        }
+    }
+
+    fn read_digit(&mut self) -> Token {
+        let start = self.current_position;
+
+        while self.current_char().is_digit(10) && self.current_char() != '\0' {
+            self.next_char();
+        }
+
+        let end = self.current_position;
+        let text = &self.text[start..end];
+        Token::new(Kind::NumberToken, text)
+    }
+
+    fn read_whitespace(&mut self) -> Token {
+        let start = self.current_position;
+
+        while self.current_char().is_whitespace() && self.current_char() != '\0' {
+            self.next_char();
+        }
+
+        let end = self.current_position;
+        let text = &self.text[start..end];
+        return Token::new(Kind::WhiteSpaceToken, text);
     }
 }
