@@ -6,20 +6,27 @@ use super::{
     token::Token, tree::Tree, unary_expression_node::UnaryExpressionNode,
 };
 
-fn get_unary_operator_precedence(kind: Kind) -> u8 {
+fn get_unary_operator_precedence(kind: Kind) -> u32 {
     match kind {
-        Kind::PlusToken | Kind::MinusToken | Kind::LogicalNotToken | Kind::BitwiseNotToken => 6,
+        Kind::PlusToken | Kind::MinusToken | Kind::LogicalNotToken | Kind::BitwiseNotToken => 10,
         _ => 0,
     }
 }
 
-fn get_binary_operator_precedence(kind: Kind) -> u8 {
+fn get_binary_operator_precedence(kind: Kind) -> u32 {
     match kind {
-        Kind::SlashToken | Kind::StarToken | Kind::ModToken => 5,
-        Kind::MinusToken | Kind::PlusToken => 4,
-        Kind::BitwiseAndToken => 3,
-        Kind::BitwiseXorToken => 2,
-        Kind::BitwiseOrToken => 1,
+        Kind::SlashToken | Kind::StarToken | Kind::ModToken => 9,
+        Kind::MinusToken | Kind::PlusToken => 8,
+        Kind::LogicalGreaterThan
+        | Kind::LogicalGreaterThanOrEquals
+        | Kind::LogicalLessThan
+        | Kind::LogicalLessThanOrEquals => 7,
+        Kind::LogicalEquals | Kind::LogicalNotEquals => 6,
+        Kind::BitwiseAndToken => 5,
+        Kind::BitwiseXorToken => 4,
+        Kind::BitwiseOrToken => 3,
+        Kind::LogicalAndToken => 2,
+        Kind::LogicalOrToken => 1,
         _ => 0,
     }
 }
@@ -81,7 +88,7 @@ impl Parser {
         token
     }
 
-    fn parse_expression(&mut self, parent_precedence: u8) -> Result<Box<dyn Node>, String> {
+    fn parse_expression(&mut self, parent_precedence: u32) -> Result<Box<dyn Node>, String> {
         let mut left: Box<dyn Node>;
         let mut token = self.current_token();
 
