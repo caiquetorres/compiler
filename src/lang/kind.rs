@@ -5,9 +5,12 @@ pub enum Kind {
     BadToken,
     EndOfFileToken,
     NumberToken,
+    IdentifierToken,
+
+    // Keywords
     TrueToken,
     FalseToken,
-    NameToken,
+    LetToken,
 
     // Operators
     PlusToken,
@@ -36,12 +39,19 @@ pub enum Kind {
     WhiteSpaceToken,
     OpenParenthesisToken,
     CloseParenthesisToken,
+    OpenBracesToken,
+    CloseBracesToken,
     SemicolonToken,
 
     // Expressions
     BinaryExpression,
     UnaryExpression,
     ParenthesizedExpression,
+
+    EqualsToken,
+
+    // Statements
+    BlockStatement,
 }
 
 impl Display for Kind {
