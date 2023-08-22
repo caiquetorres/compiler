@@ -2,6 +2,7 @@ pub mod assignment_operator_node;
 pub mod binary_expression_node;
 pub mod block_statement_node;
 pub mod brace_node;
+pub mod colon_node;
 pub mod identifier_node;
 pub mod kind;
 pub mod let_node;

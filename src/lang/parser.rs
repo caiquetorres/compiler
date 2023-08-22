@@ -4,10 +4,12 @@ use crate::lang::{
 };
 
 use super::{
-    block_statement_node::BlockStatementNode, identifier_node::IdentifierNode, kind::Kind,
+    assignment_operator_node::AssignmentOperatorNode, block_statement_node::BlockStatementNode,
+    colon_node::ColonNode, identifier_node::IdentifierNode, kind::Kind, let_node::LetNode,
     lexer::Lexer, literal_expression_node::LiteralExpressionNode, node::Node,
     parenthesis_node::ParenthesisNode, parenthesized_expression_node::ParenthesizedExpressionNode,
-    token::Token, tree::Tree, unary_expression_node::UnaryExpressionNode,
+    semicolon_node::SemicolonNode, token::Token, tree::Tree,
+    unary_expression_node::UnaryExpressionNode,
     variable_declaration_statement_node::VariableDeclarationStatementNode,
 };
 
@@ -123,95 +125,121 @@ impl Parser {
     fn parse_statement(&mut self) -> Result<Box<dyn Node>, String> {
         match self.current_token().kind {
             Kind::OpenBracesToken => self.parse_block(),
-            Kind::LetToken => {
-                let let_token = self.next_token();
+            Kind::LetToken => self.parse_variable_declaration_statement(),
+            _ => Err("Expected statement".to_string()),
+        }
+    }
 
-                let id_token = self.next_token();
-                if id_token.kind != Kind::IdentifierToken {
-                    return Err("Identifier expected".to_string());
+    fn parse_variable_declaration_statement(&mut self) -> Result<Box<dyn Node>, String> {
+        let let_token = self.next_token();
+
+        let id_token = self.next_token();
+        if id_token.kind != Kind::IdentifierToken {
+            return Err("Identifier expected".to_string());
+        }
+
+        let token = self.next_token();
+        match token.kind {
+            Kind::EqualsToken => {
+                let assignment_token = token;
+                if assignment_token.kind != Kind::EqualsToken {
+                    return Err("Assignment operator expected".to_string());
+                }
+
+                let expression_node = self.parse_expression(0)?;
+
+                let semicolon_token = self.next_token();
+                if semicolon_token.kind != Kind::SemicolonToken {
+                    return Err("Semicolon expected".to_string());
+                }
+
+                let let_node = Box::new(LetNode::new(let_token));
+                let id_node = Box::new(IdentifierNode::new(id_token));
+                let colon_node = None;
+                let type_token = None;
+                let equals_node = Some(Box::new(AssignmentOperatorNode::new(assignment_token)));
+                let expression_node = Some(expression_node);
+                let semicolon_node = Box::new(SemicolonNode::new(semicolon_token));
+
+                Ok(Box::new(VariableDeclarationStatementNode::new(
+                    let_node,
+                    id_node,
+                    colon_node,
+                    type_token,
+                    equals_node,
+                    expression_node,
+                    semicolon_node,
+                )))
+            }
+            Kind::ColonToken => {
+                let colon_token = token;
+                let type_token = self.next_token();
+
+                // REVIEW: Should we create a type token?
+                if type_token.kind != Kind::IdentifierToken {
+                    return Err("Type expected".to_string());
                 }
 
                 let token = self.next_token();
+
                 match token.kind {
                     Kind::EqualsToken => {
                         let assignment_token = token;
-                        if assignment_token.kind != Kind::EqualsToken {
-                            return Err("Assignment operator expected".to_string());
-                        }
 
                         let expression_node = self.parse_expression(0)?;
 
                         let semicolon_token = self.next_token();
-
                         if semicolon_token.kind != Kind::SemicolonToken {
                             return Err("Semicolon expected".to_string());
                         }
 
+                        let let_node = Box::new(LetNode::new(let_token));
+                        let id_node = Box::new(IdentifierNode::new(id_token));
+                        let colon_node = Some(Box::new(ColonNode::new(colon_token)));
+                        let type_node = Some(Box::new(IdentifierNode::new(type_token)));
+                        let equals_node =
+                            Some(Box::new(AssignmentOperatorNode::new(assignment_token)));
+                        let expression_node = Some(expression_node);
+                        let semicolon_node = Box::new(SemicolonNode::new(semicolon_token));
+
                         Ok(Box::new(VariableDeclarationStatementNode::new(
-                            let_token,
-                            id_token,
-                            None,
-                            None,
-                            Some(assignment_token),
-                            Some(expression_node),
-                            semicolon_token,
+                            let_node,
+                            id_node,
+                            colon_node,
+                            type_node,
+                            equals_node,
+                            expression_node,
+                            semicolon_node,
                         )))
                     }
-                    Kind::ColonToken => {
-                        let colon_token = token;
-                        let type_token = self.next_token();
-
-                        // REVIEW: Should we create a type token?
-                        if type_token.kind != Kind::IdentifierToken {
-                            return Err("Type expected".to_string());
+                    Kind::SemicolonToken => {
+                        let semicolon_token = token;
+                        if semicolon_token.kind != Kind::SemicolonToken {
+                            return Err("Semicolon expected".to_string());
                         }
 
-                        let token = self.next_token();
+                        let let_node = Box::new(LetNode::new(let_token));
+                        let id_node = Box::new(IdentifierNode::new(id_token));
+                        let colon_node = Some(Box::new(ColonNode::new(colon_token)));
+                        let type_node = Some(Box::new(IdentifierNode::new(type_token)));
+                        let equals_node = None;
+                        let expression_node = None;
+                        let semicolon_node = Box::new(SemicolonNode::new(semicolon_token));
 
-                        match token.kind {
-                            Kind::EqualsToken => {
-                                let assignment_token = token;
-
-                                let expression_node = self.parse_expression(0)?;
-
-                                let semicolon_token = self.next_token();
-                                if semicolon_token.kind != Kind::SemicolonToken {
-                                    return Err("Semicolon expected".to_string());
-                                }
-
-                                Ok(Box::new(VariableDeclarationStatementNode::new(
-                                    let_token,
-                                    id_token,
-                                    Some(colon_token),
-                                    Some(type_token),
-                                    Some(assignment_token),
-                                    Some(expression_node),
-                                    semicolon_token,
-                                )))
-                            }
-                            Kind::SemicolonToken => {
-                                let semicolon_token = token;
-                                if semicolon_token.kind != Kind::SemicolonToken {
-                                    return Err("Semicolon expected".to_string());
-                                }
-
-                                Ok(Box::new(VariableDeclarationStatementNode::new(
-                                    let_token,
-                                    id_token,
-                                    Some(colon_token),
-                                    Some(type_token),
-                                    None,
-                                    None,
-                                    semicolon_token,
-                                )))
-                            }
-                            _ => Err("Assignment or semicolon expected".to_string()),
-                        }
+                        Ok(Box::new(VariableDeclarationStatementNode::new(
+                            let_node,
+                            id_node,
+                            colon_node,
+                            type_node,
+                            equals_node,
+                            expression_node,
+                            semicolon_node,
+                        )))
                     }
-                    _ => Err("Assignment or type expected".to_string()),
+                    _ => Err("Assignment or semicolon expected".to_string()),
                 }
             }
-            _ => Err("Expected statement".to_string()),
+            _ => Err("Assignment or type expected".to_string()),
         }
     }
 
