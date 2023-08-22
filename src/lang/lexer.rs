@@ -43,6 +43,7 @@ impl Lexer {
             '{' => Token::new(Kind::OpenBracesToken, "{"),
             '}' => Token::new(Kind::CloseBracesToken, "}"),
             ';' => Token::new(Kind::SemicolonToken, ";"),
+            ':' => Token::new(Kind::ColonToken, ":"),
             '!' => {
                 if self.current_char() == '=' {
                     self.next_char();

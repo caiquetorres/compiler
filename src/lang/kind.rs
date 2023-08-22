@@ -42,6 +42,7 @@ pub enum Kind {
     OpenBracesToken,
     CloseBracesToken,
     SemicolonToken,
+    ColonToken,
 
     // Expressions
     BinaryExpression,
