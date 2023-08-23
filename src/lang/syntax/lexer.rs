@@ -21,8 +21,10 @@ pub enum Kind {
     CloseBraces,
     Semicolon,
     Colon,
+    Comma,
     Let,
     Fun,
+    If,
     Return,
     Bad,
     Equals,
@@ -91,6 +93,7 @@ impl Lexer {
         }
 
         let token = match self.next_char() {
+            ',' => Token::new(Kind::Comma, self.position, Some(",")),
             '+' => {
                 if self.current_char() != '=' {
                     Token::new(Kind::Plus, self.position, Some("+"))
@@ -238,6 +241,7 @@ impl Lexer {
             "false" => Token::new(Kind::Boolean, self.position, Some("false")),
             "let" => Token::new(Kind::Let, self.position, Some("let")),
             "fun" => Token::new(Kind::Fun, self.position, Some("fun")),
+            "if" => Token::new(Kind::If, self.position, Some("if")),
             "return" => Token::new(Kind::Return, self.position, Some("return")),
             _ => Token::new(Kind::Identifier, self.position, Some(text)),
         }
@@ -283,3 +287,15 @@ impl Lexer {
         return Token::new(Kind::WhiteSpace, self.position, Some(text));
     }
 }
+
+macro_rules! check_kind {
+    ($value:expr, $($kind:pat_param)|+) => {{
+        let result = $value;
+        match result.kind {
+            $($kind)|+ => Ok(result),
+            _ => Err(()),
+        }
+    }};
+}
+
+pub(super) use check_kind;

@@ -1,17 +1,19 @@
-use super::lexer::Token;
+use super::{
+    lexer::Token,
+    statements::{Identifier, Params},
+};
 
 pub struct UnaryOperator(pub Token);
 
 pub struct BinaryOperator(pub Token);
-
-pub struct Parenthesis(pub Token);
 
 pub enum Expression {
     Literal(Token),
     Identifier(Token),
     Unary(UnaryOperator, Box<Expression>),
     Binary(Box<Expression>, BinaryOperator, Box<Expression>),
-    Parenthesized(Parenthesis, Box<Expression>, Parenthesis),
+    Parenthesized(Box<Expression>),
+    FunctionCall(Identifier, Params),
 }
 
 impl TreeDisplay for Expression {
@@ -43,9 +45,18 @@ impl TreeDisplay for Expression {
 
                 right.display(layer + 1);
             }
-            Self::Parenthesized(_, expression, _) => {
+            Self::Parenthesized(expression) => {
                 println!("{}Parenthesized", "  ".repeat(layer));
                 expression.display(layer + 1);
+            }
+            Self::FunctionCall(identifier, params) => {
+                let id = identifier.0.value.as_ref().unwrap();
+                let expressions = &params.0;
+                println!("{}FunctionCallExpression ({})", "  ".repeat(layer), id);
+
+                for expression in expressions {
+                    expression.display(layer + 1);
+                }
             }
         }
     }

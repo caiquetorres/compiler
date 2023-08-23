@@ -1,11 +1,11 @@
 use std::collections::VecDeque;
 
 use super::compilation_unit::CompilationUnit;
-use super::expressions::{BinaryOperator, Expression, Parenthesis, UnaryOperator};
-use super::lexer::{Kind, Lexer, Token};
+use super::expressions::{BinaryOperator, Expression, UnaryOperator};
+use super::lexer::{check_kind, Kind, Lexer, Token};
 use super::statements::{
-    AssignmentOperator, Block, Brace, Colon, FunKeyword, Function, Identifier, Let, LetKeyword,
-    Return, ReturnKeyword, Semicolon, Statement, TopLevelStatement,
+    AssignmentOperator, Block, Function, Identifier, Let, ParamDeclaration, Params,
+    ParamsDeclaration, Return, Statement, TopLevelStatement,
 };
 
 pub struct Parser {
@@ -68,22 +68,28 @@ impl Parser {
     }
 
     fn parse_function_declaration(&mut self) -> Result<TopLevelStatement, String> {
-        let fun = self.next_token();
-        let identifier = self.next_token();
+        self.next_token(); // consumes the fun keyword
 
-        if identifier.kind != Kind::Identifier {
-            return Err("identifier expected".to_string());
-        }
+        let identifier = check_kind!(self.next_token(), Kind::Identifier)
+            .map_err(|_| "Identifier expected".to_string())?;
 
-        let open_parenthesis = self.next_token();
-
-        if open_parenthesis.kind != Kind::OpenParenthesis {
+        if let Err(_) = check_kind!(self.next_token(), Kind::OpenParenthesis) {
             return Err("Parenthesis expected".to_string());
         }
 
-        let close_parenthesis = self.next_token();
+        let mut params: Vec<ParamDeclaration> = vec![];
+        if self.current_token().kind == Kind::Identifier {
+            let param = self.parse_param_declaration()?;
+            params.push(param);
 
-        if close_parenthesis.kind != Kind::CloseParenthesis {
+            while self.current_token().kind == Kind::Comma {
+                self.next_token();
+                let param = self.parse_param_declaration()?;
+                params.push(param);
+            }
+        }
+
+        if let Err(_) = check_kind!(self.next_token(), Kind::CloseParenthesis) {
             return Err("Parenthesis expected".to_string());
         }
 
@@ -91,33 +97,28 @@ impl Parser {
 
         match next.kind {
             Kind::Colon => {
-                let colon = self.next_token();
-                let t = self.next_token();
-
-                if t.kind != Kind::Identifier {
-                    return Err("Type expected".to_string());
+                if let Err(_) = check_kind!(self.next_token(), Kind::Colon) {
+                    return Err("Colon expected".to_string());
                 }
 
-                let block = self.parse_block_top_level_statement()?;
+                let t_token = check_kind!(self.next_token(), Kind::Identifier)
+                    .map_err(|_| "Type expected".to_string())?;
+
+                let block = self.parse_block()?;
 
                 Ok(TopLevelStatement::Function(Function::Typed(
-                    FunKeyword(fun),
                     Identifier(identifier),
-                    Parenthesis(open_parenthesis),
-                    Parenthesis(close_parenthesis),
-                    Colon(colon),
-                    Identifier(t),
+                    ParamsDeclaration(params),
+                    Identifier(t_token),
                     block,
                 )))
             }
             Kind::OpenBraces => {
-                let block = self.parse_block_top_level_statement()?;
+                let block = self.parse_block()?;
 
                 Ok(TopLevelStatement::Function(Function::Untyped(
-                    FunKeyword(fun),
                     Identifier(identifier),
-                    Parenthesis(open_parenthesis),
-                    Parenthesis(close_parenthesis),
+                    ParamsDeclaration(params),
                     block,
                 )))
             }
@@ -125,114 +126,103 @@ impl Parser {
         }
     }
 
+    fn parse_param_declaration(&mut self) -> Result<ParamDeclaration, String> {
+        let param_name = check_kind!(self.next_token(), Kind::Identifier)
+            .map_err(|_| "Identifier expected".to_string())?;
+
+        if let Err(_) = check_kind!(self.next_token(), Kind::Colon) {
+            return Err("Colon expected".to_string());
+        }
+
+        let t_token = check_kind!(self.next_token(), Kind::Identifier)
+            .map_err(|_| "Type expected".to_string())?;
+
+        Ok(ParamDeclaration(
+            Identifier(param_name),
+            Identifier(t_token),
+        ))
+    }
+
     fn parse_statement(&mut self) -> Result<Statement, String> {
         match self.current_token().kind {
-            Kind::OpenBraces => self.parse_block_statement(),
-            Kind::Identifier => self.parse_assignment(),
-            Kind::Let => Ok(Statement::Let(self.parse_variable_declaration_statement()?)),
-            Kind::Return => {
-                let r = self.next_token(); // return
-
+            Kind::If => self.parse_if_statement(),
+            Kind::OpenBraces => Ok(Statement::Block(self.parse_block()?)),
+            Kind::Identifier => {
+                let identifier = self.next_token();
                 match self.current_token().kind {
-                    Kind::Semicolon => {
-                        let semicolon = self.next_token();
-
-                        if semicolon.kind != Kind::Semicolon {
-                            return Err("Semicolon expected".to_string());
-                        }
-
-                        Ok(Statement::Return(Return::WithoutExpression(
-                            ReturnKeyword(r),
-                            Semicolon(semicolon),
-                        )))
-                    }
-                    _ => {
-                        let expression = self.parse_expression(0)?;
-                        let semicolon = self.next_token();
-
-                        if semicolon.kind != Kind::Semicolon {
-                            return Err("Semicolon expected".to_string());
-                        }
-
-                        Ok(Statement::Return(Return::WithExpression(
-                            ReturnKeyword(r),
-                            expression,
-                            Semicolon(semicolon),
-                        )))
-                    }
+                    Kind::OpenParenthesis => self.parse_function_call(identifier),
+                    Kind::Equals
+                    | Kind::AmpersandEquals
+                    | Kind::PipeEquals
+                    | Kind::PlusEquals
+                    | Kind::MinusEquals
+                    | Kind::StarEquals
+                    | Kind::SlashEquals
+                    | Kind::ModEquals
+                    | Kind::CircumflexEquals => self.parse_assignment(identifier),
+                    _ => Err("Assignment operator or function call expected".to_string()),
                 }
             }
+            Kind::Let => Ok(Statement::Let(self.parse_variable_declaration_statement()?)),
+            Kind::Return => self.parse_return_statement(),
             _ => Err("Statement expected".to_string()),
         }
     }
 
-    fn parse_block_top_level_statement(&mut self) -> Result<Block, String> {
-        let token = self.next_token();
+    fn parse_return_statement(&mut self) -> Result<Statement, String> {
+        self.next_token(); // consumes the return keyword
 
-        let open_brace = Brace(token);
+        match self.current_token().kind {
+            Kind::Semicolon => {
+                if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
+                    return Err("Semicolon expected".to_string());
+                }
+
+                Ok(Statement::Return(Return::WithoutExpression))
+            }
+            _ => {
+                let expression = self.parse_expression(0)?;
+
+                if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
+                    return Err("Semicolon expected".to_string());
+                }
+
+                Ok(Statement::Return(Return::WithExpression(expression)))
+            }
+        }
+    }
+
+    fn parse_block(&mut self) -> Result<Block, String> {
+        self.next_token(); // consumes the open brace
+
         let mut statements: Vec<Statement> = vec![];
-
         while self.current_token().kind != Kind::CloseBraces {
             let statement = self.parse_statement()?;
             statements.push(statement);
         }
 
-        let token = self.next_token();
-
-        if token.kind != Kind::CloseBraces {
+        if let Err(_) = check_kind!(self.next_token(), Kind::CloseBraces) {
             return Err("Block end expected".to_string());
         }
 
-        let close_brace = Brace(token);
-
-        Ok(Block(open_brace, statements, close_brace))
+        Ok(Block(statements))
     }
 
-    fn parse_block_statement(&mut self) -> Result<Statement, String> {
-        let token = self.next_token();
+    fn parse_if_statement(&mut self) -> Result<Statement, String> {
+        self.next_token(); // consumes the if keyword
 
-        let open_brace = Brace(token);
-        let mut statements: Vec<Statement> = vec![];
+        let expression = self.parse_expression(0)?;
+        let block = self.parse_block()?;
 
-        while self.current_token().kind != Kind::CloseBraces {
-            let statement = self.parse_statement()?;
-            statements.push(statement);
-        }
-
-        let token = self.next_token();
-
-        if token.kind != Kind::CloseBraces {
-            return Err("Block end expected".to_string());
-        }
-
-        let close_brace = Brace(token);
-
-        Ok(Statement::Block(Block(open_brace, statements, close_brace)))
+        Ok(Statement::If(expression, block))
     }
 
-    fn parse_assignment(&mut self) -> Result<Statement, String> {
-        let identifier = self.next_token();
-
+    fn parse_assignment(&mut self, identifier: Token) -> Result<Statement, String> {
         let operator = self.next_token();
-
-        if operator.kind != Kind::Equals
-            && operator.kind != Kind::AmpersandEquals
-            && operator.kind != Kind::PipeEquals
-            && operator.kind != Kind::PlusEquals
-            && operator.kind != Kind::MinusEquals
-            && operator.kind != Kind::StarEquals
-            && operator.kind != Kind::SlashEquals
-            && operator.kind != Kind::ModEquals
-            && operator.kind != Kind::CircumflexEquals
-        {
-            return Err("Assignment operator expected".to_string());
-        }
 
         let expression = self.parse_expression(0)?;
 
-        let semicolon_token = self.next_token();
-
-        if semicolon_token.kind != Kind::Semicolon {
+        if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
             return Err("Semicolon expected".to_string());
         }
 
@@ -240,82 +230,75 @@ impl Parser {
             Identifier(identifier),
             AssignmentOperator(operator),
             expression,
-            Semicolon(semicolon_token),
         ))
+    }
+
+    fn parse_function_call(&mut self, identifier: Token) -> Result<Statement, String> {
+        self.next_token(); // consumes open parenthesis
+
+        let params = self.parse_params()?;
+
+        self.next_token(); // consumes close parenthesis
+        self.next_token(); // consumes semicolon
+
+        Ok(Statement::FunctionCall(Identifier(identifier), params))
     }
 
     fn parse_variable_declaration_statement(&mut self) -> Result<Let, String> {
         // REVIEW: Should we return the statement, instead of the Let?
 
-        let let_token = self.next_token();
+        self.next_token(); // consumes the let keyword
 
-        let identifier_token = self.next_token();
-        if identifier_token.kind != Kind::Identifier {
-            return Err("Identifier expected".to_string());
-        }
+        let identifier_token = check_kind!(self.next_token(), Kind::Identifier)
+            .map_err(|_| "Identifier expected".to_string())?;
 
-        let next = self.current_token();
-
-        match next.kind {
+        match self.current_token().kind {
             Kind::Equals => {
-                let assignment_token = self.next_token();
-                if assignment_token.kind != Kind::Equals {
-                    return Err("Assignment operator expected".to_string());
-                }
+                let assignment_token = check_kind!(self.next_token(), Kind::Equals)
+                    .map_err(|_| "Assignment operator expected".to_string())?;
 
                 let expression = self.parse_expression(0)?;
 
-                let semicolon_token = self.next_token();
-                if semicolon_token.kind != Kind::Semicolon {
+                if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
                     return Err("Semicolon expected".to_string());
                 }
 
                 Ok(Let::UntypedWithValue(
-                    LetKeyword(let_token),
                     Identifier(identifier_token),
                     AssignmentOperator(assignment_token),
                     expression,
-                    Semicolon(semicolon_token),
                 ))
             }
             Kind::Colon => {
-                let colon_token = self.next_token();
-                let type_token = self.next_token();
+                self.next_token(); // consumes the colon token
 
-                if type_token.kind != Kind::Identifier {
-                    return Err("Type expected".to_string());
-                }
+                let type_token = check_kind!(self.next_token(), Kind::Identifier)
+                    .map_err(|_| "Type expected".to_string())?;
 
-                let next = self.current_token();
-
-                match next.kind {
+                match self.current_token().kind {
                     Kind::Semicolon => {
-                        let semicolon_token = self.next_token();
+                        if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
+                            return Err("Semicolon expected".to_string());
+                        }
+
                         Ok(Let::TypedWithoutValue(
-                            LetKeyword(let_token),
                             Identifier(identifier_token),
-                            Colon(colon_token),
                             Identifier(type_token),
-                            Semicolon(semicolon_token),
                         ))
                     }
                     Kind::Equals => {
-                        let equals_token = self.next_token();
+                        let equals_token = self.next_token(); // consumes the equals token
                         let expression = self.parse_expression(0)?;
 
-                        let semicolon_token = self.next_token();
-                        if semicolon_token.kind != Kind::Semicolon {
+                        if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
                             return Err("Semicolon expected".to_string());
                         }
 
                         Ok(Let::TypedWithValue(
-                            LetKeyword(let_token),
                             Identifier(identifier_token),
-                            Colon(colon_token),
                             Identifier(type_token),
                             AssignmentOperator(equals_token),
                             expression,
-                            Semicolon(semicolon_token),
                         ))
                     }
                     _ => Err("Semicolon or assignment operator expected".to_string()),
@@ -356,28 +339,56 @@ impl Parser {
         Ok(left)
     }
 
+    fn parse_params(&mut self) -> Result<Params, String> {
+        if self.current_token().kind == Kind::CloseParenthesis {
+            return Ok(Params(vec![]));
+        }
+
+        let mut expressions: Vec<Expression> = vec![];
+
+        if self.current_token().kind != Kind::CloseParenthesis {
+            loop {
+                let expression = self.parse_expression(0)?;
+                expressions.push(expression);
+
+                if self.current_token().kind == Kind::Comma {
+                    self.next_token(); // consumes the comma
+                } else {
+                    break;
+                }
+            }
+        }
+
+        Ok(Params(expressions))
+    }
+
     fn parse_factor(&mut self) -> Result<Expression, String> {
         let token = self.next_token();
 
         match token.kind {
-            Kind::Identifier => Ok(Expression::Identifier(token)),
             Kind::Number | Kind::Boolean => Ok(Expression::Literal(token)),
+            Kind::Identifier => {
+                let identifier = token;
+
+                match self.current_token().kind {
+                    Kind::OpenParenthesis => {
+                        self.next_token(); // consumes open parenthesis
+                        let params = self.parse_params()?;
+                        self.next_token(); // consumes close parenthesis
+
+                        Ok(Expression::FunctionCall(Identifier(identifier), params))
+                    }
+                    _ => Ok(Expression::Identifier(identifier)),
+                }
+            }
             Kind::OpenParenthesis => {
-                let open_parenthesis = Parenthesis(token);
                 let expression = self.parse_expression(0)?;
 
-                let token = self.next_token();
-
-                if token.kind != Kind::CloseParenthesis {
+                if let Err(_) = check_kind!(self.next_token(), Kind::CloseParenthesis) {
                     return Err("Expected close parenthesis".to_string());
                 }
 
-                let close_parenthesis = Parenthesis(token);
-                Ok(Expression::Parenthesized(
-                    open_parenthesis,
-                    Box::new(expression),
-                    close_parenthesis,
-                ))
+                Ok(Expression::Parenthesized(Box::new(expression)))
             }
             _ => Err("Expression expected".to_string()),
         }
