@@ -252,14 +252,14 @@ impl Lexer {
 
         if self.current_char() == '.' && self.current_char() != '\0' {
             self.next_char();
-        }
 
-        if !self.current_char().is_digit(10) {
-            return Token::new(
-                Kind::Bad,
-                self.position,
-                Some(self.current_char().to_string().as_str()),
-            );
+            if !self.current_char().is_digit(10) {
+                return Token::new(
+                    Kind::Bad,
+                    self.position,
+                    Some(self.current_char().to_string().as_str()),
+                );
+            }
         }
 
         while self.current_char().is_digit(10) && self.current_char() != '\0' {
