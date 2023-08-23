@@ -6,10 +6,15 @@ pub enum Kind {
     OpenParenthesis,
     CloseParenthesis,
     Plus,
+    PlusEquals,
     Minus,
+    MinusEquals,
     Slash,
+    SlashEquals,
     Star,
+    StarEquals,
     Mod,
+    ModEquals,
     WhiteSpace,
     EndOfFile,
     OpenBraces,
@@ -22,8 +27,10 @@ pub enum Kind {
     EqualsEquals,
     Pipe,
     PipePipe,
+    PipeEquals,
     Ampersand,
     AmpersandAmpersand,
+    AmpersandEquals,
     LessThan,
     LessThanEquals,
     GreaterThan,
@@ -31,6 +38,7 @@ pub enum Kind {
     Exclamation,
     ExclamationEquals,
     Circumflex,
+    CircumflexEquals,
     Tilde,
 }
 
@@ -81,11 +89,46 @@ impl Lexer {
         }
 
         let token = match self.next_char() {
-            '+' => Token::new(Kind::Plus, self.position, Some("+")),
-            '-' => Token::new(Kind::Minus, self.position, Some("-")),
-            '*' => Token::new(Kind::Star, self.position, Some("*")),
-            '/' => Token::new(Kind::Slash, self.position, Some("/")),
-            '%' => Token::new(Kind::Mod, self.position, Some("%")),
+            '+' => {
+                if self.current_char() != '=' {
+                    Token::new(Kind::Plus, self.position, Some("+"))
+                } else {
+                    self.next_char();
+                    Token::new(Kind::PlusEquals, self.position, Some("+="))
+                }
+            }
+            '-' => {
+                if self.current_char() != '=' {
+                    Token::new(Kind::Minus, self.position, Some("-"))
+                } else {
+                    self.next_char();
+                    Token::new(Kind::MinusEquals, self.position, Some("-="))
+                }
+            }
+            '*' => {
+                if self.current_char() != '=' {
+                    Token::new(Kind::Star, self.position, Some("*"))
+                } else {
+                    self.next_char();
+                    Token::new(Kind::StarEquals, self.position, Some("*="))
+                }
+            }
+            '/' => {
+                if self.current_char() != '=' {
+                    Token::new(Kind::Slash, self.position, Some("/"))
+                } else {
+                    self.next_char();
+                    Token::new(Kind::SlashEquals, self.position, Some("/="))
+                }
+            }
+            '%' => {
+                if self.current_char() != '=' {
+                    Token::new(Kind::Mod, self.position, Some("%"))
+                } else {
+                    self.next_char();
+                    Token::new(Kind::ModEquals, self.position, Some("%="))
+                }
+            }
             '(' => Token::new(Kind::OpenParenthesis, self.position, Some("(")),
             ')' => Token::new(Kind::CloseParenthesis, self.position, Some(")")),
             '{' => Token::new(Kind::OpenBraces, self.position, Some("{")),
@@ -126,23 +169,35 @@ impl Lexer {
                 }
             }
             '&' => {
-                if self.current_char() != '&' {
-                    Token::new(Kind::Ampersand, self.position, Some("&"))
-                } else {
+                if self.current_char() == '&' {
                     self.next_char();
                     Token::new(Kind::AmpersandAmpersand, self.position, Some("&&"))
+                } else if self.current_char() == '=' {
+                    self.next_char();
+                    Token::new(Kind::AmpersandEquals, self.position, Some("&="))
+                } else {
+                    Token::new(Kind::Ampersand, self.position, Some("&"))
                 }
             }
             '|' => {
-                if self.current_char() != '|' {
-                    Token::new(Kind::Pipe, self.position, Some("|"))
-                } else {
+                if self.current_char() == '|' {
                     self.next_char();
                     Token::new(Kind::PipePipe, self.position, Some("||"))
+                } else if self.current_char() == '=' {
+                    self.next_char();
+                    Token::new(Kind::PipeEquals, self.position, Some("|="))
+                } else {
+                    Token::new(Kind::Pipe, self.position, Some("|"))
                 }
             }
-            '^' => Token::new(Kind::Circumflex, self.position, Some("^")),
-            // TODO: Add &=, |=, ^=, +=, -= *=, /=, %=
+            '^' => {
+                if self.current_char() != '=' {
+                    Token::new(Kind::Circumflex, self.position, Some("^"))
+                } else {
+                    self.next_char();
+                    Token::new(Kind::CircumflexEquals, self.position, Some("^="))
+                }
+            }
             _ => Token::new(
                 Kind::Bad,
                 self.position,

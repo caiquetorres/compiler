@@ -38,37 +38,39 @@ pub enum Let {
 pub enum Statement {
     Let(Let),
     Block(Brace, Vec<Statement>, Brace),
+    Assignment(Identifier, AssignmentOperator, Expression, Semicolon),
 }
 
 impl TreeDisplay for Statement {
     fn display(&self, layer: usize) {
         match self {
             Self::Let(l) => match l {
-                Let::UntypedWithValue(_, identifier, _, expression, _) => {
+                Let::UntypedWithValue(_, identifier, operator, expression, _) => {
                     let id = identifier.0.value.as_ref().unwrap();
                     println!("{}LetStatement ({})", "  ".repeat(layer), id);
+
+                    let op = operator.0.value.as_ref().unwrap();
+                    println!("{}AssignmentOperator ({})", "  ".repeat(layer + 1), op);
+
                     expression.display(layer + 1);
+
                     println!("{}Semicolon (;)", "  ".repeat(layer));
                 }
-                Let::TypedWithValue(_, identifier, _, type_identifier, _, expression, _) => {
+                Let::TypedWithValue(_, identifier, _, type_identifier, operator, expression, _) => {
                     let id = identifier.0.value.as_ref().unwrap();
-                    println!("{}LetStatement ({})", "  ".repeat(layer), id);
-                    println!(
-                        "{}Type ({})",
-                        "  ".repeat(layer + 1),
-                        type_identifier.0.value.as_ref().unwrap()
-                    );
+                    let t = type_identifier.0.value.as_ref().unwrap();
+                    println!("{}LetStatement ({}) ({})", "  ".repeat(layer), id, t);
+
+                    let op = operator.0.value.as_ref().unwrap();
+                    println!("{}AssignmentOperator ({})", "  ".repeat(layer + 1), op);
+
                     expression.display(layer + 1);
                     println!("{}Semicolon (;)", "  ".repeat(layer));
                 }
                 Let::TypedWithoutValue(_, identifier, _, type_identifier, _) => {
                     let id = identifier.0.value.as_ref().unwrap();
-                    println!("{}LetStatement ({})", "  ".repeat(layer), id);
-                    println!(
-                        "{}Type ({})",
-                        "  ".repeat(layer + 1),
-                        type_identifier.0.value.as_ref().unwrap()
-                    );
+                    let t = type_identifier.0.value.as_ref().unwrap();
+                    println!("{}LetStatement ({}) ({})", "  ".repeat(layer), id, t);
                     println!("{}Semicolon (;)", "  ".repeat(layer));
                 }
             },
@@ -77,6 +79,16 @@ impl TreeDisplay for Statement {
                 for statement in statements {
                     statement.display(layer + 1)
                 }
+            }
+            Self::Assignment(identifier, operator, expression, _) => {
+                let id = identifier.0.value.as_ref().unwrap();
+                println!("{}AssignmentStatement ({})", "  ".repeat(layer), id);
+
+                let op = operator.0.value.as_ref().unwrap();
+                println!("{}AssignmentOperator ({})", "  ".repeat(layer + 1), op);
+                expression.display(layer + 1);
+
+                println!("{}Semicolon (;)", "  ".repeat(layer));
             }
         }
     }

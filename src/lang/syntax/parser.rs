@@ -53,6 +53,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Result<Statement, String> {
         match self.current_token().kind {
             Kind::OpenBraces => self.parse_block(),
+            Kind::Identifier => self.parse_assignment(),
             Kind::Let => Ok(Statement::Let(self.parse_variable_declaration_statement()?)),
             _ => Err("Statement expected".to_string()),
         }
@@ -80,7 +81,43 @@ impl Parser {
         Ok(Statement::Block(open_brace, statements, close_brace))
     }
 
+    fn parse_assignment(&mut self) -> Result<Statement, String> {
+        let identifier = self.next_token();
+
+        let operator = self.next_token();
+
+        if operator.kind != Kind::Equals
+            && operator.kind != Kind::AmpersandEquals
+            && operator.kind != Kind::PipeEquals
+            && operator.kind != Kind::PlusEquals
+            && operator.kind != Kind::MinusEquals
+            && operator.kind != Kind::StarEquals
+            && operator.kind != Kind::SlashEquals
+            && operator.kind != Kind::ModEquals
+            && operator.kind != Kind::CircumflexEquals
+        {
+            return Err("Assignment operator expected".to_string());
+        }
+
+        let expression = self.parse_expression(0)?;
+
+        let semicolon_token = self.next_token();
+
+        if semicolon_token.kind != Kind::Semicolon {
+            return Err("Semicolon expected".to_string());
+        }
+
+        Ok(Statement::Assignment(
+            Identifier(identifier),
+            AssignmentOperator(operator),
+            expression,
+            Semicolon(semicolon_token),
+        ))
+    }
+
     fn parse_variable_declaration_statement(&mut self) -> Result<Let, String> {
+        // REVIEW: Should we return the statement, instead of the Let?
+
         let let_token = self.next_token();
 
         let identifier_token = self.next_token();
@@ -92,15 +129,10 @@ impl Parser {
 
         match next.kind {
             Kind::Equals => {
-                let let_keyword = LetKeyword(let_token);
-                let identifier = Identifier(identifier_token);
-
                 let assignment_token = self.next_token();
                 if assignment_token.kind != Kind::Equals {
                     return Err("Assignment operator expected".to_string());
                 }
-
-                let equals = AssignmentOperator(assignment_token);
 
                 let expression = self.parse_expression(0)?;
 
@@ -109,14 +141,12 @@ impl Parser {
                     return Err("Semicolon expected".to_string());
                 }
 
-                let semicolon = Semicolon(semicolon_token);
-
                 Ok(Let::UntypedWithValue(
-                    let_keyword,
-                    identifier,
-                    equals,
+                    LetKeyword(let_token),
+                    Identifier(identifier_token),
+                    AssignmentOperator(assignment_token),
                     expression,
-                    semicolon,
+                    Semicolon(semicolon_token),
                 ))
             }
             Kind::Colon => {
