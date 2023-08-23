@@ -1,10 +1,12 @@
 use std::collections::VecDeque;
 
-use crate::lang::syntax::statements::{AssignmentOperator, Brace};
-
+use super::compilation_unit::CompilationUnit;
 use super::expressions::{BinaryOperator, Expression, Parenthesis, UnaryOperator};
 use super::lexer::{Kind, Lexer, Token};
-use super::statements::{Colon, Identifier, Let, LetKeyword, Semicolon, Statement};
+use super::statements::{
+    AssignmentOperator, Block, Brace, Colon, FunKeyword, Function, Identifier, Let, LetKeyword,
+    Return, ReturnKeyword, Semicolon, Statement, TopLevelStatement,
+};
 
 pub struct Parser {
     tokens: VecDeque<Token>,
@@ -31,15 +33,23 @@ impl Parser {
         Self { tokens }
     }
 
-    pub fn parse(&mut self) -> Result<Statement, String> {
+    pub fn parse(&mut self) -> Result<CompilationUnit, String> {
         let bad_token = self.tokens.iter().find(|token| token.kind == Kind::Bad);
 
         if bad_token.is_some() {
             return Err("Bad token".to_string());
         }
 
-        let statement = self.parse_statement()?;
-        return Ok(statement);
+        let mut statements: Vec<TopLevelStatement> = vec![];
+
+        let mut token = self.current_token();
+        while token.kind != Kind::EndOfFile {
+            let statement = self.parse_top_level_statement()?;
+            statements.push(statement);
+            token = self.current_token();
+        }
+
+        return Ok(CompilationUnit(statements));
     }
 
     fn current_token(&self) -> &Token {
@@ -50,16 +60,113 @@ impl Parser {
         self.tokens.pop_front().unwrap()
     }
 
+    fn parse_top_level_statement(&mut self) -> Result<TopLevelStatement, String> {
+        match self.current_token().kind {
+            Kind::Fun => self.parse_function_declaration(),
+            _ => Err("Top-level statement expected".to_string()),
+        }
+    }
+
+    fn parse_function_declaration(&mut self) -> Result<TopLevelStatement, String> {
+        let fun = self.next_token();
+        let identifier = self.next_token();
+
+        if identifier.kind != Kind::Identifier {
+            return Err("identifier expected".to_string());
+        }
+
+        let open_parenthesis = self.next_token();
+
+        if open_parenthesis.kind != Kind::OpenParenthesis {
+            return Err("Parenthesis expected".to_string());
+        }
+
+        let close_parenthesis = self.next_token();
+
+        if close_parenthesis.kind != Kind::CloseParenthesis {
+            return Err("Parenthesis expected".to_string());
+        }
+
+        let next = self.current_token();
+
+        match next.kind {
+            Kind::Colon => {
+                let colon = self.next_token();
+                let t = self.next_token();
+
+                if t.kind != Kind::Identifier {
+                    return Err("Type expected".to_string());
+                }
+
+                let block = self.parse_block_top_level_statement()?;
+
+                Ok(TopLevelStatement::Function(Function::Typed(
+                    FunKeyword(fun),
+                    Identifier(identifier),
+                    Parenthesis(open_parenthesis),
+                    Parenthesis(close_parenthesis),
+                    Colon(colon),
+                    Identifier(t),
+                    block,
+                )))
+            }
+            Kind::OpenBraces => {
+                let block = self.parse_block_top_level_statement()?;
+
+                Ok(TopLevelStatement::Function(Function::Untyped(
+                    FunKeyword(fun),
+                    Identifier(identifier),
+                    Parenthesis(open_parenthesis),
+                    Parenthesis(close_parenthesis),
+                    block,
+                )))
+            }
+            _ => Err("Type or block expected".to_string()),
+        }
+    }
+
     fn parse_statement(&mut self) -> Result<Statement, String> {
         match self.current_token().kind {
-            Kind::OpenBraces => self.parse_block(),
+            Kind::OpenBraces => self.parse_block_statement(),
             Kind::Identifier => self.parse_assignment(),
             Kind::Let => Ok(Statement::Let(self.parse_variable_declaration_statement()?)),
+            Kind::Return => {
+                let r = self.next_token(); // return
+
+                match self.current_token().kind {
+                    Kind::Semicolon => {
+                        let semicolon = self.next_token();
+
+                        if semicolon.kind != Kind::Semicolon {
+                            return Err("Semicolon expected".to_string());
+                        }
+
+                        Ok(Statement::Return(Return::WithoutExpression(
+                            ReturnKeyword(r),
+                            Semicolon(semicolon),
+                        )))
+                    }
+                    _ => {
+                        let expression = self.parse_expression(0)?;
+                        let semicolon = self.next_token();
+
+                        if semicolon.kind != Kind::Semicolon {
+                            return Err("Semicolon expected".to_string());
+                        }
+
+                        Ok(Statement::Return(Return::WithExpression(
+                            ReturnKeyword(r),
+                            expression,
+                            Semicolon(semicolon),
+                        )))
+                    }
+                }
+            }
             _ => Err("Statement expected".to_string()),
         }
     }
 
-    fn parse_block(&mut self) -> Result<Statement, String> {
+    fn parse_block_top_level_statement(&mut self) -> Result<Block, String> {
         let token = self.next_token();
 
         let open_brace = Brace(token);
@@ -78,7 +185,29 @@ impl Parser {
 
         let close_brace = Brace(token);
 
-        Ok(Statement::Block(open_brace, statements, close_brace))
+        Ok(Block(open_brace, statements, close_brace))
+    }
+
+    fn parse_block_statement(&mut self) -> Result<Statement, String> {
+        let token = self.next_token();
+
+        let open_brace = Brace(token);
+        let mut statements: Vec<Statement> = vec![];
+
+        while self.current_token().kind != Kind::CloseBraces {
+            let statement = self.parse_statement()?;
+            statements.push(statement);
+        }
+
+        let token = self.next_token();
+
+        if token.kind != Kind::CloseBraces {
+            return Err("Block end expected".to_string());
+        }
+
+        let close_brace = Brace(token);
+
+        Ok(Statement::Block(Block(open_brace, statements, close_brace)))
     }
 
     fn parse_assignment(&mut self) -> Result<Statement, String> {

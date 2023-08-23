@@ -22,6 +22,8 @@ pub enum Kind {
     Semicolon,
     Colon,
     Let,
+    Fun,
+    Return,
     Bad,
     Equals,
     EqualsEquals,
@@ -235,6 +237,8 @@ impl Lexer {
             "true" => Token::new(Kind::Boolean, self.position, Some("true")),
             "false" => Token::new(Kind::Boolean, self.position, Some("false")),
             "let" => Token::new(Kind::Let, self.position, Some("let")),
+            "fun" => Token::new(Kind::Fun, self.position, Some("fun")),
+            "return" => Token::new(Kind::Return, self.position, Some("return")),
             _ => Token::new(Kind::Identifier, self.position, Some(text)),
         }
     }

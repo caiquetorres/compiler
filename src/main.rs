@@ -6,8 +6,10 @@ use std::{
     io::{self, Write},
 };
 
-use cli::{command_line_parser::CommandLineParser, parsed_options::ParsedOptions};
-use lang::syntax::{expressions::TreeDisplay, parser::Parser};
+use cli::command_line_parser::CommandLineParser;
+use cli::parsed_options::ParsedOptions;
+use lang::syntax::expressions::TreeDisplay;
+use lang::syntax::parser::Parser;
 
 fn main() {
     let mut parser = CommandLineParser::new();
