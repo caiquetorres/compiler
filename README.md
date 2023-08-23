@@ -6,10 +6,10 @@ This repository contains a Rust compiler developed as part of a graduation proje
 
 We are actively working on building the foundational components of the compiler, including:
 
-- **Lexer and tokenization**
-- **Parser and syntax analysis**
-  - **Recognizing char expressions**
-  - **Assignment statements**
+-   **Lexer and tokenization**
+-   **Parser and syntax analysis**
+    -   **Recognizing char expressions**
+    -   **If, for, while and do-while statements**
 
 Stay tuned for updates as we make progress on the project!
 
@@ -43,8 +43,21 @@ cargo build
 After building, you can run the compiler using:
 
 ```bash
-# Run the REPL (Read-Eval-Print Loop) mode
-cargo run -- --repl
+cargo run -- --compile path/to/file
+```
+
+## Sneak a Peek at the Compiler 🚀
+
+Here's a snippet that the compiler totally can parse right now:
+
+```x
+fun main(): i32 {
+    let num1 = 8;
+    let num2 = 4.0;
+    let product = num1 * num2;
+
+    return product;
+}
 ```
 
 ## License
