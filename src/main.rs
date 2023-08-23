@@ -1,12 +1,13 @@
 mod cli;
 mod lang;
 
-use cli::{command_line_parser::CommandLineParser, parsed_options::ParsedOptions};
-use lang::parser::Parser;
 use std::{
     fs,
     io::{self, Write},
 };
+
+use cli::{command_line_parser::CommandLineParser, parsed_options::ParsedOptions};
+use lang::syntax::{expressions::TreeDisplay, parser::Parser};
 
 fn main() {
     let mut parser = CommandLineParser::new();
@@ -42,7 +43,7 @@ fn repl() {
 
         let mut parser = Parser::new(text);
         match parser.parse() {
-            Ok(tree) => println!("{}", tree),
+            Ok(tree) => tree.display(0),
             Err(err) => eprintln!("{}", err),
         };
     }
@@ -59,7 +60,7 @@ fn compile(options: &ParsedOptions) {
             Ok(text) => {
                 let mut parser = Parser::new(&text[..]);
                 match parser.parse() {
-                    Ok(tree) => println!("{}", tree),
+                    Ok(tree) => tree.display(0),
                     Err(err) => eprintln!("{}", err),
                 };
             }
