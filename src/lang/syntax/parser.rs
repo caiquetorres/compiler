@@ -219,7 +219,6 @@ impl Parser {
 
     fn parse_assignment(&mut self, identifier: Token) -> Result<Statement, String> {
         let operator = self.next_token();
-
         let expression = self.parse_expression(0)?;
 
         if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
@@ -414,5 +413,21 @@ fn get_binary_operator_precedence(kind: Kind) -> u32 {
         Kind::AmpersandAmpersand => 2,
         Kind::PipePipe => 1,
         _ => 0,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_function() {
+        let code = "2 + 2";
+        let mut parser = Parser::new(code);
+
+        let result = parser.parse_expression(0);
+
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), Expression::Binary(_, _, _)))
     }
 }

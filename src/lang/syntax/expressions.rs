@@ -1,7 +1,5 @@
-use super::{
-    lexer::Token,
-    statements::{Identifier, Params},
-};
+use super::lexer::Token;
+use super::statements::{Identifier, Params};
 
 pub struct UnaryOperator(pub Token);
 
