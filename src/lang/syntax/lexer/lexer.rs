@@ -380,6 +380,7 @@ impl Lexer {
             "false" => Token::new(Kind::Boolean, position, Some("false")),
             "upTo" => Token::new(Kind::UpTo, position, Some("upTo")),
             "downTo" => Token::new(Kind::DownTo, position, Some("downTo")),
+            "step" => Token::new(Kind::Step, position, Some("step")),
             _ => Token::new(Kind::Identifier, position, Some(id)),
         }
     }

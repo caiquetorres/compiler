@@ -60,6 +60,7 @@ pub enum Kind {
     TildeEquals,
     UpTo,
     DownTo,
+    Step,
     Char,
     String,
 }

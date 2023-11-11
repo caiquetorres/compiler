@@ -1,6 +1,6 @@
 use super::kind::Kind;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Position {
     pub position: usize,
     pub column: usize,
@@ -17,6 +17,7 @@ impl Position {
     }
 }
 
+#[derive(Debug)]
 pub struct Token {
     pub kind: Kind,
     pub position: Position,

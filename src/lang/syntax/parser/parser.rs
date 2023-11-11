@@ -8,7 +8,7 @@ use super::compilation_unit::CompilationUnit;
 use super::expressions::{BinaryOperator, Expression, UnaryOperator};
 
 use super::statements::{
-    AssignmentOperator, Block, ElseStatement, Function, Identifier, Let, ParamDeclaration, Params,
+    AssignmentOperator, Block, Const, ElseStatement, Identifier, Let, ParamDeclaration, Params,
     ParamsDeclaration, Statement, TopLevelStatement,
 };
 
@@ -21,20 +21,47 @@ impl Parser {
         let mut tokens = VecDeque::new();
         let mut lexer = Lexer::new(text);
 
-        loop {
-            let token = lexer.next();
+        let mut token = lexer.next();
 
-            match token.kind {
-                Kind::WhiteSpace => continue,
-                Kind::EndOfFile => {
-                    tokens.push_back(token);
-                    break;
-                }
-                _ => tokens.push_back(token),
+        while token.kind != Kind::EndOfFile {
+            if token.kind != Kind::WhiteSpace {
+                tokens.push_back(token);
+            }
+            token = lexer.next();
+        }
+        tokens.push_back(token);
+
+        Self { tokens }
+    }
+
+    fn current_token(&self) -> &Token {
+        self.tokens.get(0).unwrap()
+    }
+
+    fn use_token(&mut self, kinds: &[Kind]) -> Result<Token, String> {
+        let token = self.next_token();
+
+        if kinds.len() == 1 {
+            if token.kind != kinds[0] {
+                return Err(format!(
+                    "Expected a token of type '{}' at Line {} and Column {}",
+                    kinds[0], token.position.line, token.position.column
+                ));
+            }
+        } else {
+            if !kinds.iter().any(|&kind| token.kind == kind) {
+                return Err(format!(
+                    "Expected a token of types '{:?}' at Line {} and Column {}",
+                    kinds, token.position.line, token.position.column
+                ));
             }
         }
 
-        Self { tokens }
+        Ok(token)
+    }
+
+    fn next_token(&mut self) -> Token {
+        self.tokens.pop_front().unwrap()
     }
 
     pub fn parse(&mut self) -> Result<CompilationUnit, String> {
@@ -59,93 +86,104 @@ impl Parser {
         return Ok(CompilationUnit(statements));
     }
 
-    fn current_token(&self) -> &Token {
-        self.tokens.get(0).unwrap()
-    }
-
-    fn use_token(&mut self, kind: Kind) -> Result<Token, String> {
-        let token = self.next_token();
-
-        if token.kind != kind {
-            Err(format!(
-                "Expected a token of type '{}' at Line {} and Column {}",
-                kind, token.position.line, token.position.column
-            ))
-        } else {
-            Ok(token)
-        }
-    }
-
-    fn next_token(&mut self) -> Token {
-        self.tokens.pop_front().unwrap()
-    }
-
+    /// Parses a top-level statement.
+    ///
+    /// # Returns
+    /// - `Ok(TopLevelStatement)`: Parsed top-level statement.
+    /// - `Err(String)`: Error message if parsing fails.
     fn parse_top_level_statement(&mut self) -> Result<TopLevelStatement, String> {
-        match self.current_token().kind {
+        let token = self.current_token();
+        match token.kind {
             Kind::Fun => self.parse_function_declaration(),
-            _ => Err("Top-level statement expected".to_string()),
+            _ => Err(format!("Top-level statement expected")),
         }
     }
 
+    /// Parses a function declaration in the format: `fun id(params) { ... }`.
+    ///
+    /// # Returns
+    /// - `Ok(TopLevelStatement)`: Parsed function declaration as a top-level statement.
+    /// - `Err(String)`: Error message if parsing fails.
     fn parse_function_declaration(&mut self) -> Result<TopLevelStatement, String> {
-        self.next_token(); // consumes the fun keyword
+        self.use_token(&[Kind::Fun])?;
 
-        let identifier = self.use_token(Kind::Identifier)?;
-        self.use_token(Kind::OpenParenthesis)?;
+        let id_token = self.use_token(&[Kind::Identifier])?;
+        let id = Identifier(id_token);
 
-        let mut params: Vec<ParamDeclaration> = vec![];
-        if self.current_token().kind == Kind::Identifier {
-            let param = self.parse_param_declaration()?;
-            params.push(param);
+        self.use_token(&[Kind::OpenParenthesis])?;
 
-            while self.current_token().kind == Kind::Comma {
-                self.next_token();
-                let param = self.parse_param_declaration()?;
-                params.push(param);
-            }
-        }
+        let params: Vec<ParamDeclaration> = self.parse_params_declaration()?;
 
-        self.use_token(Kind::CloseParenthesis)?;
+        self.use_token(&[Kind::CloseParenthesis])?;
 
         let next = self.current_token();
 
         match next.kind {
             Kind::Colon => {
-                self.use_token(Kind::Colon)?;
+                self.use_token(&[Kind::Colon])?;
 
-                let t_token = self.use_token(Kind::Identifier)?;
-
+                let type_id_token = self.use_token(&[Kind::Identifier])?;
+                let type_id = Identifier(type_id_token);
                 let block = self.parse_block()?;
 
-                Ok(TopLevelStatement::Function(Function(
-                    Identifier(identifier),
+                Ok(TopLevelStatement::Function(
+                    id,
                     ParamsDeclaration(params),
-                    Some(Identifier(t_token)),
+                    Some(type_id),
                     block,
-                )))
+                ))
             }
             Kind::OpenBraces => {
                 let block = self.parse_block()?;
 
-                Ok(TopLevelStatement::Function(Function(
-                    Identifier(identifier),
+                Ok(TopLevelStatement::Function(
+                    id,
                     ParamsDeclaration(params),
                     None,
                     block,
-                )))
+                ))
             }
             _ => Err("Type or block expected".to_string()),
         }
     }
 
+    /// Parses a list of parameter declarations in the format: `id : type_id, id2 : type_id2, ...`.
+    ///
+    /// # Returns
+    /// - `Ok(Vec<ParamDeclaration>)`: Parsed parameter declarations.
+    /// - `Err(String)`: Parsing error message.
+    fn parse_params_declaration(&mut self) -> Result<Vec<ParamDeclaration>, String> {
+        let mut params: Vec<ParamDeclaration> = vec![];
+
+        if self.current_token().kind == Kind::Identifier {
+            let param = self.parse_param_declaration()?;
+            params.push(param);
+
+            while self.current_token().kind == Kind::Comma {
+                self.use_token(&[Kind::Comma])?;
+                let param = self.parse_param_declaration()?;
+                params.push(param);
+            }
+        }
+
+        Ok(params)
+    }
+
+    /// Parses a parameter declaration in the form: `id : type_id`.
+    ///
+    /// # Returns
+    /// - `Ok(ParamDeclaration)`: Parsed parameter declaration.
+    /// - `Err(String)`: Parsing error message.
     fn parse_param_declaration(&mut self) -> Result<ParamDeclaration, String> {
-        let param_name = self.use_token(Kind::Identifier)?;
-        self.use_token(Kind::Colon)?;
-        let t_token = self.use_token(Kind::Identifier)?;
+        let param_name_token = self.use_token(&[Kind::Identifier])?;
+
+        self.use_token(&[Kind::Colon])?;
+
+        let type_id_token = self.use_token(&[Kind::Identifier])?;
 
         Ok(ParamDeclaration(
-            Identifier(param_name),
-            Identifier(t_token),
+            Identifier(param_name_token),
+            Identifier(type_id_token),
         ))
     }
 
@@ -153,11 +191,11 @@ impl Parser {
         match self.current_token().kind {
             Kind::While => self.parse_while_statement(),
             Kind::If => self.parse_if_statement(),
-            Kind::OpenBraces => Ok(Statement::Block(self.parse_block()?)),
+            Kind::OpenBraces => self.parse_block().map(|block| Statement::Block(block)),
             Kind::Identifier => {
                 let identifier = self.next_token();
                 match self.current_token().kind {
-                    Kind::OpenParenthesis => self.parse_function_call(identifier),
+                    Kind::OpenParenthesis => self.parse_function_call_statement(identifier),
                     Kind::Equals
                     | Kind::AmpersandEquals
                     | Kind::PipeEquals
@@ -170,30 +208,41 @@ impl Parser {
                     _ => Err(format!("Assignment operator or function call expected",)),
                 }
             }
-            Kind::Let => Ok(Statement::Let(self.parse_variable_declaration_statement()?)),
+            Kind::Let => Ok(self.parse_variable_declaration_statement()?),
+            Kind::Const => Ok(self.parse_constant_declaration_statement()?),
             Kind::Return => self.parse_return_statement(),
             _ => Err("Statement expected".to_string()),
         }
     }
 
+    /// Parses a 'return' statement.
+    ///
+    /// # Returns
+    /// - `Ok(Statement)`: Parsed 'return' statement.
+    /// - `Err(String)`: Error message if parsing fails.
     fn parse_return_statement(&mut self) -> Result<Statement, String> {
-        self.next_token(); // consumes the return keyword
+        self.use_token(&[Kind::Return])?;
 
         match self.current_token().kind {
             Kind::Semicolon => {
-                self.use_token(Kind::Semicolon)?;
+                self.use_token(&[Kind::Semicolon])?;
                 Ok(Statement::Return(None))
             }
             _ => {
                 let expression = self.parse_expression(0)?;
-                self.use_token(Kind::Semicolon)?;
+                self.use_token(&[Kind::Semicolon])?;
                 Ok(Statement::Return(Some(expression)))
             }
         }
     }
 
+    /// Parses a block of statements enclosed within braces `{}`.
+    ///
+    /// # Returns
+    /// - `Ok(Block)`: Parsed block of statements.
+    /// - `Err(String)`: Error message if parsing fails.
     fn parse_block(&mut self) -> Result<Block, String> {
-        self.next_token(); // consumes the open brace
+        self.use_token(&[Kind::OpenBraces])?;
 
         let mut statements: Vec<Statement> = vec![];
         while self.current_token().kind != Kind::CloseBraces {
@@ -201,13 +250,18 @@ impl Parser {
             statements.push(statement);
         }
 
-        self.use_token(Kind::CloseBraces)?;
+        self.use_token(&[Kind::CloseBraces])?;
 
         Ok(Block(statements))
     }
 
+    /// Parses a 'while' loop statement in the format: `while condition { statement }`.
+    ///
+    /// # Returns
+    /// - `Ok(Statement)`: Parsed 'while' loop statement.
+    /// - `Err(String)`: Error message if parsing fails.
     fn parse_while_statement(&mut self) -> Result<Statement, String> {
-        self.next_token(); // consumes the while keyword
+        self.use_token(&[Kind::While])?;
 
         let expression = self.parse_expression(0)?;
         let statement = self.parse_statement()?;
@@ -215,31 +269,92 @@ impl Parser {
         Ok(Statement::While(expression, Box::new(statement)))
     }
 
+    /// Parses an 'if' statement in the format: `if condition { statement } [else { else_statement }]`.
+    ///
+    /// Note that else blocks are optional.
+    ///
+    /// # Returns
+    /// - `Ok(Statement)`: Parsed 'if' statement.
+    /// - `Err(String)`: Error message if parsing fails.
     fn parse_if_statement(&mut self) -> Result<Statement, String> {
-        self.next_token(); // consumes the if keyword
+        self.use_token(&[Kind::If])?;
 
         let expression = self.parse_expression(0)?;
         let statement = self.parse_statement()?;
 
-        if self.current_token().kind == Kind::Else {
-            self.next_token();
-
-            let else_statement = self.parse_statement()?;
-            Ok(Statement::If(
-                expression,
-                Box::new(statement),
-                Some(ElseStatement(Box::new(else_statement))),
-            ))
-        } else {
-            Ok(Statement::If(expression, Box::new(statement), None))
+        if self.current_token().kind != Kind::Else {
+            return Ok(Statement::If(expression, Box::new(statement), None));
         }
+
+        self.use_token(&[Kind::Else])?;
+
+        let else_statement = self.parse_statement()?;
+
+        Ok(Statement::If(
+            expression,
+            Box::new(statement),
+            Some(ElseStatement(Box::new(else_statement))),
+        ))
     }
 
+    /// Parses a function call statement given an identifier.
+    ///
+    /// # Arguments
+    /// - `identifier`: Token representing the function identifier.
+    ///
+    /// # Returns
+    /// - `Ok(Statement)`: Parsed function call statement.
+    /// - `Err(String)`: Error message if parsing fails.
+    fn parse_function_call_statement(&mut self, identifier: Token) -> Result<Statement, String> {
+        self.use_token(&[Kind::OpenParenthesis])?;
+        let params = self.parse_params()?;
+        self.use_token(&[Kind::CloseParenthesis])?;
+        self.use_token(&[Kind::Semicolon])?;
+
+        Ok(Statement::FunctionCall(Identifier(identifier), params))
+    }
+
+    /// Parses a function call expression given an identifier.
+    ///
+    /// # Arguments
+    /// - `identifier`: Token representing the function identifier.
+    ///
+    /// # Returns
+    /// - `Ok(Statement)`: Parsed function call expression.
+    /// - `Err(String)`: Error message if parsing fails.
+    fn parse_function_call_expression(&mut self, identifier: Token) -> Result<Expression, String> {
+        self.use_token(&[Kind::OpenParenthesis])?;
+        let params = self.parse_params()?;
+        self.use_token(&[Kind::CloseParenthesis])?;
+
+        Ok(Expression::FunctionCall(Identifier(identifier), params))
+    }
+
+    /// Parses a function call statement given an identifier.
+    ///
+    /// # Arguments
+    /// - `identifier`: Token representing the function identifier.
+    ///
+    /// # Returns
+    /// - `Ok(Statement)`: Parsed function call statement.
+    /// - `Err(String)`: Error message if parsing fails.
     fn parse_assignment(&mut self, identifier: Token) -> Result<Statement, String> {
-        let operator = self.next_token();
+        let operator = self.use_token(&[
+            Kind::Equals,
+            Kind::AmpersandEquals,
+            Kind::PipeEquals,
+            Kind::CircumflexEquals,
+            Kind::TildeEquals,
+            Kind::PlusEquals,
+            Kind::MinusEquals,
+            Kind::StarEquals,
+            Kind::SlashEquals,
+            Kind::ModEquals,
+        ])?;
+
         let expression = self.parse_expression(0)?;
 
-        self.use_token(Kind::Semicolon)?;
+        self.use_token(&[Kind::Semicolon])?;
 
         Ok(Statement::Assignment(
             Identifier(identifier),
@@ -248,68 +363,102 @@ impl Parser {
         ))
     }
 
-    fn parse_function_call(&mut self, identifier: Token) -> Result<Statement, String> {
-        self.next_token(); // consumes open parenthesis
+    fn parse_variable_declaration_statement(&mut self) -> Result<Statement, String> {
+        self.use_token(&[Kind::Let])?;
+        let identifier_token = self.use_token(&[Kind::Identifier])?;
 
-        let params = self.parse_params()?;
+        if let Kind::Equals = self.current_token().kind {
+            let assignment_token = self.use_token(&[Kind::Equals])?;
+            let expression = self.parse_expression(0)?;
+            self.use_token(&[Kind::Semicolon])?;
 
-        self.next_token(); // consumes close parenthesis
-        self.next_token(); // consumes semicolon
+            return Ok(Statement::Let(Let::WithValue(
+                Identifier(identifier_token),
+                None,
+                AssignmentOperator(assignment_token),
+                expression,
+            )));
+        }
 
-        Ok(Statement::FunctionCall(Identifier(identifier), params))
+        if let Kind::Colon = self.current_token().kind {
+            self.use_token(&[Kind::Colon])?;
+            let type_id_token = self.use_token(&[Kind::Identifier])?;
+
+            if let Kind::Semicolon = self.current_token().kind {
+                self.use_token(&[Kind::Semicolon])?;
+
+                return Ok(Statement::Let(Let::WithoutValue(
+                    Identifier(identifier_token),
+                    Identifier(type_id_token),
+                )));
+            }
+
+            if let Kind::Equals = self.current_token().kind {
+                let equals_token = self.use_token(&[Kind::Equals])?;
+                let expression = self.parse_expression(0)?;
+                self.use_token(&[Kind::Semicolon])?;
+
+                return Ok(Statement::Let(Let::WithValue(
+                    Identifier(identifier_token),
+                    Some(Identifier(type_id_token)),
+                    AssignmentOperator(equals_token),
+                    expression,
+                )));
+            }
+
+            return Err("Semicolon or assignment operator expected".to_string());
+        }
+
+        Err("Assignment operator or colon expected".to_string())
     }
 
-    fn parse_variable_declaration_statement(&mut self) -> Result<Let, String> {
-        // REVIEW: Should we return the statement, instead of the Let?
+    fn parse_constant_declaration_statement(&mut self) -> Result<Statement, String> {
+        self.use_token(&[Kind::Const])?;
+        let identifier_token = self.use_token(&[Kind::Identifier])?;
 
-        self.next_token(); // consumes the let keyword
+        if let Kind::Equals = self.current_token().kind {
+            let assignment_token = self.use_token(&[Kind::Equals])?;
+            let expression = self.parse_expression(0)?;
+            self.use_token(&[Kind::Semicolon])?;
 
-        let identifier_token = self.use_token(Kind::Identifier)?;
-
-        match self.current_token().kind {
-            Kind::Equals => {
-                let assignment_token = self.use_token(Kind::Equals)?;
-                let expression = self.parse_expression(0)?;
-                self.use_token(Kind::Semicolon)?;
-
-                Ok(Let::WithValue(
-                    Identifier(identifier_token),
-                    None,
-                    AssignmentOperator(assignment_token),
-                    expression,
-                ))
-            }
-            Kind::Colon => {
-                self.next_token(); // consumes the colon token
-
-                let type_token = self.use_token(Kind::Identifier)?;
-
-                match self.current_token().kind {
-                    Kind::Semicolon => {
-                        self.use_token(Kind::Semicolon)?;
-
-                        Ok(Let::WithoutValue(
-                            Identifier(identifier_token),
-                            Identifier(type_token),
-                        ))
-                    }
-                    Kind::Equals => {
-                        let equals_token = self.next_token(); // consumes the equals token
-                        let expression = self.parse_expression(0)?;
-                        self.use_token(Kind::Semicolon)?;
-
-                        Ok(Let::WithValue(
-                            Identifier(identifier_token),
-                            Some(Identifier(type_token)),
-                            AssignmentOperator(equals_token),
-                            expression,
-                        ))
-                    }
-                    _ => Err("Semicolon or assignment operator expected".to_string()),
-                }
-            }
-            _ => Err("Assignment operator or colon expected".to_string()),
+            return Ok(Statement::Const(Const::WithValue(
+                Identifier(identifier_token),
+                None,
+                AssignmentOperator(assignment_token),
+                expression,
+            )));
         }
+
+        if let Kind::Colon = self.current_token().kind {
+            self.use_token(&[Kind::Colon])?;
+            let type_id_token = self.use_token(&[Kind::Identifier])?;
+
+            if let Kind::Semicolon = self.current_token().kind {
+                self.use_token(&[Kind::Semicolon])?;
+
+                return Ok(Statement::Const(Const::WithoutValue(
+                    Identifier(identifier_token),
+                    Identifier(type_id_token),
+                )));
+            }
+
+            if let Kind::Equals = self.current_token().kind {
+                let equals_token = self.use_token(&[Kind::Equals])?;
+                let expression = self.parse_expression(0)?;
+                self.use_token(&[Kind::Semicolon])?;
+
+                return Ok(Statement::Const(Const::WithValue(
+                    Identifier(identifier_token),
+                    Some(Identifier(type_id_token)),
+                    AssignmentOperator(equals_token),
+                    expression,
+                )));
+            }
+
+            return Err("Semicolon or assignment operator expected".to_string());
+        }
+
+        Err("Assignment operator or colon expected".to_string())
     }
 
     fn parse_expression(&mut self, parent_precedence: u32) -> Result<Expression, String> {
@@ -375,21 +524,13 @@ impl Parser {
                 let identifier = token;
 
                 match self.current_token().kind {
-                    Kind::OpenParenthesis => {
-                        self.next_token(); // consumes open parenthesis
-                        let params = self.parse_params()?;
-                        self.next_token(); // consumes close parenthesis
-
-                        Ok(Expression::FunctionCall(Identifier(identifier), params))
-                    }
+                    Kind::OpenParenthesis => self.parse_function_call_expression(identifier),
                     _ => Ok(Expression::Identifier(identifier)),
                 }
             }
             Kind::OpenParenthesis => {
                 let expression = self.parse_expression(0)?;
-
-                self.use_token(Kind::CloseParenthesis)?;
-
+                self.use_token(&[Kind::CloseParenthesis])?;
                 Ok(Expression::Parenthesized(Box::new(expression)))
             }
             _ => Err("Expression expected".to_string()),

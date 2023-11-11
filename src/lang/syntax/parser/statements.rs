@@ -17,21 +17,24 @@ pub enum Let {
     WithoutValue(Identifier, Identifier),
 }
 
+pub enum Const {
+    WithValue(
+        Identifier,
+        Option<Identifier>,
+        AssignmentOperator,
+        Expression,
+    ),
+    WithoutValue(Identifier, Identifier),
+}
+
 pub struct ParamDeclaration(pub Identifier, pub Identifier);
 
 pub struct ParamsDeclaration(pub Vec<ParamDeclaration>);
 
 pub struct Params(pub Vec<Expression>);
 
-pub struct Function(
-    pub Identifier,
-    pub ParamsDeclaration,
-    pub Option<Identifier>,
-    pub Block,
-);
-
 pub enum TopLevelStatement {
-    Function(Function),
+    Function(Identifier, ParamsDeclaration, Option<Identifier>, Block),
 }
 
 impl TreeDisplay for ParamDeclaration {
@@ -51,13 +54,16 @@ impl TreeDisplay for ParamDeclaration {
 impl TreeDisplay for TopLevelStatement {
     fn display(&self, layer: usize) {
         match self {
-            Self::Function(function) => display_function_statement(layer, function),
+            Self::Function(id, params, t, block) => {
+                display_function_statement(layer, id, params, t, block)
+            }
         }
     }
 }
 
 pub enum Statement {
     Let(Let),
+    Const(Const),
     Block(Block),
     Assignment(Identifier, AssignmentOperator, Expression),
     Return(Option<Expression>),
@@ -76,6 +82,18 @@ impl TreeDisplay for Statement {
                 expression.display(layer + 1);
                 b.display(layer + 1);
             }
+            Self::Const(c) => match c {
+                Const::WithValue(identifier, opt_type, operator, expression) => {
+                    display_const_with_value_statement(
+                        layer, identifier, opt_type, operator, expression,
+                    )
+                }
+                Const::WithoutValue(identifier, type_identifier) => {
+                    let id = identifier.0.value.as_ref().unwrap();
+                    let t = type_identifier.0.value.as_ref().unwrap();
+                    println!("{}ConstStatement ({}) ({})", "  ".repeat(layer), id, t);
+                }
+            },
             Self::Let(l) => match l {
                 Let::WithValue(identifier, opt_type, operator, expression) => {
                     display_let_with_value_statement(
@@ -131,12 +149,13 @@ impl TreeDisplay for Statement {
     }
 }
 
-fn display_function_statement(layer: usize, function: &Function) {
-    let identifier = &function.0;
-    let params = &function.1;
-    let return_type = &function.2;
-    let block = &function.3;
-
+fn display_function_statement(
+    layer: usize,
+    identifier: &Identifier,
+    params: &ParamsDeclaration,
+    return_type: &Option<Identifier>,
+    block: &Block,
+) {
     match return_type {
         Some(id) => {
             println!(
@@ -181,6 +200,35 @@ fn display_let_with_value_statement(
         Some(t) => {
             println!(
                 "{}LetStatement ({}) ({})",
+                "  ".repeat(layer),
+                id,
+                t.0.value.as_ref().unwrap()
+            );
+        }
+    }
+
+    let op = operator.0.value.as_ref().unwrap();
+    println!("{}AssignmentOperator ({})", "  ".repeat(layer + 1), op);
+
+    expression.display(layer + 1);
+}
+
+fn display_const_with_value_statement(
+    layer: usize,
+    identifier: &Identifier,
+    opt_type: &Option<Identifier>,
+    operator: &AssignmentOperator,
+    expression: &Expression,
+) {
+    let id = identifier.0.value.as_ref().unwrap();
+
+    match opt_type {
+        None => {
+            println!("{}ConstStatement ({})", "  ".repeat(layer), id);
+        }
+        Some(t) => {
+            println!(
+                "{}ConstStatement ({}) ({})",
                 "  ".repeat(layer),
                 id,
                 t.0.value.as_ref().unwrap()
