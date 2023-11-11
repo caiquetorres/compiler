@@ -1,4 +1,4 @@
-use super::lexer::Token;
+use super::lexer::token::Token;
 use super::statements::{Identifier, Params};
 use super::tree_display::TreeDisplay;
 

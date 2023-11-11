@@ -1,5 +1,6 @@
 use super::expressions::Expression;
-use super::lexer::Token;
+
+use super::lexer::token::Token;
 use super::tree_display::TreeDisplay;
 
 pub struct Identifier(pub Token);

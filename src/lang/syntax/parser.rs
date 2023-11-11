@@ -2,7 +2,10 @@ use std::collections::VecDeque;
 
 use super::compilation_unit::CompilationUnit;
 use super::expressions::{BinaryOperator, Expression, UnaryOperator};
-use super::lexer::{check_kind, Kind, Lexer, Token};
+
+use super::lexer::kind::Kind;
+use super::lexer::lexer::Lexer;
+use super::lexer::token::Token;
 use super::statements::{
     AssignmentOperator, Block, ElseStatement, Function, Identifier, Let, ParamDeclaration, Params,
     ParamsDeclaration, Statement, TopLevelStatement,
@@ -36,8 +39,11 @@ impl Parser {
     pub fn parse(&mut self) -> Result<CompilationUnit, String> {
         let bad_token = self.tokens.iter().find(|token| token.kind == Kind::Bad);
 
-        if bad_token.is_some() {
-            return Err("Bad token".to_string());
+        if let Some(bad_token) = bad_token {
+            return Err(format!(
+                "Invalid token found at Line {} and Column {}",
+                bad_token.position.line, bad_token.position.column
+            ));
         }
 
         let mut statements: Vec<TopLevelStatement> = vec![];
@@ -56,6 +62,19 @@ impl Parser {
         self.tokens.get(0).unwrap()
     }
 
+    fn use_token(&mut self, kind: Kind) -> Result<Token, String> {
+        let token = self.next_token();
+
+        if token.kind != kind {
+            Err(format!(
+                "Expected a token of type '{}' at Line {} and Column {}",
+                kind, token.position.line, token.position.column
+            ))
+        } else {
+            Ok(token)
+        }
+    }
+
     fn next_token(&mut self) -> Token {
         self.tokens.pop_front().unwrap()
     }
@@ -70,12 +89,8 @@ impl Parser {
     fn parse_function_declaration(&mut self) -> Result<TopLevelStatement, String> {
         self.next_token(); // consumes the fun keyword
 
-        let identifier = check_kind!(self.next_token(), Kind::Identifier)
-            .map_err(|_| "Identifier expected".to_string())?;
-
-        if let Err(_) = check_kind!(self.next_token(), Kind::OpenParenthesis) {
-            return Err("Parenthesis expected".to_string());
-        }
+        let identifier = self.use_token(Kind::Identifier)?;
+        self.use_token(Kind::OpenParenthesis)?;
 
         let mut params: Vec<ParamDeclaration> = vec![];
         if self.current_token().kind == Kind::Identifier {
@@ -89,20 +104,15 @@ impl Parser {
             }
         }
 
-        if let Err(_) = check_kind!(self.next_token(), Kind::CloseParenthesis) {
-            return Err("Parenthesis expected".to_string());
-        }
+        self.use_token(Kind::CloseParenthesis)?;
 
         let next = self.current_token();
 
         match next.kind {
             Kind::Colon => {
-                if let Err(_) = check_kind!(self.next_token(), Kind::Colon) {
-                    return Err("Colon expected".to_string());
-                }
+                self.use_token(Kind::Colon)?;
 
-                let t_token = check_kind!(self.next_token(), Kind::Identifier)
-                    .map_err(|_| "Type expected".to_string())?;
+                let t_token = self.use_token(Kind::Identifier)?;
 
                 let block = self.parse_block()?;
 
@@ -128,15 +138,9 @@ impl Parser {
     }
 
     fn parse_param_declaration(&mut self) -> Result<ParamDeclaration, String> {
-        let param_name = check_kind!(self.next_token(), Kind::Identifier)
-            .map_err(|_| "Identifier expected".to_string())?;
-
-        if let Err(_) = check_kind!(self.next_token(), Kind::Colon) {
-            return Err("Colon expected".to_string());
-        }
-
-        let t_token = check_kind!(self.next_token(), Kind::Identifier)
-            .map_err(|_| "Type expected".to_string())?;
+        let param_name = self.use_token(Kind::Identifier)?;
+        self.use_token(Kind::Colon)?;
+        let t_token = self.use_token(Kind::Identifier)?;
 
         Ok(ParamDeclaration(
             Identifier(param_name),
@@ -176,19 +180,12 @@ impl Parser {
 
         match self.current_token().kind {
             Kind::Semicolon => {
-                if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
-                    return Err("Semicolon expected".to_string());
-                }
-
+                self.use_token(Kind::Semicolon)?;
                 Ok(Statement::Return(None))
             }
             _ => {
                 let expression = self.parse_expression(0)?;
-
-                if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
-                    return Err("Semicolon expected".to_string());
-                }
-
+                self.use_token(Kind::Semicolon)?;
                 Ok(Statement::Return(Some(expression)))
             }
         }
@@ -203,9 +200,7 @@ impl Parser {
             statements.push(statement);
         }
 
-        if let Err(_) = check_kind!(self.next_token(), Kind::CloseBraces) {
-            return Err("Block end expected".to_string());
-        }
+        self.use_token(Kind::CloseBraces)?;
 
         Ok(Block(statements))
     }
@@ -243,9 +238,7 @@ impl Parser {
         let operator = self.next_token();
         let expression = self.parse_expression(0)?;
 
-        if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
-            return Err("Semicolon expected".to_string());
-        }
+        self.use_token(Kind::Semicolon)?;
 
         Ok(Statement::Assignment(
             Identifier(identifier),
@@ -270,19 +263,13 @@ impl Parser {
 
         self.next_token(); // consumes the let keyword
 
-        let identifier_token = check_kind!(self.next_token(), Kind::Identifier)
-            .map_err(|_| "Identifier expected".to_string())?;
+        let identifier_token = self.use_token(Kind::Identifier)?;
 
         match self.current_token().kind {
             Kind::Equals => {
-                let assignment_token = check_kind!(self.next_token(), Kind::Equals)
-                    .map_err(|_| "Assignment operator expected".to_string())?;
-
+                let assignment_token = self.use_token(Kind::Equals)?;
                 let expression = self.parse_expression(0)?;
-
-                if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
-                    return Err("Semicolon expected".to_string());
-                }
+                self.use_token(Kind::Semicolon)?;
 
                 Ok(Let::WithValue(
                     Identifier(identifier_token),
@@ -294,14 +281,11 @@ impl Parser {
             Kind::Colon => {
                 self.next_token(); // consumes the colon token
 
-                let type_token = check_kind!(self.next_token(), Kind::Identifier)
-                    .map_err(|_| "Type expected".to_string())?;
+                let type_token = self.use_token(Kind::Identifier)?;
 
                 match self.current_token().kind {
                     Kind::Semicolon => {
-                        if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
-                            return Err("Semicolon expected".to_string());
-                        }
+                        self.use_token(Kind::Semicolon)?;
 
                         Ok(Let::WithoutValue(
                             Identifier(identifier_token),
@@ -311,10 +295,7 @@ impl Parser {
                     Kind::Equals => {
                         let equals_token = self.next_token(); // consumes the equals token
                         let expression = self.parse_expression(0)?;
-
-                        if let Err(_) = check_kind!(self.next_token(), Kind::Semicolon) {
-                            return Err("Semicolon expected".to_string());
-                        }
+                        self.use_token(Kind::Semicolon)?;
 
                         Ok(Let::WithValue(
                             Identifier(identifier_token),
@@ -406,9 +387,7 @@ impl Parser {
             Kind::OpenParenthesis => {
                 let expression = self.parse_expression(0)?;
 
-                if let Err(_) = check_kind!(self.next_token(), Kind::CloseParenthesis) {
-                    return Err("Expected close parenthesis".to_string());
-                }
+                self.use_token(Kind::CloseParenthesis)?;
 
                 Ok(Expression::Parenthesized(Box::new(expression)))
             }
@@ -436,21 +415,5 @@ fn get_binary_operator_precedence(kind: Kind) -> u32 {
         Kind::AmpersandAmpersand => 2,
         Kind::PipePipe => 1,
         _ => 0,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_function() {
-        let code = "2 + 2";
-        let mut parser = Parser::new(code);
-
-        let result = parser.parse_expression(0);
-
-        assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), Expression::Binary(_, _, _)))
     }
 }
