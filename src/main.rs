@@ -1,14 +1,13 @@
 mod cli;
 mod lang;
 
+use std::fs;
+use std::io::{self, Write};
+
 use cli::command_line_parser::CommandLineParser;
 use cli::parsed_options::ParsedOptions;
-use lang::syntax::parser::Parser;
+use lang::syntax::parser::parser::Parser;
 use lang::syntax::tree_display::TreeDisplay;
-use std::{
-    fs,
-    io::{self, Write},
-};
 
 fn main() {
     let mut parser = CommandLineParser::new();

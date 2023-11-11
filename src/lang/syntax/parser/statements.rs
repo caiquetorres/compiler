@@ -1,7 +1,5 @@
 use super::expressions::Expression;
-
-use super::lexer::token::Token;
-use super::tree_display::TreeDisplay;
+use crate::lang::syntax::{lexer::token::Token, tree_display::TreeDisplay};
 
 pub struct Identifier(pub Token);
 

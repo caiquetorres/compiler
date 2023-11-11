@@ -1,6 +1,6 @@
-use super::lexer::token::Token;
+use crate::lang::syntax::{lexer::token::Token, tree_display::TreeDisplay};
+
 use super::statements::{Identifier, Params};
-use super::tree_display::TreeDisplay;
 
 pub struct UnaryOperator(pub Token);
 

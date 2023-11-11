@@ -1,5 +1,6 @@
+use crate::lang::syntax::tree_display::TreeDisplay;
+
 use super::statements::TopLevelStatement;
-use super::tree_display::TreeDisplay;
 
 pub struct CompilationUnit(pub Vec<TopLevelStatement>);
 

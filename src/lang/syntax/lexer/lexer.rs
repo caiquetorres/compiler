@@ -253,7 +253,10 @@ impl Lexer {
                     _ => Token::new(Kind::Mod, position, Some("%")),
                 }
             }
-            _ => Token::new(Kind::Bad, position, None),
+            _ => {
+                self.next_char();
+                Token::new(Kind::Bad, position, None)
+            }
         }
     }
 

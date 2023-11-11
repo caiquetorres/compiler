@@ -1,11 +1,12 @@
 use std::collections::VecDeque;
 
+use crate::lang::syntax::lexer::kind::Kind;
+use crate::lang::syntax::lexer::lexer::Lexer;
+use crate::lang::syntax::lexer::token::Token;
+
 use super::compilation_unit::CompilationUnit;
 use super::expressions::{BinaryOperator, Expression, UnaryOperator};
 
-use super::lexer::kind::Kind;
-use super::lexer::lexer::Lexer;
-use super::lexer::token::Token;
 use super::statements::{
     AssignmentOperator, Block, ElseStatement, Function, Identifier, Let, ParamDeclaration, Params,
     ParamsDeclaration, Statement, TopLevelStatement,
@@ -166,7 +167,7 @@ impl Parser {
                     | Kind::SlashEquals
                     | Kind::ModEquals
                     | Kind::CircumflexEquals => self.parse_assignment(identifier),
-                    _ => Err("Assignment operator or function call expected".to_string()),
+                    _ => Err(format!("Assignment operator or function call expected",)),
                 }
             }
             Kind::Let => Ok(Statement::Let(self.parse_variable_declaration_statement()?)),
