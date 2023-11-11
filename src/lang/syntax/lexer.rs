@@ -25,6 +25,9 @@ pub enum Kind {
     Let,
     Fun,
     If,
+    Else,
+    While,
+    For,
     Return,
     Bad,
     Equals,
@@ -242,7 +245,10 @@ impl Lexer {
             "let" => Token::new(Kind::Let, self.position, Some("let")),
             "fun" => Token::new(Kind::Fun, self.position, Some("fun")),
             "if" => Token::new(Kind::If, self.position, Some("if")),
+            "else" => Token::new(Kind::Else, self.position, Some("else")),
             "return" => Token::new(Kind::Return, self.position, Some("return")),
+            "while" => Token::new(Kind::While, self.position, Some("while")),
+            "for" => Token::new(Kind::For, self.position, Some("for")),
             _ => Token::new(Kind::Identifier, self.position, Some(text)),
         }
     }

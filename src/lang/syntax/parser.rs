@@ -4,8 +4,8 @@ use super::compilation_unit::CompilationUnit;
 use super::expressions::{BinaryOperator, Expression, UnaryOperator};
 use super::lexer::{check_kind, Kind, Lexer, Token};
 use super::statements::{
-    AssignmentOperator, Block, Function, Identifier, Let, ParamDeclaration, Params,
-    ParamsDeclaration, Return, Statement, TopLevelStatement,
+    AssignmentOperator, Block, ElseStatement, Function, Identifier, Let, ParamDeclaration, Params,
+    ParamsDeclaration, Statement, TopLevelStatement,
 };
 
 pub struct Parser {
@@ -106,19 +106,20 @@ impl Parser {
 
                 let block = self.parse_block()?;
 
-                Ok(TopLevelStatement::Function(Function::Typed(
+                Ok(TopLevelStatement::Function(Function(
                     Identifier(identifier),
                     ParamsDeclaration(params),
-                    Identifier(t_token),
+                    Some(Identifier(t_token)),
                     block,
                 )))
             }
             Kind::OpenBraces => {
                 let block = self.parse_block()?;
 
-                Ok(TopLevelStatement::Function(Function::Untyped(
+                Ok(TopLevelStatement::Function(Function(
                     Identifier(identifier),
                     ParamsDeclaration(params),
+                    None,
                     block,
                 )))
             }
@@ -145,6 +146,7 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Result<Statement, String> {
         match self.current_token().kind {
+            Kind::While => self.parse_while_statement(),
             Kind::If => self.parse_if_statement(),
             Kind::OpenBraces => Ok(Statement::Block(self.parse_block()?)),
             Kind::Identifier => {
@@ -178,7 +180,7 @@ impl Parser {
                     return Err("Semicolon expected".to_string());
                 }
 
-                Ok(Statement::Return(Return::WithoutExpression))
+                Ok(Statement::Return(None))
             }
             _ => {
                 let expression = self.parse_expression(0)?;
@@ -187,7 +189,7 @@ impl Parser {
                     return Err("Semicolon expected".to_string());
                 }
 
-                Ok(Statement::Return(Return::WithExpression(expression)))
+                Ok(Statement::Return(Some(expression)))
             }
         }
     }
@@ -208,13 +210,33 @@ impl Parser {
         Ok(Block(statements))
     }
 
+    fn parse_while_statement(&mut self) -> Result<Statement, String> {
+        self.next_token(); // consumes the while keyword
+
+        let expression = self.parse_expression(0)?;
+        let statement = self.parse_statement()?;
+
+        Ok(Statement::While(expression, Box::new(statement)))
+    }
+
     fn parse_if_statement(&mut self) -> Result<Statement, String> {
         self.next_token(); // consumes the if keyword
 
         let expression = self.parse_expression(0)?;
-        let block = self.parse_block()?;
+        let statement = self.parse_statement()?;
 
-        Ok(Statement::If(expression, block))
+        if self.current_token().kind == Kind::Else {
+            self.next_token();
+
+            let else_statement = self.parse_statement()?;
+            Ok(Statement::If(
+                expression,
+                Box::new(statement),
+                Some(ElseStatement(Box::new(else_statement))),
+            ))
+        } else {
+            Ok(Statement::If(expression, Box::new(statement), None))
+        }
     }
 
     fn parse_assignment(&mut self, identifier: Token) -> Result<Statement, String> {
@@ -262,8 +284,9 @@ impl Parser {
                     return Err("Semicolon expected".to_string());
                 }
 
-                Ok(Let::UntypedWithValue(
+                Ok(Let::WithValue(
                     Identifier(identifier_token),
+                    None,
                     AssignmentOperator(assignment_token),
                     expression,
                 ))
@@ -280,7 +303,7 @@ impl Parser {
                             return Err("Semicolon expected".to_string());
                         }
 
-                        Ok(Let::TypedWithoutValue(
+                        Ok(Let::WithoutValue(
                             Identifier(identifier_token),
                             Identifier(type_token),
                         ))
@@ -293,9 +316,9 @@ impl Parser {
                             return Err("Semicolon expected".to_string());
                         }
 
-                        Ok(Let::TypedWithValue(
+                        Ok(Let::WithValue(
                             Identifier(identifier_token),
-                            Identifier(type_token),
+                            Some(Identifier(type_token)),
                             AssignmentOperator(equals_token),
                             expression,
                         ))
