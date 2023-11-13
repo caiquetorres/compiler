@@ -189,6 +189,7 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Result<Statement, String> {
         match self.current_token().kind {
+            Kind::For => self.parse_for_statement(),
             Kind::While => self.parse_while_statement(),
             Kind::If => self.parse_if_statement(),
             Kind::OpenBraces => self.parse_block().map(|block| Statement::Block(block)),
@@ -267,6 +268,25 @@ impl Parser {
         let statement = self.parse_statement()?;
 
         Ok(Statement::While(expression, Box::new(statement)))
+    }
+
+    /// Parses a 'for' loop statement in the format: `for condition in expression { statement }`.
+    ///
+    /// # Returns
+    /// - `Ok(Statement)`: Parsed 'for' loop statement.
+    /// - `Err(String)`: Error message if parsing fails.
+    fn parse_for_statement(&mut self) -> Result<Statement, String> {
+        self.use_token(&[Kind::For])?;
+        let id = self.use_token(&[Kind::Identifier])?;
+        self.use_token(&[Kind::In])?;
+        let expression = self.parse_expression(0)?;
+        let statement = self.parse_statement()?;
+
+        Ok(Statement::For(
+            Identifier(id),
+            expression,
+            Box::new(statement),
+        ))
     }
 
     /// Parses an 'if' statement in the format: `if condition { statement } [else { else_statement }]`.
@@ -519,7 +539,9 @@ impl Parser {
         let token = self.next_token();
 
         match token.kind {
-            Kind::Number | Kind::Boolean => Ok(Expression::Literal(token)),
+            Kind::Number | Kind::Boolean | Kind::String | Kind::Char => {
+                Ok(Expression::Literal(token))
+            }
             Kind::Identifier => {
                 let identifier = token;
 
@@ -540,22 +562,76 @@ impl Parser {
 
 fn get_unary_operator_precedence(kind: Kind) -> u32 {
     match kind {
-        Kind::Plus | Kind::Minus | Kind::Exclamation | Kind::Tilde => 10,
+        Kind::Plus | Kind::Minus | Kind::Exclamation | Kind::Tilde => 11,
         _ => 0,
     }
 }
 
 fn get_binary_operator_precedence(kind: Kind) -> u32 {
     match kind {
-        Kind::Slash | Kind::Star | Kind::Mod => 9,
-        Kind::Minus | Kind::Plus => 8,
-        Kind::GreaterThan | Kind::GreaterThanEquals | Kind::LessThan | Kind::LessThanEquals => 7,
-        Kind::Equals | Kind::EqualsEquals => 6,
-        Kind::Ampersand => 5,
-        Kind::Circumflex => 4,
-        Kind::Pipe => 3,
-        Kind::AmpersandAmpersand => 2,
-        Kind::PipePipe => 1,
+        Kind::Slash | Kind::Star | Kind::Mod => 10,
+        Kind::Minus | Kind::Plus => 9,
+        Kind::GreaterThan | Kind::GreaterThanEquals | Kind::LessThan | Kind::LessThanEquals => 8,
+        Kind::Equals | Kind::EqualsEquals => 7,
+        Kind::Ampersand => 6,
+        Kind::Circumflex => 5,
+        Kind::Pipe => 4,
+        Kind::AmpersandAmpersand => 3,
+        Kind::PipePipe => 2,
+        Kind::DotDot | Kind::DotDotEquals => 1,
         _ => 0,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::lang::syntax::{
+        lexer::kind::Kind,
+        parser::{
+            expressions::{BinaryOperator, Expression},
+            statements::Statement,
+        },
+    };
+
+    use super::Parser;
+
+    #[test]
+    fn test_for_expression() {
+        let code = "for i in 2..0 {  }";
+        let mut parser = Parser::new(code);
+
+        let statement = parser.parse_for_statement();
+        assert!(statement.is_ok());
+
+        if let Ok(for_statement) = statement {
+            assert!(matches!(for_statement, Statement::For(_, _, _)));
+
+            if let Statement::For(id, binary_expression, _) = for_statement {
+                assert_eq!(id.0.value.unwrap(), "i");
+
+                if let Expression::Binary(_, binary_operator, _) = binary_expression {
+                    assert_eq!(binary_operator.0.kind, Kind::DotDot);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_expression() {
+        let code = "2 + 2 * 2";
+        let mut parser = Parser::new(code);
+
+        let result = parser.parse_expression(0);
+
+        assert!(result.is_ok());
+
+        if let Ok(binary_expression) = result {
+            assert!(matches!(binary_expression, Expression::Binary(_, _, _)));
+
+            if let Expression::Binary(left_expression, binary_operator, _) = binary_expression {
+                assert!(matches!(left_expression.as_ref(), Expression::Literal(_)));
+                assert!(matches!(binary_operator, BinaryOperator(_)));
+            }
+        }
     }
 }

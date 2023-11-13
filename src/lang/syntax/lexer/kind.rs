@@ -58,9 +58,9 @@ pub enum Kind {
     CircumflexEquals,
     Tilde,
     TildeEquals,
-    UpTo,
-    DownTo,
-    Step,
+    Dot,
+    DotDot,
+    DotDotEquals,
     Char,
     String,
 }

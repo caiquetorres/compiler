@@ -70,6 +70,7 @@ pub enum Statement {
     If(Expression, Box<Statement>, Option<ElseStatement>),
     FunctionCall(Identifier, Params),
     While(Expression, Box<Statement>),
+    For(Identifier, Expression, Box<Statement>),
 }
 
 pub struct ElseStatement(pub Box<Statement>);
@@ -77,6 +78,15 @@ pub struct ElseStatement(pub Box<Statement>);
 impl TreeDisplay for Statement {
     fn display(&self, layer: usize) {
         match self {
+            Self::For(id, expression, b) => {
+                println!(
+                    "{}ForStatement ({})",
+                    "  ".repeat(layer),
+                    id.0.value.as_ref().unwrap()
+                );
+                expression.display(layer + 1);
+                b.display(layer + 1);
+            }
             Self::While(expression, b) => {
                 println!("{}WhileStatement", "  ".repeat(layer));
                 expression.display(layer + 1);

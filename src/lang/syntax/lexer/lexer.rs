@@ -99,6 +99,22 @@ impl Lexer {
                 self.next_char();
                 Token::new(Kind::CloseBrackets, position, Some("]"))
             }
+            '.' => {
+                self.next_char();
+                match self.current_char() {
+                    '.' => {
+                        self.next_char();
+                        match self.current_char() {
+                            '=' => {
+                                self.next_char();
+                                Token::new(Kind::DotDotEquals, position, Some("..="))
+                            }
+                            _ => Token::new(Kind::DotDot, position, Some("..")),
+                        }
+                    }
+                    _ => Token::new(Kind::Dot, position, Some(".")),
+                }
+            }
             '<' => {
                 self.next_char();
                 match self.current_char() {
@@ -277,6 +293,13 @@ impl Lexer {
             return Token::new(Kind::Number, position, Some(number));
         }
 
+        if let Some(c) = self.text.chars().nth(self.current_position.position + 1) {
+            if c == '.' {
+                number = &self.text[start..end];
+                return Token::new(Kind::Number, position, Some(number));
+            }
+        }
+
         end += 1;
         self.next_char();
 
@@ -378,9 +401,6 @@ impl Lexer {
             "else" => Token::new(Kind::Else, position, Some("else")),
             "true" => Token::new(Kind::Boolean, position, Some("true")),
             "false" => Token::new(Kind::Boolean, position, Some("false")),
-            "upTo" => Token::new(Kind::UpTo, position, Some("upTo")),
-            "downTo" => Token::new(Kind::DownTo, position, Some("downTo")),
-            "step" => Token::new(Kind::Step, position, Some("step")),
             _ => Token::new(Kind::Identifier, position, Some(id)),
         }
     }
@@ -402,6 +422,46 @@ mod tests {
         lexer::{Kind, Lexer},
         token::Token,
     };
+
+    #[test]
+    fn test_range_operator() {
+        let code = "..";
+        let mut lexer = Lexer::new(code);
+
+        assert_eq!(lexer.next().kind, Kind::DotDot);
+
+        let code = "2..3";
+        let mut lexer = Lexer::new(code);
+
+        assert_eq!(lexer.next().kind, Kind::Number);
+        assert_eq!(lexer.next().kind, Kind::DotDot);
+        assert_eq!(lexer.next().kind, Kind::Number);
+
+        let code = "2..=3";
+        let mut lexer = Lexer::new(code);
+
+        assert_eq!(lexer.next().kind, Kind::Number);
+        assert_eq!(lexer.next().kind, Kind::DotDotEquals);
+        assert_eq!(lexer.next().kind, Kind::Number);
+
+        let code = "2..";
+        let mut lexer = Lexer::new(code);
+
+        assert_eq!(lexer.next().kind, Kind::Number);
+        assert_eq!(lexer.next().kind, Kind::DotDot);
+
+        let code = "..3";
+        let mut lexer = Lexer::new(code);
+
+        assert_eq!(lexer.next().kind, Kind::DotDot);
+        assert_eq!(lexer.next().kind, Kind::Number);
+
+        let code = "..=3";
+        let mut lexer = Lexer::new(code);
+
+        assert_eq!(lexer.next().kind, Kind::DotDotEquals);
+        assert_eq!(lexer.next().kind, Kind::Number);
+    }
 
     #[test]
     fn test_brackets_braces_parenthesis_token() {
@@ -704,12 +764,6 @@ mod tests {
         token = lexer.next();
         assert_eq!(token.kind, Kind::Number);
         assert_eq!(token.value.unwrap(), "23.2");
-
-        code = "23..2";
-        lexer = Lexer::new(code);
-
-        token = lexer.next();
-        assert_eq!(token.kind, Kind::Bad);
 
         code = "2.";
         lexer = Lexer::new(code);
