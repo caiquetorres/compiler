@@ -146,9 +146,9 @@ impl TreeDisplay for Statement {
                 println!("{}IfStatement", "  ".repeat(layer));
                 expression.display(layer + 1);
                 b.display(layer + 1);
-                println!("{}ElseStatement", "  ".repeat(layer));
 
                 if let Some(st) = else_statement {
+                    println!("{}ElseStatement", "  ".repeat(layer));
                     st.0.display(layer + 1)
                 }
             }

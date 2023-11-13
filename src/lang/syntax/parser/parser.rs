@@ -281,6 +281,7 @@ impl Parser {
         let statement = self.parse_statement()?;
         self.use_token(&[Kind::While])?;
         let expression = self.parse_expression(0)?;
+        self.use_token(&[Kind::Semicolon])?;
 
         Ok(Statement::DoWhile(Box::new(statement), expression))
     }

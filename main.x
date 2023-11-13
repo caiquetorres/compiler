@@ -1,9 +1,11 @@
 fun main() {
-    do {
-        print("Hello!");
-    } while true
+    let n = 0;
+    while n < 2 {
+        print("here");
+        n += 1;
+    }
 
-    for i in 0..=2 {
-        print("Hello");
+    for m in 0..=2 {
+        print("there");
     }
 }

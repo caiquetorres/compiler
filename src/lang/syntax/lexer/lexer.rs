@@ -15,10 +15,10 @@ impl Lexer {
     }
 
     fn current_char(&self) -> char {
-        match self.text.chars().nth(self.current_position.position) {
-            Some(c) => c,
-            None => '\0',
-        }
+        self.text
+            .chars()
+            .nth(self.current_position.position)
+            .unwrap_or('\0')
     }
 
     fn next_char(&mut self) -> char {
@@ -256,6 +256,16 @@ impl Lexer {
                         self.next_char();
                         Token::new(Kind::SlashEquals, position, Some("/="))
                     }
+                    '/' => {
+                        self.next_char();
+                        self.read_single_line_comment();
+                        self.next()
+                    }
+                    '*' => {
+                        self.next_char();
+                        self.read_multi_line_comment();
+                        self.next()
+                    }
                     _ => Token::new(Kind::Slash, position, Some("/")),
                 }
             }
@@ -269,10 +279,7 @@ impl Lexer {
                     _ => Token::new(Kind::Mod, position, Some("%")),
                 }
             }
-            _ => {
-                self.next_char();
-                Token::new(Kind::Bad, position, None)
-            }
+            _ => Token::new(Kind::Bad, position, None),
         }
     }
 
@@ -377,6 +384,29 @@ impl Lexer {
         Token::new(Kind::String, position, Some(text))
     }
 
+    fn read_single_line_comment(&mut self) {
+        while self.current_char() != '\n' {
+            self.next_char();
+        }
+        self.next_char();
+    }
+
+    fn read_multi_line_comment(&mut self) {
+        loop {
+            let pos = self.current_position.position;
+            let current_char = self.text.chars().nth(pos).unwrap_or(' ');
+            let next_char = self.text.chars().nth(pos + 1).unwrap_or(' ');
+
+            if current_char == '*' && next_char == '/' {
+                self.next_char();
+                self.next_char();
+                break;
+            }
+
+            self.next();
+        }
+    }
+
     fn read_keyword_or_identifier(&mut self) -> Token {
         let position = self.current_position;
         let start = self.current_position.position;
@@ -423,6 +453,27 @@ mod tests {
         lexer::{Kind, Lexer},
         token::Token,
     };
+
+    #[test]
+    fn test_comment() {
+        let code = "/* Comment */
+        fun main() { }
+        ";
+        let mut lexer = Lexer::new(code);
+
+        lexer.next();
+        assert_eq!(lexer.next().kind, Kind::Fun);
+
+        let code = "
+        fun main() {
+            //test
+         }
+        ";
+        let mut lexer = Lexer::new(code);
+
+        lexer.next();
+        assert_eq!(lexer.next().kind, Kind::Fun);
+    }
 
     #[test]
     fn test_range_operator() {
