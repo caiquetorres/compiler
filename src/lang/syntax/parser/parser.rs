@@ -190,6 +190,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Result<Statement, String> {
         match self.current_token().kind {
             Kind::For => self.parse_for_statement(),
+            Kind::Do => self.parse_do_while_statement(),
             Kind::While => self.parse_while_statement(),
             Kind::If => self.parse_if_statement(),
             Kind::OpenBraces => self.parse_block().map(|block| Statement::Block(block)),
@@ -268,6 +269,20 @@ impl Parser {
         let statement = self.parse_statement()?;
 
         Ok(Statement::While(expression, Box::new(statement)))
+    }
+
+    /// Parses a 'while' loop statement in the format: `while condition { statement }`.
+    ///
+    /// # Returns
+    /// - `Ok(Statement)`: Parsed 'while' loop statement.
+    /// - `Err(String)`: Error message if parsing fails.
+    fn parse_do_while_statement(&mut self) -> Result<Statement, String> {
+        self.use_token(&[Kind::Do])?;
+        let statement = self.parse_statement()?;
+        self.use_token(&[Kind::While])?;
+        let expression = self.parse_expression(0)?;
+
+        Ok(Statement::DoWhile(Box::new(statement), expression))
     }
 
     /// Parses a 'for' loop statement in the format: `for condition in expression { statement }`.

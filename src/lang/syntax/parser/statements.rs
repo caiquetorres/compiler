@@ -70,6 +70,7 @@ pub enum Statement {
     If(Expression, Box<Statement>, Option<ElseStatement>),
     FunctionCall(Identifier, Params),
     While(Expression, Box<Statement>),
+    DoWhile(Box<Statement>, Expression),
     For(Identifier, Expression, Box<Statement>),
 }
 
@@ -86,6 +87,11 @@ impl TreeDisplay for Statement {
                 );
                 expression.display(layer + 1);
                 b.display(layer + 1);
+            }
+            Self::DoWhile(b, expression) => {
+                println!("{}DoWhileStatement", "  ".repeat(layer));
+                b.display(layer + 1);
+                expression.display(layer + 1);
             }
             Self::While(expression, b) => {
                 println!("{}WhileStatement", "  ".repeat(layer));

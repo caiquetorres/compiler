@@ -395,6 +395,7 @@ impl Lexer {
             "const" => Token::new(Kind::Const, position, Some("const")),
             "return" => Token::new(Kind::Return, position, Some("return")),
             "while" => Token::new(Kind::While, position, Some("while")),
+            "do" => Token::new(Kind::Do, position, Some("do")),
             "for" => Token::new(Kind::For, position, Some("for")),
             "in" => Token::new(Kind::In, position, Some("in")),
             "if" => Token::new(Kind::If, position, Some("if")),
