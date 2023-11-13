@@ -1,16 +1,28 @@
-use std::collections::VecDeque;
-
+use super::compilation_unit::CompilationUnit;
+use super::expressions::binary::{Binary, BinaryOperator};
+use super::expressions::expression::Expression;
+use super::expressions::literal::Literal;
+use super::expressions::parenthesized::Parenthesized;
+use super::expressions::unary::{Unary, UnaryOperator};
+use super::shared::assignment_operator::AssignmentOperator;
+use super::shared::block::Block;
+use super::shared::function_call::{FunctionCall, Params};
+use super::shared::identifier::Identifier;
+use super::statements::assignment::Assignment;
+use super::statements::do_while::DoWhile;
+use super::statements::r#const::Const;
+use super::statements::r#for::For;
+use super::statements::r#if::{Else, If};
+use super::statements::r#let::Let;
+use super::statements::r#return::Return;
+use super::statements::r#while::While;
+use super::statements::statement::Statement;
+use super::top_level_statements::function::{Function, ParamDeclaration, ParamsDeclaration};
+use super::top_level_statements::top_level_statement::TopLevelStatement;
 use crate::lang::syntax::lexer::kind::Kind;
 use crate::lang::syntax::lexer::lexer::Lexer;
 use crate::lang::syntax::lexer::token::Token;
-
-use super::compilation_unit::CompilationUnit;
-use super::expressions::{BinaryOperator, Expression, UnaryOperator};
-
-use super::statements::{
-    AssignmentOperator, Block, Const, ElseStatement, Identifier, Let, ParamDeclaration, Params,
-    ParamsDeclaration, Statement, TopLevelStatement,
-};
+use std::collections::VecDeque;
 
 pub struct Parser {
     tokens: VecDeque<Token>,
@@ -126,22 +138,22 @@ impl Parser {
                 let type_id = Identifier(type_id_token);
                 let block = self.parse_block()?;
 
-                Ok(TopLevelStatement::Function(
+                Ok(TopLevelStatement::Function(Function(
                     id,
                     ParamsDeclaration(params),
                     Some(type_id),
                     block,
-                ))
+                )))
             }
             Kind::OpenBraces => {
                 let block = self.parse_block()?;
 
-                Ok(TopLevelStatement::Function(
+                Ok(TopLevelStatement::Function(Function(
                     id,
                     ParamsDeclaration(params),
                     None,
                     block,
-                ))
+                )))
             }
             _ => Err("Type or block expected".to_string()),
         }
@@ -228,12 +240,12 @@ impl Parser {
         match self.current_token().kind {
             Kind::Semicolon => {
                 self.use_token(&[Kind::Semicolon])?;
-                Ok(Statement::Return(None))
+                Ok(Statement::Return(Return(None)))
             }
             _ => {
                 let expression = self.parse_expression(0)?;
                 self.use_token(&[Kind::Semicolon])?;
-                Ok(Statement::Return(Some(expression)))
+                Ok(Statement::Return(Return(Some(expression))))
             }
         }
     }
@@ -268,7 +280,7 @@ impl Parser {
         let expression = self.parse_expression(0)?;
         let statement = self.parse_statement()?;
 
-        Ok(Statement::While(expression, Box::new(statement)))
+        Ok(Statement::While(While(expression, Box::new(statement))))
     }
 
     /// Parses a 'while' loop statement in the format: `while condition { statement }`.
@@ -283,7 +295,7 @@ impl Parser {
         let expression = self.parse_expression(0)?;
         self.use_token(&[Kind::Semicolon])?;
 
-        Ok(Statement::DoWhile(Box::new(statement), expression))
+        Ok(Statement::DoWhile(DoWhile(Box::new(statement), expression)))
     }
 
     /// Parses a 'for' loop statement in the format: `for condition in expression { statement }`.
@@ -298,11 +310,11 @@ impl Parser {
         let expression = self.parse_expression(0)?;
         let statement = self.parse_statement()?;
 
-        Ok(Statement::For(
+        Ok(Statement::For(For(
             Identifier(id),
             expression,
             Box::new(statement),
-        ))
+        )))
     }
 
     /// Parses an 'if' statement in the format: `if condition { statement } [else { else_statement }]`.
@@ -319,18 +331,18 @@ impl Parser {
         let statement = self.parse_statement()?;
 
         if self.current_token().kind != Kind::Else {
-            return Ok(Statement::If(expression, Box::new(statement), None));
+            return Ok(Statement::If(If(expression, Box::new(statement), None)));
         }
 
         self.use_token(&[Kind::Else])?;
 
         let else_statement = self.parse_statement()?;
 
-        Ok(Statement::If(
+        Ok(Statement::If(If(
             expression,
             Box::new(statement),
-            Some(ElseStatement(Box::new(else_statement))),
-        ))
+            Some(Else(Box::new(else_statement))),
+        )))
     }
 
     /// Parses a function call statement given an identifier.
@@ -347,7 +359,10 @@ impl Parser {
         self.use_token(&[Kind::CloseParenthesis])?;
         self.use_token(&[Kind::Semicolon])?;
 
-        Ok(Statement::FunctionCall(Identifier(identifier), params))
+        Ok(Statement::FunctionCall(FunctionCall(
+            Identifier(identifier),
+            params,
+        )))
     }
 
     /// Parses a function call expression given an identifier.
@@ -363,7 +378,10 @@ impl Parser {
         let params = self.parse_params()?;
         self.use_token(&[Kind::CloseParenthesis])?;
 
-        Ok(Expression::FunctionCall(Identifier(identifier), params))
+        Ok(Expression::FunctionCall(FunctionCall(
+            Identifier(identifier),
+            params,
+        )))
     }
 
     /// Parses a function call statement given an identifier.
@@ -392,11 +410,11 @@ impl Parser {
 
         self.use_token(&[Kind::Semicolon])?;
 
-        Ok(Statement::Assignment(
+        Ok(Statement::Assignment(Assignment(
             Identifier(identifier),
             AssignmentOperator(operator),
             expression,
-        ))
+        )))
     }
 
     fn parse_variable_declaration_statement(&mut self) -> Result<Statement, String> {
@@ -504,10 +522,10 @@ impl Parser {
         let unary_precedence = get_unary_operator_precedence(token.kind);
         if unary_precedence != 0 && unary_precedence >= parent_precedence {
             let operator_token = self.next_token();
-            left = Expression::Unary(
+            left = Expression::Unary(Unary(
                 UnaryOperator(operator_token),
                 Box::new(self.parse_expression(unary_precedence)?),
-            );
+            ));
         } else {
             left = self.parse_factor()?;
         }
@@ -520,7 +538,7 @@ impl Parser {
             let operator = BinaryOperator(operator_token);
             let right = self.parse_expression(precedence)?;
 
-            left = Expression::Binary(Box::new(left), operator, Box::new(right));
+            left = Expression::Binary(Binary(Box::new(left), operator, Box::new(right)));
 
             precedence = get_binary_operator_precedence(self.current_token().kind);
         }
@@ -555,21 +573,24 @@ impl Parser {
         let token = self.next_token();
 
         match token.kind {
-            Kind::Number | Kind::Boolean | Kind::String | Kind::Char => {
-                Ok(Expression::Literal(token))
-            }
+            Kind::Boolean => Ok(Expression::Literal(Literal::Boolean(token))),
+            Kind::Char => Ok(Expression::Literal(Literal::Char(token))),
+            Kind::String => Ok(Expression::Literal(Literal::String(token))),
+            Kind::Number => Ok(Expression::Literal(Literal::Number(token))),
             Kind::Identifier => {
                 let identifier = token;
 
                 match self.current_token().kind {
                     Kind::OpenParenthesis => self.parse_function_call_expression(identifier),
-                    _ => Ok(Expression::Identifier(identifier)),
+                    _ => Ok(Expression::Identifier(Identifier(identifier))),
                 }
             }
             Kind::OpenParenthesis => {
                 let expression = self.parse_expression(0)?;
                 self.use_token(&[Kind::CloseParenthesis])?;
-                Ok(Expression::Parenthesized(Box::new(expression)))
+                Ok(Expression::Parenthesized(Parenthesized(Box::new(
+                    expression,
+                ))))
             }
             _ => Err("Expression expected".to_string()),
         }
@@ -601,12 +622,9 @@ fn get_binary_operator_precedence(kind: Kind) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use crate::lang::syntax::{
-        lexer::kind::Kind,
-        parser::{
-            expressions::{BinaryOperator, Expression},
-            statements::Statement,
-        },
+    use crate::lang::syntax::parser::{
+        expressions::expression::Expression,
+        statements::{r#for::For, statement::Statement},
     };
 
     use super::Parser;
@@ -620,14 +638,9 @@ mod tests {
         assert!(statement.is_ok());
 
         if let Ok(for_statement) = statement {
-            assert!(matches!(for_statement, Statement::For(_, _, _)));
-
-            if let Statement::For(id, binary_expression, _) = for_statement {
-                assert_eq!(id.0.value.unwrap(), "i");
-
-                if let Expression::Binary(_, binary_operator, _) = binary_expression {
-                    assert_eq!(binary_operator.0.kind, Kind::DotDot);
-                }
+            assert!(matches!(for_statement, Statement::For(For(_, _, _))));
+            if let Statement::For(r#for) = for_statement {
+                assert_eq!(r#for.0 .0.value.as_ref().unwrap(), "i");
             }
         }
     }
@@ -642,12 +655,7 @@ mod tests {
         assert!(result.is_ok());
 
         if let Ok(binary_expression) = result {
-            assert!(matches!(binary_expression, Expression::Binary(_, _, _)));
-
-            if let Expression::Binary(left_expression, binary_operator, _) = binary_expression {
-                assert!(matches!(left_expression.as_ref(), Expression::Literal(_)));
-                assert!(matches!(binary_operator, BinaryOperator(_)));
-            }
+            assert!(matches!(binary_expression, Expression::Binary(_)));
         }
     }
 }

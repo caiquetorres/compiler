@@ -1,11 +1,18 @@
 fun main() {
-    let n = 0;
-    while n < 2 {
-        print("here");
-        n += 1;
+    let counter = 0;
+
+    while counter < 5 {
+        print("While loop counter: {}", counter);
+        counter += 1;
     }
 
-    for m in 0..=2 {
-        print("there");
+    for i in 0..5 {
+        print("For loop counter: {}", i);
     }
+
+    greet("John");
+}
+
+fun greet(language: str) {
+    print("Hello, {}!", language);
 }
