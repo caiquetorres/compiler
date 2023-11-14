@@ -10,9 +10,13 @@ fun main() {
         print("For loop counter: {}", i);
     }
 
+    // Comment
     greet("John");
 }
 
+/**
+ * Documentation
+ */
 fun greet(language: str) {
     print("Hello, {}!", language);
 }

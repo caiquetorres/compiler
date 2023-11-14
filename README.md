@@ -6,9 +6,7 @@ This repository contains a Rust compiler developed as part of a graduation proje
 
 We are actively working on building the foundational components of the compiler, including:
 
--   **Lexer and tokenization**
--   **Parser and syntax analysis**
-    -   **If, for, while and do-while statements**
+-   **Semantic Analyses**
 
 Stay tuned for updates as we make progress on the project!
 
@@ -50,19 +48,27 @@ cargo run -- --compile path/to/file
 Here's a snippet that the compiler totally can parse right now:
 
 ```x
-fun multiply(a: i32, b: i32): i32 {
-    return a * b;
-}
+fun main() {
+    let counter = 0;
 
-fun main(): i32 {
-    let num1: i32 = -(8 + 2) * 3;
-    let num2 = 4;
-
-    if num1 == num2 {
-        print(num1);
+    while counter < 5 {
+        print("While loop counter: {}", counter);
+        counter += 1;
     }
 
-    return multiply(num1, num2);
+    for i in 0..5 {
+        print("For loop counter: {}", i);
+    }
+
+    // Comment
+    greet("John");
+}
+
+/**
+ * Documentation
+ */
+fun greet(language: str) {
+    print("Hello, {}!", language);
 }
 ```
 
