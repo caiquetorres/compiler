@@ -19,7 +19,7 @@ impl TreeDisplay for Literal {
                 println!(
                     "{}Literal ({}) ({})",
                     " ".repeat(layer),
-                    token.value.as_ref().unwrap(),
+                    token.value,
                     token.kind
                 )
             }

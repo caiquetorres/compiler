@@ -6,6 +6,7 @@ use std::io::{self, Write};
 
 use cli::command_line_parser::CommandLineParser;
 use cli::parsed_options::ParsedOptions;
+use lang::sematic::analyzer::Analyzer;
 use lang::syntax::parser::parser::Parser;
 use lang::syntax::tree_display::TreeDisplay;
 
@@ -26,7 +27,12 @@ fn main() {
     if options.has("--repl") {
         repl();
     } else if options.has("--compile") {
-        compile(&options);
+        let res = compile(&options);
+
+        match res {
+            Ok(_) => {}
+            Err(error) => eprintln!("{}", error),
+        }
     }
 }
 
@@ -49,22 +55,14 @@ fn repl() {
     }
 }
 
-fn compile(options: &ParsedOptions) {
-    if !options.has("--compile") {
-        ()
-    } else {
-        let path = options.get("--compile").unwrap();
-        let result = fs::read_to_string(path);
+fn compile(options: &ParsedOptions) -> Result<(), String> {
+    let path = options.get("--compile").unwrap();
+    let result = fs::read_to_string(path);
 
-        match result {
-            Ok(text) => {
-                let mut parser = Parser::new(&text);
-                match parser.parse() {
-                    Ok(tree) => tree.display(0),
-                    Err(err) => eprintln!("{}", err),
-                };
-            }
-            Err(_) => (),
-        }
+    if let Ok(text) = result {
+        let mut analyzer = Analyzer::new(&text);
+        analyzer.analyze()?;
     }
+
+    Ok(())
 }

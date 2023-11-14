@@ -7,8 +7,8 @@ pub struct ParamDeclaration(pub Identifier, pub Identifier);
 
 impl TreeDisplay for ParamDeclaration {
     fn display(&self, layer: usize) {
-        let id = self.0 .0.value.as_ref().unwrap();
-        let type_id = self.1 .0.value.as_ref().unwrap();
+        let id = self.0.token.value.clone();
+        let type_id = self.1.token.value.clone();
         println!(
             "{}ParamDeclaration ({}) ({})",
             " ".repeat(layer),
@@ -28,24 +28,40 @@ impl TreeDisplay for ParamsDeclaration {
     }
 }
 
-pub struct Function(
-    pub Identifier,
-    pub ParamsDeclaration,
-    pub Option<Identifier>,
-    pub Block,
-);
+pub struct Function {
+    pub identifier: Identifier,
+    pub params_declaration: ParamsDeclaration,
+    pub type_identifier: Option<Identifier>,
+    pub block: Block,
+}
+
+impl Function {
+    pub fn new(
+        identifier: Identifier,
+        params_declaration: ParamsDeclaration,
+        type_identifier: Option<Identifier>,
+        block: Block,
+    ) -> Self {
+        Self {
+            identifier,
+            params_declaration,
+            type_identifier,
+            block,
+        }
+    }
+}
 
 impl TreeDisplay for Function {
     fn display(&self, layer: usize) {
-        let id = self.0 .0.value.as_ref().unwrap();
+        let id = self.identifier.token.value.clone();
 
-        match self.2.as_ref() {
+        match self.type_identifier.as_ref() {
             Some(type_id) => {
                 println!(
                     "{}FunctionDeclaration ({}) ({})",
                     " ".repeat(layer),
                     id,
-                    type_id.0.value.as_ref().unwrap()
+                    type_id.token.value
                 );
             }
             None => {
@@ -53,7 +69,7 @@ impl TreeDisplay for Function {
             }
         };
 
-        self.1.display(layer + 2);
-        self.3.display(layer + 2);
+        self.params_declaration.display(layer + 2);
+        self.block.display(layer + 2);
     }
 }

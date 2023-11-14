@@ -5,7 +5,7 @@ pub struct BinaryOperator(pub Token);
 
 impl TreeDisplay for BinaryOperator {
     fn display(&self, layer: usize) {
-        let value = self.0.value.as_ref().unwrap();
+        let value = self.0.value.clone();
         println!("{}BinaryOperator ({})", " ".repeat(layer), value);
     }
 }

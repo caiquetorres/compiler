@@ -4,7 +4,7 @@ pub struct AssignmentOperator(pub Token);
 
 impl TreeDisplay for AssignmentOperator {
     fn display(&self, layer: usize) {
-        let value = self.0.value.as_ref().unwrap();
+        let value = self.0.value.clone();
         println!("{}AssignmentOperator ({})", " ".repeat(layer), value);
     }
 }

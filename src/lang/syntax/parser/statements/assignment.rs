@@ -7,7 +7,7 @@ pub struct Assignment(pub Identifier, pub AssignmentOperator, pub Expression);
 
 impl TreeDisplay for Assignment {
     fn display(&self, layer: usize) {
-        let id = self.0 .0.value.as_ref().unwrap();
+        let id = self.0.token.value.clone();
         println!("{}AssignmentStatement ({})", " ".repeat(layer), id);
 
         self.1.display(layer + 2);

@@ -21,15 +21,15 @@ impl Position {
 pub struct Token {
     pub kind: Kind,
     pub position: Position,
-    pub value: Option<String>,
+    pub value: String,
 }
 
 impl Token {
-    pub fn new(kind: Kind, position: Position, value: Option<&str>) -> Self {
+    pub fn new(kind: Kind, position: Position, value: &str) -> Self {
         Self {
             kind,
             position,
-            value: value.map(|s| s.to_string()),
+            value: String::from(value),
         }
     }
 }

@@ -95,7 +95,7 @@ impl Parser {
             token = self.current_token();
         }
 
-        return Ok(CompilationUnit(statements));
+        return Ok(CompilationUnit::new(statements));
     }
 
     /// Parses a top-level statement.
@@ -120,7 +120,7 @@ impl Parser {
         self.use_token(&[Kind::Fun])?;
 
         let id_token = self.use_token(&[Kind::Identifier])?;
-        let id = Identifier(id_token);
+        let id = Identifier::new(id_token);
 
         self.use_token(&[Kind::OpenParenthesis])?;
 
@@ -135,10 +135,10 @@ impl Parser {
                 self.use_token(&[Kind::Colon])?;
 
                 let type_id_token = self.use_token(&[Kind::Identifier])?;
-                let type_id = Identifier(type_id_token);
+                let type_id = Identifier::new(type_id_token);
                 let block = self.parse_block()?;
 
-                Ok(TopLevelStatement::Function(Function(
+                Ok(TopLevelStatement::Function(Function::new(
                     id,
                     ParamsDeclaration(params),
                     Some(type_id),
@@ -148,7 +148,7 @@ impl Parser {
             Kind::OpenBraces => {
                 let block = self.parse_block()?;
 
-                Ok(TopLevelStatement::Function(Function(
+                Ok(TopLevelStatement::Function(Function::new(
                     id,
                     ParamsDeclaration(params),
                     None,
@@ -194,8 +194,8 @@ impl Parser {
         let type_id_token = self.use_token(&[Kind::Identifier])?;
 
         Ok(ParamDeclaration(
-            Identifier(param_name_token),
-            Identifier(type_id_token),
+            Identifier::new(param_name_token),
+            Identifier::new(type_id_token),
         ))
     }
 
@@ -266,7 +266,7 @@ impl Parser {
 
         self.use_token(&[Kind::CloseBraces])?;
 
-        Ok(Block(statements))
+        Ok(Block::new(statements))
     }
 
     /// Parses a 'while' loop statement in the format: `while condition { statement }`.
@@ -311,7 +311,7 @@ impl Parser {
         let statement = self.parse_statement()?;
 
         Ok(Statement::For(For(
-            Identifier(id),
+            Identifier::new(id),
             expression,
             Box::new(statement),
         )))
@@ -360,7 +360,7 @@ impl Parser {
         self.use_token(&[Kind::Semicolon])?;
 
         Ok(Statement::FunctionCall(FunctionCall(
-            Identifier(identifier),
+            Identifier::new(identifier),
             params,
         )))
     }
@@ -379,7 +379,7 @@ impl Parser {
         self.use_token(&[Kind::CloseParenthesis])?;
 
         Ok(Expression::FunctionCall(FunctionCall(
-            Identifier(identifier),
+            Identifier::new(identifier),
             params,
         )))
     }
@@ -411,7 +411,7 @@ impl Parser {
         self.use_token(&[Kind::Semicolon])?;
 
         Ok(Statement::Assignment(Assignment(
-            Identifier(identifier),
+            Identifier::new(identifier),
             AssignmentOperator(operator),
             expression,
         )))
@@ -427,7 +427,7 @@ impl Parser {
             self.use_token(&[Kind::Semicolon])?;
 
             return Ok(Statement::Let(Let::WithValue(
-                Identifier(identifier_token),
+                Identifier::new(identifier_token),
                 None,
                 AssignmentOperator(assignment_token),
                 expression,
@@ -442,8 +442,8 @@ impl Parser {
                 self.use_token(&[Kind::Semicolon])?;
 
                 return Ok(Statement::Let(Let::WithoutValue(
-                    Identifier(identifier_token),
-                    Identifier(type_id_token),
+                    Identifier::new(identifier_token),
+                    Identifier::new(type_id_token),
                 )));
             }
 
@@ -453,8 +453,8 @@ impl Parser {
                 self.use_token(&[Kind::Semicolon])?;
 
                 return Ok(Statement::Let(Let::WithValue(
-                    Identifier(identifier_token),
-                    Some(Identifier(type_id_token)),
+                    Identifier::new(identifier_token),
+                    Some(Identifier::new(type_id_token)),
                     AssignmentOperator(equals_token),
                     expression,
                 )));
@@ -476,7 +476,7 @@ impl Parser {
             self.use_token(&[Kind::Semicolon])?;
 
             return Ok(Statement::Const(Const::WithValue(
-                Identifier(identifier_token),
+                Identifier::new(identifier_token),
                 None,
                 AssignmentOperator(assignment_token),
                 expression,
@@ -491,8 +491,8 @@ impl Parser {
                 self.use_token(&[Kind::Semicolon])?;
 
                 return Ok(Statement::Const(Const::WithoutValue(
-                    Identifier(identifier_token),
-                    Identifier(type_id_token),
+                    Identifier::new(identifier_token),
+                    Identifier::new(type_id_token),
                 )));
             }
 
@@ -502,8 +502,8 @@ impl Parser {
                 self.use_token(&[Kind::Semicolon])?;
 
                 return Ok(Statement::Const(Const::WithValue(
-                    Identifier(identifier_token),
-                    Some(Identifier(type_id_token)),
+                    Identifier::new(identifier_token),
+                    Some(Identifier::new(type_id_token)),
                     AssignmentOperator(equals_token),
                     expression,
                 )));
@@ -582,7 +582,7 @@ impl Parser {
 
                 match self.current_token().kind {
                     Kind::OpenParenthesis => self.parse_function_call_expression(identifier),
-                    _ => Ok(Expression::Identifier(Identifier(identifier))),
+                    _ => Ok(Expression::Identifier(Identifier::new(identifier))),
                 }
             }
             Kind::OpenParenthesis => {
@@ -640,7 +640,7 @@ mod tests {
         if let Ok(for_statement) = statement {
             assert!(matches!(for_statement, Statement::For(For(_, _, _))));
             if let Statement::For(r#for) = for_statement {
-                assert_eq!(r#for.0 .0.value.as_ref().unwrap(), "i");
+                assert_eq!(r#for.0.token.value, "i");
             }
         }
     }

@@ -1,22 +1,6 @@
 fun main() {
-    let counter = 0;
-
-    while counter < 5 {
-        print("While loop counter: {}", counter);
-        counter += 1;
-    }
-
-    for i in 0..5 {
-        print("For loop counter: {}", i);
-    }
+    let y = 2;
+    const x = 3;
 
     // Comment
-    greet("John");
-}
-
-/**
- * Documentation
- */
-fun greet(language: str) {
-    print("Hello, {}!", language);
 }
