@@ -1,23 +1,24 @@
-use super::expression::Expression;
 use crate::lang::syntax::{lexer::token::Token, tree_display::TreeDisplay};
 
-pub struct BinaryOperator(pub Token);
+use super::expression::Expression;
 
-impl TreeDisplay for BinaryOperator {
+pub struct RangeOperator(pub Token);
+
+impl TreeDisplay for RangeOperator {
     fn display(&self, layer: usize) {
         let value = self.0.value.clone();
-        println!("{}BinaryOperator ({})", " ".repeat(layer), value);
+        println!("{}RangeOperator ({})", " ".repeat(layer), value);
     }
 }
 
-pub struct Binary {
+pub struct Range {
     pub left: Box<Expression>,
-    pub operator: BinaryOperator,
+    pub operator: RangeOperator,
     pub right: Box<Expression>,
 }
 
-impl Binary {
-    pub fn new(left: Expression, operator: BinaryOperator, right: Expression) -> Self {
+impl Range {
+    pub fn new(left: Expression, operator: RangeOperator, right: Expression) -> Self {
         Self {
             left: Box::new(left),
             operator,
@@ -26,9 +27,9 @@ impl Binary {
     }
 }
 
-impl TreeDisplay for Binary {
+impl TreeDisplay for Range {
     fn display(&self, layer: usize) {
-        println!("{}BinaryExpression", " ".repeat(layer));
+        println!("{}RangeExpression", " ".repeat(layer));
         self.left.display(layer + 2);
         self.operator.display(layer + 2);
         self.right.display(layer + 2);

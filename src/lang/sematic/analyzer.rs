@@ -1,11 +1,17 @@
 use std::{collections::HashMap, rc::Rc};
 
-use crate::lang::syntax::parser::{
-    expressions::expression::Expression,
-    parser::Parser,
-    shared::block::Block,
-    statements::{r#const::Const, r#let::Let, statement::Statement},
-    top_level_statements::{function::Function, top_level_statement::TopLevelStatement},
+use crate::lang::syntax::{
+    lexer::kind::Kind,
+    parser::{
+        expressions::{expression::Expression, literal::Literal},
+        parser::Parser,
+        shared::block::Block,
+        statements::{
+            assignment::Assignment, r#const::Const, r#let::Let, r#return::Return,
+            statement::Statement,
+        },
+        top_level_statements::{function::Function, top_level_statement::TopLevelStatement},
+    },
 };
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
@@ -52,14 +58,14 @@ impl SymbolTable {
         self.symbols.insert(String::from(id), symbol);
     }
 
+    pub fn get(&self, id: &str) -> Option<&Symbol> {
+        self.symbols
+            .get(id)
+            .or_else(|| self.parent.as_ref().and_then(|p| p.get(id)))
+    }
+
     pub fn contains(&self, id: &str) -> bool {
-        if !self.symbols.contains_key(id) {
-            return match &self.parent {
-                None => false,
-                Some(p) => p.contains(id),
-            };
-        }
-        return true;
+        self.symbols.contains_key(id) || self.parent.as_ref().map_or(false, |p| p.contains(id))
     }
 
     pub fn display(&self) {
@@ -85,8 +91,11 @@ impl Analyzer {
         let ast = self.parser.parse()?;
         let mut root_table = SymbolTable::new(None);
 
+        root_table.insert("void", Symbol::new("void", SymbolKind::Type, None));
         root_table.insert("i32", Symbol::new("i32", SymbolKind::Type, None));
-        root_table.insert("i64", Symbol::new("i64", SymbolKind::Type, None));
+        root_table.insert("bool", Symbol::new("bool", SymbolKind::Type, None));
+        root_table.insert("char", Symbol::new("char", SymbolKind::Type, None));
+        root_table.insert("string", Symbol::new("string", SymbolKind::Type, None));
 
         for statement in &ast.statements {
             self.analyze_top_level_statement(statement, &mut root_table)?;
@@ -146,11 +155,11 @@ impl Analyzer {
                 let type_name = function
                     .type_identifier
                     .as_ref()
-                    .map(|id| &id.token.value[..]);
+                    .map_or("void", |id| &id.token.value[..]);
 
                 table.insert(
                     &function_name,
-                    Symbol::new(&function_name, SymbolKind::Function, type_name),
+                    Symbol::new(&function_name, SymbolKind::Function, Some(type_name)),
                 );
 
                 self.analyze_function(function, table)?;
@@ -198,7 +207,7 @@ impl Analyzer {
         }
 
         for statement in &function.block.statements {
-            self.analyze_statement(statement, &mut table)?;
+            self.analyze_statement(function, statement, &mut table)?;
         }
 
         table.display();
@@ -208,23 +217,32 @@ impl Analyzer {
 
     fn analyze_statement(
         &mut self,
+        function: &Function,
         statement: &Statement,
         table: &mut SymbolTable,
     ) -> Result<(), String> {
         match statement {
-            Statement::Block(block) => self.analyze_block(block, table),
+            Statement::Block(block) => self.analyze_block(function, block, table),
             Statement::Let(r#let) => self.analyze_let_statement(r#let, table),
             Statement::Const(r#const) => self.analyze_const_statement(r#const, table),
+            Statement::Assignment(assignment) => {
+                self.analyze_assignment_statement(assignment, table)
+            }
             _ => Ok(()),
         }
     }
 
-    fn analyze_block(&mut self, block: &Block, parent_table: &SymbolTable) -> Result<(), String> {
+    fn analyze_block(
+        &mut self,
+        function: &Function,
+        block: &Block,
+        parent_table: &SymbolTable,
+    ) -> Result<(), String> {
         let rc = Rc::new(parent_table.clone());
         let mut local_table = SymbolTable::new(Some(rc));
 
         for statement in &block.statements {
-            self.analyze_statement(statement, &mut local_table)?;
+            self.analyze_statement(function, statement, &mut local_table)?;
         }
 
         Ok(())
@@ -270,7 +288,7 @@ impl Analyzer {
                     ),
                 );
             }
-            Let::WithValue(identifier, return_type, _, _) => {
+            Let::WithValue(identifier, return_type, _, expression) => {
                 let variable_name = identifier.token.value.clone();
 
                 let line = identifier.token.position.line;
@@ -285,14 +303,14 @@ impl Analyzer {
 
                 match return_type {
                     None => {
-                        let return_type_name = "i32"; // TODO: Infer type
+                        let return_type_name = self.analyze_expression(expression, table)?;
 
                         table.insert(
                             &variable_name,
                             Symbol::new(
                                 &variable_name,
                                 SymbolKind::Variable,
-                                Some(return_type_name),
+                                Some(&return_type_name),
                             ),
                         );
                     }
@@ -306,6 +324,16 @@ impl Analyzer {
                             return Err(format!(
                                 "Type not found: {} at Line {} and at Column {}",
                                 return_type_name, line, column
+                            ));
+                        }
+
+                        let expression_return_type_name =
+                            self.analyze_expression(expression, table)?;
+
+                        if expression_return_type_name != return_type_name {
+                            return Err(format!(
+                                "Type mismatch, expected: {}, found: {}",
+                                return_type_name, expression_return_type_name
                             ));
                         }
 
@@ -365,7 +393,7 @@ impl Analyzer {
                     ),
                 );
             }
-            Const::WithValue(identifier, return_type, _, _) => {
+            Const::WithValue(identifier, return_type, _, expression) => {
                 let variable_name = identifier.token.value.clone();
 
                 let line = identifier.token.position.line;
@@ -380,14 +408,14 @@ impl Analyzer {
 
                 match return_type {
                     None => {
-                        let return_type_name = "i32"; // TODO: Infer type
+                        let return_type_name = self.analyze_expression(expression, table)?;
 
                         table.insert(
                             &variable_name,
                             Symbol::new(
                                 &variable_name,
                                 SymbolKind::Constant,
-                                Some(return_type_name),
+                                Some(&return_type_name),
                             ),
                         );
                     }
@@ -401,6 +429,16 @@ impl Analyzer {
                             return Err(format!(
                                 "Type not found: {} at Line {} and at Column {}",
                                 return_type_name, line, column
+                            ));
+                        }
+
+                        let expression_return_type_name =
+                            self.analyze_expression(expression, table)?;
+
+                        if expression_return_type_name != return_type_name {
+                            return Err(format!(
+                                "Type mismatch, expected: {}, found: {}",
+                                return_type_name, expression_return_type_name
                             ));
                         }
 
@@ -420,11 +458,190 @@ impl Analyzer {
         Ok(())
     }
 
+    fn analyze_assignment_statement(
+        &mut self,
+        assignment: &Assignment,
+        table: &SymbolTable,
+    ) -> Result<(), String> {
+        let identifier_name = assignment.identifier.token.value.clone();
+        let line = assignment.identifier.token.position.line;
+        let column = assignment.identifier.token.position.column;
+
+        if !table.contains(&identifier_name) {
+            return Err(format!(
+                "Identifier not found: {} at Line {} and at Column {}",
+                identifier_name, line, column
+            ));
+        }
+
+        let symbol = table.get(&identifier_name).unwrap();
+        let variable_type = symbol.symbol_type.as_ref().unwrap().clone();
+        let expression_return_type = self.analyze_expression(&assignment.expression, table)?;
+
+        if let SymbolKind::Variable = &symbol.kind {
+            match assignment.operator.0.kind {
+                Kind::Equals => {}
+                Kind::PlusEquals
+                | Kind::MinusEquals
+                | Kind::StarEquals
+                | Kind::SlashEquals
+                | Kind::ModEquals
+                | Kind::AmpersandEquals
+                | Kind::PipeEquals
+                | Kind::CircumflexEquals => {
+                    if variable_type != "i32" {
+                        return Err(format!(
+                            "Type mismatch in '{}': expected 'i32' for the left-hand side, found '{}'",
+                            assignment.operator.0.value, variable_type
+                        ));
+                    }
+
+                    if expression_return_type != "i32" {
+                        return Err(format!(
+                            "Type mismatch in '{}': expected 'i32' for the right-hand side, found '{}'",
+                            assignment.operator.0.value,
+                            expression_return_type
+                        ));
+                    }
+                }
+                _ => {
+                    return Err(format!(
+                        "Type mismatch in assignment: '{}'",
+                        identifier_name,
+                    ))
+                }
+            };
+
+            if variable_type != expression_return_type {
+                return Err(format!(
+                    "Type mismatch in '{}': expected '{}', found '{}'",
+                    identifier_name, variable_type, expression_return_type
+                ));
+            }
+
+            Ok(())
+        } else {
+            Err(format!(
+                "Only variables can change its value, assignment not allowed: {} at Line {} and at Column {}",
+                identifier_name, line, column
+            ))
+        }
+    }
+
     fn analyze_expression(
         &mut self,
         expression: &Expression,
         table: &SymbolTable,
     ) -> Result<String, String> {
-        todo!()
+        match expression {
+            Expression::Identifier(identifier) => {
+                let identifier_name = identifier.token.value.clone();
+                let line = identifier.token.position.line;
+                let column = identifier.token.position.column;
+
+                match table.get(&identifier_name) {
+                    None => Err(format!(
+                        "Identifier not found: {} at Line {} and at Column {}",
+                        identifier_name, line, column
+                    )),
+                    Some(symbol) => Ok(symbol.symbol_type.as_ref().unwrap().clone()),
+                }
+            }
+            Expression::Literal(literal) => match literal {
+                Literal::Number(_) => Ok("i32".to_string()),
+                Literal::Boolean(_) => Ok("bool".to_string()),
+                Literal::Char(_) => Ok("char".to_string()),
+                Literal::String(_) => Ok("string".to_string()),
+            },
+            Expression::Parenthesized(parenthesize) => {
+                self.analyze_expression(parenthesize.0.as_ref(), table)
+            }
+            Expression::Unary(unary) => {
+                let return_type = self.analyze_expression(&unary.expression, table)?;
+
+                match unary.operator.0.kind {
+                    Kind::Plus | Kind::Minus | Kind::Tilde => {
+                        if return_type != "i32" {
+                            return Err(format!("Expected type 'i32', found '{}'", return_type,));
+                        }
+
+                        Ok("i32".to_string())
+                    }
+                    Kind::Exclamation => {
+                        if return_type != "bool" {
+                            return Err(format!("Expected type 'bool', found '{}'", return_type,));
+                        }
+
+                        Ok("bool".to_string())
+                    }
+                    _ => Err(format!("Mismatch types")),
+                }
+            }
+            Expression::Binary(binary) => {
+                let left_return_type = self.analyze_expression(&binary.left, table)?;
+                let right_return_type = self.analyze_expression(&binary.right, table)?;
+
+                match binary.operator.0.kind {
+                    Kind::EqualsEquals => {
+                        if left_return_type != right_return_type {
+                            return Err(format!(
+                                "Mismatched types for equality comparison: '{}' and '{}'",
+                                left_return_type, right_return_type
+                            ));
+                        }
+                        Ok("bool".to_string())
+                    }
+                    Kind::Plus
+                    | Kind::Minus
+                    | Kind::Star
+                    | Kind::Slash
+                    | Kind::Mod
+                    | Kind::Ampersand
+                    | Kind::Pipe
+                    | Kind::Tilde
+                    | Kind::Circumflex => {
+                        if left_return_type != "i32" || right_return_type != "i32" {
+                            return Err(format!(
+                                "Expected 'i32' for both operands, found '{}' and '{}'",
+                                left_return_type, right_return_type
+                            ));
+                        }
+                        Ok("i32".to_string())
+                    }
+                    Kind::GreaterThan
+                    | Kind::GreaterThanEquals
+                    | Kind::LessThan
+                    | Kind::LessThanEquals => {
+                        if left_return_type != "i32" || right_return_type != "i32" {
+                            return Err(format!(
+                                "Expected 'i32' for both operands, found '{}' and '{}'",
+                                left_return_type, right_return_type
+                            ));
+                        }
+                        Ok("bool".to_string())
+                    }
+                    Kind::AmpersandAmpersand | Kind::PipePipe => {
+                        if left_return_type != "bool" || right_return_type != "bool" {
+                            return Err(format!(
+                                "Expected 'bool' for both operands, found '{}' and '{}'",
+                                left_return_type, right_return_type
+                            ));
+                        }
+                        Ok("bool".to_string())
+                    }
+                    _ => Err(format!("Mismatch types")),
+                }
+            }
+            _ => Err("Error".to_string()),
+        }
+    }
+
+    fn analyze_return_statement(
+        &mut self,
+        function: &Function,
+        r#return: &Return,
+        table: &SymbolTable,
+    ) -> Result<(), String> {
+        Ok(())
     }
 }

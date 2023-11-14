@@ -10,12 +10,24 @@ impl TreeDisplay for UnaryOperator {
     }
 }
 
-pub struct Unary(pub UnaryOperator, pub Box<Expression>);
+pub struct Unary {
+    pub operator: UnaryOperator,
+    pub expression: Box<Expression>,
+}
+
+impl Unary {
+    pub fn new(operator: UnaryOperator, expression: Expression) -> Self {
+        Self {
+            operator,
+            expression: Box::new(expression),
+        }
+    }
+}
 
 impl TreeDisplay for Unary {
     fn display(&self, layer: usize) {
         println!("{}UnaryExpression", " ".repeat(layer));
-        self.0.display(layer + 1);
-        self.1.display(layer + 1);
+        self.operator.display(layer + 1);
+        self.expression.display(layer + 1);
     }
 }

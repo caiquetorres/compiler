@@ -1,6 +1,7 @@
 use super::binary::Binary;
 use super::literal::Literal;
 use super::parenthesized::Parenthesized;
+use super::range::Range;
 use super::unary::Unary;
 use crate::lang::syntax::parser::shared::function_call::FunctionCall;
 use crate::lang::syntax::parser::shared::identifier::Identifier;
@@ -8,11 +9,12 @@ use crate::lang::syntax::tree_display::TreeDisplay;
 
 pub enum Expression {
     Identifier(Identifier),
+    FunctionCall(FunctionCall),
     Literal(Literal),
     Unary(Unary),
     Binary(Binary),
     Parenthesized(Parenthesized),
-    FunctionCall(FunctionCall),
+    Range(Range),
 }
 
 impl TreeDisplay for Expression {
@@ -24,6 +26,7 @@ impl TreeDisplay for Expression {
             Self::Binary(binary) => binary.display(layer),
             Self::Parenthesized(parenthesized) => parenthesized.display(layer),
             Self::FunctionCall(call) => call.display(layer),
+            Self::Range(range) => range.display(layer),
         }
     }
 }

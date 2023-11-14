@@ -3,6 +3,7 @@ use super::expressions::binary::{Binary, BinaryOperator};
 use super::expressions::expression::Expression;
 use super::expressions::literal::Literal;
 use super::expressions::parenthesized::Parenthesized;
+use super::expressions::range::{Range, RangeOperator};
 use super::expressions::unary::{Unary, UnaryOperator};
 use super::shared::assignment_operator::AssignmentOperator;
 use super::shared::block::Block;
@@ -240,12 +241,12 @@ impl Parser {
         match self.current_token().kind {
             Kind::Semicolon => {
                 self.use_token(&[Kind::Semicolon])?;
-                Ok(Statement::Return(Return(None)))
+                Ok(Statement::Return(Return::new(None)))
             }
             _ => {
                 let expression = self.parse_expression(0)?;
                 self.use_token(&[Kind::Semicolon])?;
-                Ok(Statement::Return(Return(Some(expression))))
+                Ok(Statement::Return(Return::new(Some(expression))))
             }
         }
     }
@@ -410,7 +411,7 @@ impl Parser {
 
         self.use_token(&[Kind::Semicolon])?;
 
-        Ok(Statement::Assignment(Assignment(
+        Ok(Statement::Assignment(Assignment::new(
             Identifier::new(identifier),
             AssignmentOperator(operator),
             expression,
@@ -522,9 +523,9 @@ impl Parser {
         let unary_precedence = get_unary_operator_precedence(token.kind);
         if unary_precedence != 0 && unary_precedence >= parent_precedence {
             let operator_token = self.next_token();
-            left = Expression::Unary(Unary(
+            left = Expression::Unary(Unary::new(
                 UnaryOperator(operator_token),
-                Box::new(self.parse_expression(unary_precedence)?),
+                self.parse_expression(unary_precedence)?,
             ));
         } else {
             left = self.parse_factor()?;
@@ -535,12 +536,22 @@ impl Parser {
 
         while precedence != 0 && precedence > parent_precedence {
             let operator_token = self.next_token();
-            let operator = BinaryOperator(operator_token);
-            let right = self.parse_expression(precedence)?;
 
-            left = Expression::Binary(Binary(Box::new(left), operator, Box::new(right)));
+            if operator_token.kind == Kind::DotDot || operator_token.kind == Kind::DotDotEquals {
+                let operator = RangeOperator(operator_token);
+                let right = self.parse_expression(precedence)?;
 
-            precedence = get_binary_operator_precedence(self.current_token().kind);
+                left = Expression::Range(Range::new(left, operator, right));
+
+                precedence = get_binary_operator_precedence(self.current_token().kind);
+            } else {
+                let operator = BinaryOperator(operator_token);
+                let right = self.parse_expression(precedence)?;
+
+                left = Expression::Binary(Binary::new(left, operator, right));
+
+                precedence = get_binary_operator_precedence(self.current_token().kind);
+            }
         }
 
         Ok(left)

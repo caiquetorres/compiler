@@ -9,7 +9,7 @@ pub struct Lexer {
 impl Lexer {
     pub fn new(text: &str) -> Self {
         Self {
-            current_position: Position::new(0, 0, 0),
+            current_position: Position::new(0, 0, 1),
             text: text.to_string(),
         }
     }
