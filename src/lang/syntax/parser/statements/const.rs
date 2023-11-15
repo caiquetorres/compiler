@@ -17,19 +17,14 @@ impl TreeDisplay for Const {
     fn display(&self, layer: usize) {
         match &self {
             Const::WithValue(identifier, opt_type, operator, expression) => {
-                let id = identifier.token.value.clone();
+                let id = identifier.name.clone();
 
                 match opt_type {
                     None => {
                         println!("{}ConstStatement ({})", " ".repeat(layer), id);
                     }
                     Some(t) => {
-                        println!(
-                            "{}ConstStatement ({}) ({})",
-                            " ".repeat(layer),
-                            id,
-                            t.token.value
-                        );
+                        println!("{}ConstStatement ({}) ({})", " ".repeat(layer), id, t.name);
                     }
                 }
 
@@ -37,8 +32,8 @@ impl TreeDisplay for Const {
                 expression.display(layer + 2);
             }
             Const::WithoutValue(identifier, type_identifier) => {
-                let id = identifier.token.value.clone();
-                let type_id = type_identifier.token.value.clone();
+                let id = identifier.name.clone();
+                let type_id = type_identifier.name.clone();
                 println!("{}ConstStatement ({}) ({})", " ".repeat(layer), id, type_id);
             }
         }

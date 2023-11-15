@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display};
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub enum Kind {
+pub enum TokenKind {
     Identifier,
     Number,
     Boolean,
@@ -66,7 +66,7 @@ pub enum Kind {
     String,
 }
 
-impl Display for Kind {
+impl Display for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }

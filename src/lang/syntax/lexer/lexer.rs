@@ -1,5 +1,5 @@
-use super::kind::Kind;
 use super::token::{Position, Token};
+use super::token_kind::TokenKind;
 
 pub struct Lexer {
     text: String,
@@ -37,7 +37,7 @@ impl Lexer {
 
     pub fn next(&mut self) -> Token {
         if self.current_char() == '\0' {
-            return Token::new(Kind::EndOfFile, self.current_position, "\0");
+            return Token::new(TokenKind::EndOfFile, self.current_position, "\0");
         }
 
         if self.current_char().is_digit(10) {
@@ -65,39 +65,39 @@ impl Lexer {
         match self.current_char() {
             ';' => {
                 self.next_char();
-                Token::new(Kind::Semicolon, position, ";")
+                Token::new(TokenKind::Semicolon, position, ";")
             }
             ',' => {
                 self.next_char();
-                Token::new(Kind::Comma, position, ",")
+                Token::new(TokenKind::Comma, position, ",")
             }
             ':' => {
                 self.next_char();
-                Token::new(Kind::Colon, position, ":")
+                Token::new(TokenKind::Colon, position, ":")
             }
             '{' => {
                 self.next_char();
-                Token::new(Kind::OpenBraces, position, "{")
+                Token::new(TokenKind::OpenBraces, position, "{")
             }
             '}' => {
                 self.next_char();
-                Token::new(Kind::CloseBraces, position, "}")
+                Token::new(TokenKind::CloseBraces, position, "}")
             }
             '(' => {
                 self.next_char();
-                Token::new(Kind::OpenParenthesis, position, "(")
+                Token::new(TokenKind::OpenParenthesis, position, "(")
             }
             ')' => {
                 self.next_char();
-                Token::new(Kind::CloseParenthesis, position, ")")
+                Token::new(TokenKind::CloseParenthesis, position, ")")
             }
             '[' => {
                 self.next_char();
-                Token::new(Kind::OpenBrackets, position, "[")
+                Token::new(TokenKind::OpenBrackets, position, "[")
             }
             ']' => {
                 self.next_char();
-                Token::new(Kind::CloseBrackets, position, "]")
+                Token::new(TokenKind::CloseBrackets, position, "]")
             }
             '.' => {
                 self.next_char();
@@ -107,12 +107,12 @@ impl Lexer {
                         match self.current_char() {
                             '=' => {
                                 self.next_char();
-                                Token::new(Kind::DotDotEquals, position, "..=")
+                                Token::new(TokenKind::DotDotEquals, position, "..=")
                             }
-                            _ => Token::new(Kind::DotDot, position, ".."),
+                            _ => Token::new(TokenKind::DotDot, position, ".."),
                         }
                     }
-                    _ => Token::new(Kind::Dot, position, "."),
+                    _ => Token::new(TokenKind::Dot, position, "."),
                 }
             }
             '<' => {
@@ -120,13 +120,13 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::LessThanEquals, position, "<=")
+                        Token::new(TokenKind::LessThanEquals, position, "<=")
                     }
                     '<' => {
                         self.next_char();
-                        Token::new(Kind::LessThanLessThan, position, "<<")
+                        Token::new(TokenKind::LessThanLessThan, position, "<<")
                     }
-                    _ => Token::new(Kind::LessThan, position, "<"),
+                    _ => Token::new(TokenKind::LessThan, position, "<"),
                 }
             }
             '>' => {
@@ -134,13 +134,13 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::GreaterThanEquals, position, ">=")
+                        Token::new(TokenKind::GreaterThanEquals, position, ">=")
                     }
                     '>' => {
                         self.next_char();
-                        Token::new(Kind::GreaterThanGreaterThan, position, ">>")
+                        Token::new(TokenKind::GreaterThanGreaterThan, position, ">>")
                     }
-                    _ => Token::new(Kind::GreaterThan, position, ">"),
+                    _ => Token::new(TokenKind::GreaterThan, position, ">"),
                 }
             }
             '=' => {
@@ -148,9 +148,9 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::EqualsEquals, position, "==")
+                        Token::new(TokenKind::EqualsEquals, position, "==")
                     }
-                    _ => Token::new(Kind::Equals, position, "="),
+                    _ => Token::new(TokenKind::Equals, position, "="),
                 }
             }
             '!' => {
@@ -158,9 +158,9 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::ExclamationEquals, position, "!=")
+                        Token::new(TokenKind::ExclamationEquals, position, "!=")
                     }
-                    _ => Token::new(Kind::Exclamation, position, "!"),
+                    _ => Token::new(TokenKind::Exclamation, position, "!"),
                 }
             }
             '&' => {
@@ -168,13 +168,13 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::AmpersandEquals, position, "&=")
+                        Token::new(TokenKind::AmpersandEquals, position, "&=")
                     }
                     '&' => {
                         self.next_char();
-                        Token::new(Kind::AmpersandAmpersand, position, "&&")
+                        Token::new(TokenKind::AmpersandAmpersand, position, "&&")
                     }
-                    _ => Token::new(Kind::Ampersand, position, "&"),
+                    _ => Token::new(TokenKind::Ampersand, position, "&"),
                 }
             }
             '|' => {
@@ -182,13 +182,13 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::PipeEquals, position, "|=")
+                        Token::new(TokenKind::PipeEquals, position, "|=")
                     }
                     '|' => {
                         self.next_char();
-                        Token::new(Kind::PipePipe, position, "||")
+                        Token::new(TokenKind::PipePipe, position, "||")
                     }
-                    _ => Token::new(Kind::Pipe, position, "|"),
+                    _ => Token::new(TokenKind::Pipe, position, "|"),
                 }
             }
             '~' => {
@@ -196,9 +196,9 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::TildeEquals, position, "~=")
+                        Token::new(TokenKind::TildeEquals, position, "~=")
                     }
-                    _ => Token::new(Kind::Tilde, position, "~"),
+                    _ => Token::new(TokenKind::Tilde, position, "~"),
                 }
             }
             '^' => {
@@ -206,9 +206,9 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::CircumflexEquals, position, "^=")
+                        Token::new(TokenKind::CircumflexEquals, position, "^=")
                     }
-                    _ => Token::new(Kind::Circumflex, position, "^"),
+                    _ => Token::new(TokenKind::Circumflex, position, "^"),
                 }
             }
             '+' => {
@@ -216,13 +216,13 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::PlusEquals, position, "+=")
+                        Token::new(TokenKind::PlusEquals, position, "+=")
                     }
                     '+' => {
                         self.next_char();
-                        Token::new(Kind::PlusPlus, position, "++")
+                        Token::new(TokenKind::PlusPlus, position, "++")
                     }
-                    _ => Token::new(Kind::Plus, position, "+"),
+                    _ => Token::new(TokenKind::Plus, position, "+"),
                 }
             }
             '-' => {
@@ -230,13 +230,13 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::MinusEquals, position, "-=")
+                        Token::new(TokenKind::MinusEquals, position, "-=")
                     }
                     '-' => {
                         self.next_char();
-                        Token::new(Kind::MinusMinus, position, "-")
+                        Token::new(TokenKind::MinusMinus, position, "-")
                     }
-                    _ => Token::new(Kind::Minus, position, "-"),
+                    _ => Token::new(TokenKind::Minus, position, "-"),
                 }
             }
             '*' => {
@@ -244,9 +244,9 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::StarEquals, position, "*=")
+                        Token::new(TokenKind::StarEquals, position, "*=")
                     }
-                    _ => Token::new(Kind::Star, position, "*"),
+                    _ => Token::new(TokenKind::Star, position, "*"),
                 }
             }
             '/' => {
@@ -254,7 +254,7 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::SlashEquals, position, "/=")
+                        Token::new(TokenKind::SlashEquals, position, "/=")
                     }
                     '/' => {
                         self.next_char();
@@ -266,7 +266,7 @@ impl Lexer {
                         self.read_multi_line_comment();
                         self.next()
                     }
-                    _ => Token::new(Kind::Slash, position, "/"),
+                    _ => Token::new(TokenKind::Slash, position, "/"),
                 }
             }
             '%' => {
@@ -274,12 +274,12 @@ impl Lexer {
                 match self.current_char() {
                     '=' => {
                         self.next_char();
-                        Token::new(Kind::ModEquals, position, "%=")
+                        Token::new(TokenKind::ModEquals, position, "%=")
                     }
-                    _ => Token::new(Kind::Mod, position, "%"),
+                    _ => Token::new(TokenKind::Mod, position, "%"),
                 }
             }
-            _ => Token::new(Kind::Bad, position, ""),
+            _ => Token::new(TokenKind::Bad, position, ""),
         }
     }
 
@@ -297,13 +297,13 @@ impl Lexer {
         // decimal value
         if self.current_char() != '.' {
             number = &self.text[start..end];
-            return Token::new(Kind::Number, position, number);
+            return Token::new(TokenKind::Number, position, number);
         }
 
         if let Some(c) = self.text.chars().nth(self.current_position.position + 1) {
             if c == '.' {
                 number = &self.text[start..end];
-                return Token::new(Kind::Number, position, number);
+                return Token::new(TokenKind::Number, position, number);
             }
         }
 
@@ -311,7 +311,7 @@ impl Lexer {
         self.next_char();
 
         if !self.current_char().is_digit(10) {
-            return Token::new(Kind::Bad, self.current_position, "");
+            return Token::new(TokenKind::Bad, self.current_position, "");
         }
 
         while self.current_char().is_digit(10) {
@@ -320,7 +320,7 @@ impl Lexer {
         }
 
         number = &self.text[start..end];
-        Token::new(Kind::Number, position, number)
+        Token::new(TokenKind::Number, position, number)
     }
 
     fn read_char(&mut self) -> Token {
@@ -352,10 +352,10 @@ impl Lexer {
             self.next_char();
 
             let c = &self.text[start..end];
-            return Token::new(Kind::Char, position, c);
+            return Token::new(TokenKind::Char, position, c);
         }
 
-        Token::new(Kind::Bad, self.current_position, "")
+        Token::new(TokenKind::Bad, self.current_position, "")
     }
 
     fn read_str(&mut self) -> Token {
@@ -374,14 +374,14 @@ impl Lexer {
         }
 
         if self.current_char() != '"' {
-            return Token::new(Kind::Bad, self.current_position, "");
+            return Token::new(TokenKind::Bad, self.current_position, "");
         }
 
         // consumes the '"'
         self.next_char();
 
         let text = &self.text[start..end];
-        Token::new(Kind::String, position, text)
+        Token::new(TokenKind::String, position, text)
     }
 
     fn read_single_line_comment(&mut self) {
@@ -420,19 +420,19 @@ impl Lexer {
         let id = &self.text[start..end];
 
         match id {
-            "fun" => Token::new(Kind::Fun, position, "fun"),
-            "let" => Token::new(Kind::Let, position, "let"),
-            "const" => Token::new(Kind::Const, position, "const"),
-            "return" => Token::new(Kind::Return, position, "return"),
-            "while" => Token::new(Kind::While, position, "while"),
-            "do" => Token::new(Kind::Do, position, "do"),
-            "for" => Token::new(Kind::For, position, "for"),
-            "in" => Token::new(Kind::In, position, "in"),
-            "if" => Token::new(Kind::If, position, "if"),
-            "else" => Token::new(Kind::Else, position, "else"),
-            "true" => Token::new(Kind::Boolean, position, "true"),
-            "false" => Token::new(Kind::Boolean, position, "false"),
-            _ => Token::new(Kind::Identifier, position, id),
+            "fun" => Token::new(TokenKind::Fun, position, "fun"),
+            "let" => Token::new(TokenKind::Let, position, "let"),
+            "const" => Token::new(TokenKind::Const, position, "const"),
+            "return" => Token::new(TokenKind::Return, position, "return"),
+            "while" => Token::new(TokenKind::While, position, "while"),
+            "do" => Token::new(TokenKind::Do, position, "do"),
+            "for" => Token::new(TokenKind::For, position, "for"),
+            "in" => Token::new(TokenKind::In, position, "in"),
+            "if" => Token::new(TokenKind::If, position, "if"),
+            "else" => Token::new(TokenKind::Else, position, "else"),
+            "true" => Token::new(TokenKind::Boolean, position, "true"),
+            "false" => Token::new(TokenKind::Boolean, position, "false"),
+            _ => Token::new(TokenKind::Identifier, position, id),
         }
     }
 
@@ -443,14 +443,14 @@ impl Lexer {
             self.next_char();
         }
 
-        return Token::new(Kind::WhiteSpace, position, "");
+        return Token::new(TokenKind::WhiteSpace, position, "");
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::lang::syntax::lexer::{
-        lexer::{Kind, Lexer},
+        lexer::{Lexer, TokenKind},
         token::Token,
     };
 
@@ -462,7 +462,7 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         lexer.next();
-        assert_eq!(lexer.next().kind, Kind::Fun);
+        assert_eq!(lexer.next().kind, TokenKind::Fun);
 
         let code = "
         fun main() {
@@ -472,7 +472,7 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         lexer.next();
-        assert_eq!(lexer.next().kind, Kind::Fun);
+        assert_eq!(lexer.next().kind, TokenKind::Fun);
     }
 
     #[test]
@@ -480,39 +480,39 @@ mod tests {
         let code = "..";
         let mut lexer = Lexer::new(code);
 
-        assert_eq!(lexer.next().kind, Kind::DotDot);
+        assert_eq!(lexer.next().kind, TokenKind::DotDot);
 
         let code = "2..3";
         let mut lexer = Lexer::new(code);
 
-        assert_eq!(lexer.next().kind, Kind::Number);
-        assert_eq!(lexer.next().kind, Kind::DotDot);
-        assert_eq!(lexer.next().kind, Kind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::DotDot);
+        assert_eq!(lexer.next().kind, TokenKind::Number);
 
         let code = "2..=3";
         let mut lexer = Lexer::new(code);
 
-        assert_eq!(lexer.next().kind, Kind::Number);
-        assert_eq!(lexer.next().kind, Kind::DotDotEquals);
-        assert_eq!(lexer.next().kind, Kind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::DotDotEquals);
+        assert_eq!(lexer.next().kind, TokenKind::Number);
 
         let code = "2..";
         let mut lexer = Lexer::new(code);
 
-        assert_eq!(lexer.next().kind, Kind::Number);
-        assert_eq!(lexer.next().kind, Kind::DotDot);
+        assert_eq!(lexer.next().kind, TokenKind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::DotDot);
 
         let code = "..3";
         let mut lexer = Lexer::new(code);
 
-        assert_eq!(lexer.next().kind, Kind::DotDot);
-        assert_eq!(lexer.next().kind, Kind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::DotDot);
+        assert_eq!(lexer.next().kind, TokenKind::Number);
 
         let code = "..=3";
         let mut lexer = Lexer::new(code);
 
-        assert_eq!(lexer.next().kind, Kind::DotDotEquals);
-        assert_eq!(lexer.next().kind, Kind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::DotDotEquals);
+        assert_eq!(lexer.next().kind, TokenKind::Number);
     }
 
     #[test]
@@ -520,12 +520,12 @@ mod tests {
         let code = "([{}])";
         let mut lexer = Lexer::new(code);
 
-        assert_eq!(lexer.next().kind, Kind::OpenParenthesis);
-        assert_eq!(lexer.next().kind, Kind::OpenBrackets);
-        assert_eq!(lexer.next().kind, Kind::OpenBraces);
-        assert_eq!(lexer.next().kind, Kind::CloseBraces);
-        assert_eq!(lexer.next().kind, Kind::CloseBrackets);
-        assert_eq!(lexer.next().kind, Kind::CloseParenthesis);
+        assert_eq!(lexer.next().kind, TokenKind::OpenParenthesis);
+        assert_eq!(lexer.next().kind, TokenKind::OpenBrackets);
+        assert_eq!(lexer.next().kind, TokenKind::OpenBraces);
+        assert_eq!(lexer.next().kind, TokenKind::CloseBraces);
+        assert_eq!(lexer.next().kind, TokenKind::CloseBrackets);
+        assert_eq!(lexer.next().kind, TokenKind::CloseParenthesis);
     }
 
     #[test]
@@ -535,19 +535,19 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Plus);
+        assert_eq!(token.kind, TokenKind::Plus);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::PlusPlus);
+        assert_eq!(token.kind, TokenKind::PlusPlus);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::PlusEquals);
+        assert_eq!(token.kind, TokenKind::PlusEquals);
     }
 
     #[test]
@@ -557,19 +557,19 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Minus);
+        assert_eq!(token.kind, TokenKind::Minus);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::MinusMinus);
+        assert_eq!(token.kind, TokenKind::MinusMinus);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::MinusEquals);
+        assert_eq!(token.kind, TokenKind::MinusEquals);
     }
 
     #[test]
@@ -579,13 +579,13 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Star);
+        assert_eq!(token.kind, TokenKind::Star);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::StarEquals);
+        assert_eq!(token.kind, TokenKind::StarEquals);
     }
 
     #[test]
@@ -595,13 +595,13 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Slash);
+        assert_eq!(token.kind, TokenKind::Slash);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::SlashEquals);
+        assert_eq!(token.kind, TokenKind::SlashEquals);
     }
 
     #[test]
@@ -611,13 +611,13 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Mod);
+        assert_eq!(token.kind, TokenKind::Mod);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::ModEquals);
+        assert_eq!(token.kind, TokenKind::ModEquals);
     }
 
     #[test]
@@ -627,19 +627,19 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Ampersand);
+        assert_eq!(token.kind, TokenKind::Ampersand);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::AmpersandAmpersand);
+        assert_eq!(token.kind, TokenKind::AmpersandAmpersand);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::AmpersandEquals);
+        assert_eq!(token.kind, TokenKind::AmpersandEquals);
     }
 
     #[test]
@@ -649,19 +649,19 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Pipe);
+        assert_eq!(token.kind, TokenKind::Pipe);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::PipePipe);
+        assert_eq!(token.kind, TokenKind::PipePipe);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::PipeEquals);
+        assert_eq!(token.kind, TokenKind::PipeEquals);
     }
 
     #[test]
@@ -671,13 +671,13 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Exclamation);
+        assert_eq!(token.kind, TokenKind::Exclamation);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::ExclamationEquals);
+        assert_eq!(token.kind, TokenKind::ExclamationEquals);
     }
 
     #[test]
@@ -687,13 +687,13 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Equals);
+        assert_eq!(token.kind, TokenKind::Equals);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::EqualsEquals);
+        assert_eq!(token.kind, TokenKind::EqualsEquals);
     }
 
     #[test]
@@ -703,19 +703,19 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::GreaterThan);
+        assert_eq!(token.kind, TokenKind::GreaterThan);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::GreaterThanEquals);
+        assert_eq!(token.kind, TokenKind::GreaterThanEquals);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::GreaterThanGreaterThan);
+        assert_eq!(token.kind, TokenKind::GreaterThanGreaterThan);
     }
 
     #[test]
@@ -725,19 +725,19 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::LessThan);
+        assert_eq!(token.kind, TokenKind::LessThan);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::LessThanEquals);
+        assert_eq!(token.kind, TokenKind::LessThanEquals);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::LessThanLessThan);
+        assert_eq!(token.kind, TokenKind::LessThanLessThan);
     }
 
     #[test]
@@ -747,13 +747,13 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Tilde);
+        assert_eq!(token.kind, TokenKind::Tilde);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::TildeEquals);
+        assert_eq!(token.kind, TokenKind::TildeEquals);
     }
 
     #[test]
@@ -763,13 +763,13 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Circumflex);
+        assert_eq!(token.kind, TokenKind::Circumflex);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::CircumflexEquals);
+        assert_eq!(token.kind, TokenKind::CircumflexEquals);
     }
 
     #[test]
@@ -779,25 +779,25 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::While);
+        assert_eq!(token.kind, TokenKind::While);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Boolean);
+        assert_eq!(token.kind, TokenKind::Boolean);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::For);
+        assert_eq!(token.kind, TokenKind::For);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Identifier);
+        assert_eq!(token.kind, TokenKind::Identifier);
     }
 
     #[test]
@@ -807,21 +807,21 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Number);
+        assert_eq!(token.kind, TokenKind::Number);
         assert_eq!(token.value, "23");
 
         code = "23.2";
         lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Number);
+        assert_eq!(token.kind, TokenKind::Number);
         assert_eq!(token.value, "23.2");
 
         code = "2.";
         lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Bad);
+        assert_eq!(token.kind, TokenKind::Bad);
     }
 
     #[test]
@@ -831,26 +831,26 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Char);
+        assert_eq!(token.kind, TokenKind::Char);
         assert_eq!(token.value, "c");
 
         code = "'\\0'";
         lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Char);
+        assert_eq!(token.kind, TokenKind::Char);
 
         code = "'c";
         lexer = Lexer::new(code);
         token = lexer.next();
 
-        assert_eq!(token.kind, Kind::Bad);
+        assert_eq!(token.kind, TokenKind::Bad);
 
         code = "\\";
         lexer = Lexer::new(code);
         token = lexer.next();
 
-        assert_eq!(token.kind, Kind::Bad);
+        assert_eq!(token.kind, TokenKind::Bad);
     }
 
     #[test]
@@ -860,20 +860,20 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::String);
+        assert_eq!(token.kind, TokenKind::String);
         assert_eq!(token.value, "test string");
 
         code = "\"test string 2\"";
         lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::String);
+        assert_eq!(token.kind, TokenKind::String);
         assert_eq!(token.value, "test string 2");
 
         code = "'\"test string";
         lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, Kind::Bad);
+        assert_eq!(token.kind, TokenKind::Bad);
     }
 }

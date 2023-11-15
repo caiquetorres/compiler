@@ -1,4 +1,4 @@
-use super::kind::Kind;
+use super::token_kind::TokenKind;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Position {
@@ -19,13 +19,13 @@ impl Position {
 
 #[derive(Debug)]
 pub struct Token {
-    pub kind: Kind,
+    pub kind: TokenKind,
     pub position: Position,
     pub value: String,
 }
 
 impl Token {
-    pub fn new(kind: Kind, position: Position, value: &str) -> Self {
+    pub fn new(kind: TokenKind, position: Position, value: &str) -> Self {
         Self {
             kind,
             position,

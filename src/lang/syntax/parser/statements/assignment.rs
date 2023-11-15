@@ -25,7 +25,7 @@ impl Assignment {
 
 impl TreeDisplay for Assignment {
     fn display(&self, layer: usize) {
-        let id = self.identifier.token.value.clone();
+        let id = self.identifier.name.clone();
         println!("{}AssignmentStatement ({})", " ".repeat(layer), id);
 
         self.operator.display(layer + 2);

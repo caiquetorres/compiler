@@ -17,19 +17,14 @@ impl TreeDisplay for Let {
     fn display(&self, layer: usize) {
         match &self {
             Let::WithValue(identifier, opt_type, operator, expression) => {
-                let id = identifier.token.value.clone();
+                let id = identifier.name.clone();
 
                 match opt_type {
                     None => {
                         println!("{}LetStatement ({})", " ".repeat(layer), id);
                     }
                     Some(t) => {
-                        println!(
-                            "{}LetStatement ({}) ({})",
-                            " ".repeat(layer),
-                            id,
-                            t.token.value
-                        );
+                        println!("{}LetStatement ({}) ({})", " ".repeat(layer), id, t.name);
                     }
                 }
 
@@ -37,8 +32,8 @@ impl TreeDisplay for Let {
                 expression.display(layer + 2);
             }
             Let::WithoutValue(identifier, type_identifier) => {
-                let id = identifier.token.value.clone();
-                let type_id = type_identifier.token.value.clone();
+                let id = identifier.name.clone();
+                let type_id = type_identifier.name.clone();
                 println!("{}LetStatement ({}) ({})", " ".repeat(layer), id, type_id);
             }
         }

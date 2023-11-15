@@ -7,8 +7,8 @@ pub struct ParamDeclaration(pub Identifier, pub Identifier);
 
 impl TreeDisplay for ParamDeclaration {
     fn display(&self, layer: usize) {
-        let id = self.0.token.value.clone();
-        let type_id = self.1.token.value.clone();
+        let id = self.0.name.clone();
+        let type_id = self.1.name.clone();
         println!(
             "{}ParamDeclaration ({}) ({})",
             " ".repeat(layer),
@@ -53,7 +53,7 @@ impl Function {
 
 impl TreeDisplay for Function {
     fn display(&self, layer: usize) {
-        let id = self.identifier.token.value.clone();
+        let id = self.identifier.name.clone();
 
         match self.type_identifier.as_ref() {
             Some(type_id) => {
@@ -61,7 +61,7 @@ impl TreeDisplay for Function {
                     "{}FunctionDeclaration ({}) ({})",
                     " ".repeat(layer),
                     id,
-                    type_id.token.value
+                    type_id.name
                 );
             }
             None => {

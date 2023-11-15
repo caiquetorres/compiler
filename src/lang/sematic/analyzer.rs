@@ -1,18 +1,15 @@
-use std::{collections::HashMap, rc::Rc};
-
-use crate::lang::syntax::{
-    lexer::kind::Kind,
-    parser::{
-        expressions::{expression::Expression, literal::Literal},
-        parser::Parser,
-        shared::block::Block,
-        statements::{
-            assignment::Assignment, r#const::Const, r#let::Let, r#return::Return,
-            statement::Statement,
-        },
-        top_level_statements::{function::Function, top_level_statement::TopLevelStatement},
+use crate::lang::syntax::lexer::token_kind::TokenKind;
+use crate::lang::syntax::parser::{
+    expressions::{expression::Expression, literal::Literal},
+    parser::Parser,
+    shared::block::Block,
+    statements::{
+        assignment::Assignment, r#const::Const, r#let::Let, r#return::Return, statement::Statement,
     },
+    top_level_statements::{function::Function, top_level_statement::TopLevelStatement},
 };
+use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
 enum SymbolKind {
@@ -111,7 +108,7 @@ impl Analyzer {
     ) -> Result<(), String> {
         match statement {
             TopLevelStatement::Function(function) => {
-                let function_name = function.identifier.token.value.clone();
+                let function_name = function.identifier.name.clone();
                 let line = function.identifier.token.position.line;
                 let column = function.identifier.token.position.column;
 
@@ -130,7 +127,7 @@ impl Analyzer {
                         );
                     }
                     Some(return_type) => {
-                        let return_type_name = return_type.token.value.clone();
+                        let return_type_name = return_type.name.clone();
                         let line = return_type.token.position.line;
                         let column = return_type.token.position.column;
 
@@ -155,7 +152,7 @@ impl Analyzer {
                 let type_name = function
                     .type_identifier
                     .as_ref()
-                    .map_or("void", |id| &id.token.value[..]);
+                    .map_or("void", |id| &id.name[..]);
 
                 table.insert(
                     &function_name,
@@ -178,7 +175,7 @@ impl Analyzer {
         let mut table = SymbolTable::new(Some(rc));
 
         for param in &function.params_declaration.0 {
-            let param_name = param.0.token.value.clone();
+            let param_name = param.0.name.clone();
             let line = param.0.token.position.line;
             let column = param.0.token.position.column;
 
@@ -189,7 +186,7 @@ impl Analyzer {
                 ));
             }
 
-            let param_type = param.1.token.value.clone();
+            let param_type = param.1.name.clone();
             let line = param.1.token.position.line;
             let column = param.1.token.position.column;
 
@@ -255,7 +252,7 @@ impl Analyzer {
     ) -> Result<(), String> {
         match r#let {
             Let::WithoutValue(identifier, return_type) => {
-                let variable_name = identifier.token.value.clone();
+                let variable_name = identifier.name.clone();
 
                 let line = identifier.token.position.line;
                 let column = identifier.token.position.column;
@@ -267,7 +264,7 @@ impl Analyzer {
                     ));
                 }
 
-                let return_type_name = return_type.token.value.clone();
+                let return_type_name = return_type.name.clone();
 
                 let line = return_type.token.position.line;
                 let column = return_type.token.position.column;
@@ -289,7 +286,7 @@ impl Analyzer {
                 );
             }
             Let::WithValue(identifier, return_type, _, expression) => {
-                let variable_name = identifier.token.value.clone();
+                let variable_name = identifier.name.clone();
 
                 let line = identifier.token.position.line;
                 let column = identifier.token.position.column;
@@ -315,7 +312,7 @@ impl Analyzer {
                         );
                     }
                     Some(return_type) => {
-                        let return_type_name = return_type.token.value.clone();
+                        let return_type_name = return_type.name.clone();
 
                         let line = return_type.token.position.line;
                         let column = return_type.token.position.column;
@@ -360,7 +357,7 @@ impl Analyzer {
     ) -> Result<(), String> {
         match r#const {
             Const::WithoutValue(identifier, return_type) => {
-                let variable_name = identifier.token.value.clone();
+                let variable_name = identifier.name.clone();
 
                 let line = identifier.token.position.line;
                 let column = identifier.token.position.column;
@@ -372,7 +369,7 @@ impl Analyzer {
                     ));
                 }
 
-                let return_type_name = return_type.token.value.clone();
+                let return_type_name = return_type.name.clone();
 
                 let line = return_type.token.position.line;
                 let column = return_type.token.position.column;
@@ -394,7 +391,7 @@ impl Analyzer {
                 );
             }
             Const::WithValue(identifier, return_type, _, expression) => {
-                let variable_name = identifier.token.value.clone();
+                let variable_name = identifier.name.clone();
 
                 let line = identifier.token.position.line;
                 let column = identifier.token.position.column;
@@ -420,7 +417,7 @@ impl Analyzer {
                         );
                     }
                     Some(return_type) => {
-                        let return_type_name = return_type.token.value.clone();
+                        let return_type_name = return_type.name.clone();
 
                         let line = return_type.token.position.line;
                         let column = return_type.token.position.column;
@@ -463,7 +460,7 @@ impl Analyzer {
         assignment: &Assignment,
         table: &SymbolTable,
     ) -> Result<(), String> {
-        let identifier_name = assignment.identifier.token.value.clone();
+        let identifier_name = assignment.identifier.name.clone();
         let line = assignment.identifier.token.position.line;
         let column = assignment.identifier.token.position.column;
 
@@ -479,27 +476,27 @@ impl Analyzer {
         let expression_return_type = self.analyze_expression(&assignment.expression, table)?;
 
         if let SymbolKind::Variable = &symbol.kind {
-            match assignment.operator.0.kind {
-                Kind::Equals => {}
-                Kind::PlusEquals
-                | Kind::MinusEquals
-                | Kind::StarEquals
-                | Kind::SlashEquals
-                | Kind::ModEquals
-                | Kind::AmpersandEquals
-                | Kind::PipeEquals
-                | Kind::CircumflexEquals => {
+            match assignment.operator.token.kind {
+                TokenKind::Equals => {}
+                TokenKind::PlusEquals
+                | TokenKind::MinusEquals
+                | TokenKind::StarEquals
+                | TokenKind::SlashEquals
+                | TokenKind::ModEquals
+                | TokenKind::AmpersandEquals
+                | TokenKind::PipeEquals
+                | TokenKind::CircumflexEquals => {
                     if variable_type != "i32" {
                         return Err(format!(
                             "Type mismatch in '{}': expected 'i32' for the left-hand side, found '{}'",
-                            assignment.operator.0.value, variable_type
+                            assignment.operator.token.value, variable_type
                         ));
                     }
 
                     if expression_return_type != "i32" {
                         return Err(format!(
                             "Type mismatch in '{}': expected 'i32' for the right-hand side, found '{}'",
-                            assignment.operator.0.value,
+                            assignment.operator.token.value,
                             expression_return_type
                         ));
                     }
@@ -535,7 +532,7 @@ impl Analyzer {
     ) -> Result<String, String> {
         match expression {
             Expression::Identifier(identifier) => {
-                let identifier_name = identifier.token.value.clone();
+                let identifier_name = identifier.name.clone();
                 let line = identifier.token.position.line;
                 let column = identifier.token.position.column;
 
@@ -560,14 +557,14 @@ impl Analyzer {
                 let return_type = self.analyze_expression(&unary.expression, table)?;
 
                 match unary.operator.0.kind {
-                    Kind::Plus | Kind::Minus | Kind::Tilde => {
+                    TokenKind::Plus | TokenKind::Minus | TokenKind::Tilde => {
                         if return_type != "i32" {
                             return Err(format!("Expected type 'i32', found '{}'", return_type,));
                         }
 
                         Ok("i32".to_string())
                     }
-                    Kind::Exclamation => {
+                    TokenKind::Exclamation => {
                         if return_type != "bool" {
                             return Err(format!("Expected type 'bool', found '{}'", return_type,));
                         }
@@ -582,7 +579,7 @@ impl Analyzer {
                 let right_return_type = self.analyze_expression(&binary.right, table)?;
 
                 match binary.operator.0.kind {
-                    Kind::EqualsEquals => {
+                    TokenKind::EqualsEquals => {
                         if left_return_type != right_return_type {
                             return Err(format!(
                                 "Mismatched types for equality comparison: '{}' and '{}'",
@@ -591,15 +588,15 @@ impl Analyzer {
                         }
                         Ok("bool".to_string())
                     }
-                    Kind::Plus
-                    | Kind::Minus
-                    | Kind::Star
-                    | Kind::Slash
-                    | Kind::Mod
-                    | Kind::Ampersand
-                    | Kind::Pipe
-                    | Kind::Tilde
-                    | Kind::Circumflex => {
+                    TokenKind::Plus
+                    | TokenKind::Minus
+                    | TokenKind::Star
+                    | TokenKind::Slash
+                    | TokenKind::Mod
+                    | TokenKind::Ampersand
+                    | TokenKind::Pipe
+                    | TokenKind::Tilde
+                    | TokenKind::Circumflex => {
                         if left_return_type != "i32" || right_return_type != "i32" {
                             return Err(format!(
                                 "Expected 'i32' for both operands, found '{}' and '{}'",
@@ -608,10 +605,10 @@ impl Analyzer {
                         }
                         Ok("i32".to_string())
                     }
-                    Kind::GreaterThan
-                    | Kind::GreaterThanEquals
-                    | Kind::LessThan
-                    | Kind::LessThanEquals => {
+                    TokenKind::GreaterThan
+                    | TokenKind::GreaterThanEquals
+                    | TokenKind::LessThan
+                    | TokenKind::LessThanEquals => {
                         if left_return_type != "i32" || right_return_type != "i32" {
                             return Err(format!(
                                 "Expected 'i32' for both operands, found '{}' and '{}'",
@@ -620,7 +617,7 @@ impl Analyzer {
                         }
                         Ok("bool".to_string())
                     }
-                    Kind::AmpersandAmpersand | Kind::PipePipe => {
+                    TokenKind::AmpersandAmpersand | TokenKind::PipePipe => {
                         if left_return_type != "bool" || right_return_type != "bool" {
                             return Err(format!(
                                 "Expected 'bool' for both operands, found '{}' and '{}'",
