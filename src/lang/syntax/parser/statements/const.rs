@@ -3,39 +3,39 @@ use crate::lang::syntax::parser::shared::assignment_operator::AssignmentOperator
 use crate::lang::syntax::parser::shared::identifier::Identifier;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
-pub enum Const {
-    WithValue(
-        Identifier,
-        Option<Identifier>,
-        AssignmentOperator,
-        Expression,
-    ),
-    WithoutValue(Identifier, Identifier),
+pub struct Const {
+    pub identifier: Identifier,
+    pub type_identifier: Option<Identifier>,
+    pub operator: AssignmentOperator,
+    pub expression: Expression,
+}
+
+impl Const {
+    pub fn new(
+        identifier: Identifier,
+        type_identifier: Option<Identifier>,
+        operator: AssignmentOperator,
+        expression: Expression,
+    ) -> Self {
+        Self {
+            identifier,
+            type_identifier,
+            operator,
+            expression,
+        }
+    }
 }
 
 impl TreeDisplay for Const {
     fn display(&self, layer: usize) {
-        match &self {
-            Const::WithValue(identifier, opt_type, operator, expression) => {
-                let id = identifier.name.clone();
+        let id = self.identifier.name.clone();
 
-                match opt_type {
-                    None => {
-                        println!("{}ConstStatement ({})", " ".repeat(layer), id);
-                    }
-                    Some(t) => {
-                        println!("{}ConstStatement ({}) ({})", " ".repeat(layer), id, t.name);
-                    }
-                }
-
-                operator.display(layer + 2);
-                expression.display(layer + 2);
-            }
-            Const::WithoutValue(identifier, type_identifier) => {
-                let id = identifier.name.clone();
-                let type_id = type_identifier.name.clone();
-                println!("{}ConstStatement ({}) ({})", " ".repeat(layer), id, type_id);
-            }
+        match &self.type_identifier {
+            None => println!("{}ConstStatement ({})", " ".repeat(layer), id),
+            Some(t) => println!("{}ConstStatement ({}) ({})", " ".repeat(layer), id, t.name),
         }
+
+        self.operator.display(layer + 2);
+        self.expression.display(layer + 2);
     }
 }

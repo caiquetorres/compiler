@@ -355,20 +355,32 @@ impl Analyzer {
         r#const: &Const,
         table: &mut SymbolTable,
     ) -> Result<(), String> {
-        match r#const {
-            Const::WithoutValue(identifier, return_type) => {
-                let variable_name = identifier.name.clone();
+        let variable_name = r#const.identifier.name.clone();
 
-                let line = identifier.token.position.line;
-                let column = identifier.token.position.column;
+        let line = r#const.identifier.token.position.line;
+        let column = r#const.identifier.token.position.column;
 
-                if table.contains(&variable_name) {
-                    return Err(format!(
-                        "Duplicated identifier found: {} at Line {} and at Column {}",
-                        variable_name, line, column
-                    ));
-                }
+        if table.contains(&variable_name) {
+            return Err(format!(
+                "Duplicated identifier found: {} at Line {} and at Column {}",
+                variable_name, line, column
+            ));
+        }
 
+        match &r#const.type_identifier {
+            None => {
+                let return_type_name = self.analyze_expression(&r#const.expression, table)?;
+
+                table.insert(
+                    &variable_name,
+                    Symbol::new(
+                        &variable_name,
+                        SymbolKind::Constant,
+                        Some(&return_type_name),
+                    ),
+                );
+            }
+            Some(return_type) => {
                 let return_type_name = return_type.name.clone();
 
                 let line = return_type.token.position.line;
@@ -381,74 +393,24 @@ impl Analyzer {
                     ));
                 }
 
+                let expression_return_type_name =
+                    self.analyze_expression(&r#const.expression, table)?;
+
+                if expression_return_type_name != return_type_name {
+                    return Err(format!(
+                        "Type mismatch, expected: {}, found: {}",
+                        return_type_name, expression_return_type_name
+                    ));
+                }
+
                 table.insert(
                     &variable_name,
                     Symbol::new(
                         &variable_name,
-                        SymbolKind::Constant,
+                        SymbolKind::Variable,
                         Some(&return_type_name),
                     ),
                 );
-            }
-            Const::WithValue(identifier, return_type, _, expression) => {
-                let variable_name = identifier.name.clone();
-
-                let line = identifier.token.position.line;
-                let column = identifier.token.position.column;
-
-                if table.contains(&variable_name) {
-                    return Err(format!(
-                        "Duplicated identifier found: {} at Line {} and at Column {}",
-                        variable_name, line, column
-                    ));
-                }
-
-                match return_type {
-                    None => {
-                        let return_type_name = self.analyze_expression(expression, table)?;
-
-                        table.insert(
-                            &variable_name,
-                            Symbol::new(
-                                &variable_name,
-                                SymbolKind::Constant,
-                                Some(&return_type_name),
-                            ),
-                        );
-                    }
-                    Some(return_type) => {
-                        let return_type_name = return_type.name.clone();
-
-                        let line = return_type.token.position.line;
-                        let column = return_type.token.position.column;
-
-                        if !table.contains(&return_type_name) {
-                            return Err(format!(
-                                "Type not found: {} at Line {} and at Column {}",
-                                return_type_name, line, column
-                            ));
-                        }
-
-                        let expression_return_type_name =
-                            self.analyze_expression(expression, table)?;
-
-                        if expression_return_type_name != return_type_name {
-                            return Err(format!(
-                                "Type mismatch, expected: {}, found: {}",
-                                return_type_name, expression_return_type_name
-                            ));
-                        }
-
-                        table.insert(
-                            &variable_name,
-                            Symbol::new(
-                                &variable_name,
-                                SymbolKind::Variable,
-                                Some(&return_type_name),
-                            ),
-                        );
-                    }
-                }
             }
         }
 
