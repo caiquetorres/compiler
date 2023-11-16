@@ -164,7 +164,7 @@ impl Parser {
 
         Ok(TopLevelStatement::Function(Function::new(
             Identifier::new(identifier_token),
-            ParamsDeclaration(params),
+            ParamsDeclaration::new(params),
             identifier_type,
             block,
         )))
@@ -672,12 +672,18 @@ impl Parser {
     /// - `Ok(Params)`: Parsed parameters.
     /// - `Err(String)`: Error message if parsing fails.
     fn parse_params(&mut self) -> Result<Params, String> {
+        let mut current_token = self.get_current_token();
+
+        if current_token.kind == TokenKind::CloseParenthesis {
+            return Ok(Params::new(vec![]));
+        }
+
         let mut expressions: Vec<Expression> = vec![];
 
         let expression = self.parse_expression(0)?;
         expressions.push(expression);
 
-        let mut current_token = self.get_current_token();
+        current_token = self.get_current_token();
 
         while current_token.kind != TokenKind::CloseParenthesis {
             self.use_token(&[TokenKind::Comma])?;
@@ -821,7 +827,7 @@ mod tests {
             Ok(statement) => match statement {
                 TopLevelStatement::Function(fun) => {
                     assert_eq!(fun.identifier.name, "main");
-                    assert_eq!(fun.params_declaration.0.len(), 0);
+                    assert_eq!(fun.params_declaration.params.len(), 0);
                     assert!(fun.type_identifier.is_none());
                 }
             },
@@ -839,7 +845,7 @@ mod tests {
             Ok(statement) => match statement {
                 TopLevelStatement::Function(fun) => {
                     assert_eq!(fun.identifier.name, "main");
-                    assert_eq!(fun.params_declaration.0.len(), 0);
+                    assert_eq!(fun.params_declaration.params.len(), 0);
                     assert!(fun.type_identifier.is_some());
                 }
             },

@@ -1,27 +1,22 @@
-fun main() {
-    let a = true;
-    const b = 2;
-    let c = b == 2 && a;
-
-    a = false;
-    c = b == 2 && a;
-
-    c(-(2 + 2), b);
+/**
+ * Documentation
+ */
+fun greet() {
+    print("Hello world!");
 }
 
-/*
-
-
 fun main() {
-    let a = true;
-    const b = 2;
-    let c = b == 2 && a;
+    let counter = 0;
 
-    a = false;
-    c = b == 2 && a;
+    while counter < 5 {
+        print("While loop counter: {}", counter);
+        counter += 1;
+    }
 
-    c(-(2 + 2), b);
+    for i in 0..5 {
+        print("For loop counter: {}", i);
+    }
+
+    // Comment
+    greet();
 }
-
-
-*/

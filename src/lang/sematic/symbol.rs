@@ -1,10 +1,24 @@
+use std::fmt::{self, Display, Formatter};
+
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub enum SymbolKind {
     Variable,
     Constant,
     Type,
     Parameter,
-    Function,
+    Function(Vec<String>),
+}
+
+impl Display for SymbolKind {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::Variable => write!(f, "variable"),
+            Self::Constant => write!(f, "constant"),
+            Self::Type => write!(f, "type"),
+            Self::Parameter => write!(f, "parameter"),
+            Self::Function(_) => write!(f, "function"),
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]

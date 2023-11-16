@@ -7,6 +7,9 @@ This repository contains a Rust compiler developed as part of a graduation proje
 We are actively working on building the foundational components of the compiler, including:
 
 -   **Semantic Analyses**
+    -   **Variable and Constant**
+    -   **Function**
+    -   **Expression**
 
 Stay tuned for updates as we make progress on the project!
 
@@ -45,9 +48,16 @@ cargo run -- --compile path/to/file
 
 ## Sneak a Peek at the Compiler 🚀
 
-Here's a snippet that the compiler totally can parse right now:
+Here's a snippet that the compiler totally can understand right now:
 
 ```x
+/**
+ * Documentation
+ */
+fun greet() {
+    print("Hello world!");
+}
+
 fun main() {
     let counter = 0;
 
@@ -61,15 +71,9 @@ fun main() {
     }
 
     // Comment
-    greet("John");
+    greet();
 }
 
-/**
- * Documentation
- */
-fun greet(language: str) {
-    print("Hello, {}!", language);
-}
 ```
 
 ## License

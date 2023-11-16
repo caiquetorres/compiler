@@ -4,6 +4,7 @@ use crate::lang::syntax::lexer::token_kind::TokenKind;
 use crate::lang::syntax::parser::compilation_unit::CompilationUnit;
 use crate::lang::syntax::parser::expressions::{expression::Expression, literal::Literal};
 use crate::lang::syntax::parser::shared::block::Block;
+use crate::lang::syntax::parser::shared::function_call::FunctionCall;
 use crate::lang::syntax::parser::statements::assignment::Assignment;
 use crate::lang::syntax::parser::statements::r#const::Const;
 use crate::lang::syntax::parser::statements::r#let::Let;
@@ -34,11 +35,17 @@ impl Analyzer {
     pub fn analyze(&mut self) -> Result<(), String> {
         let mut root_table = SymbolTable::new(None);
 
-        root_table.insert("void", Symbol::new("void", SymbolKind::Type, None));
-        root_table.insert("i32", Symbol::new("i32", SymbolKind::Type, None));
-        root_table.insert("bool", Symbol::new("bool", SymbolKind::Type, None));
-        root_table.insert("char", Symbol::new("char", SymbolKind::Type, None));
-        root_table.insert("string", Symbol::new("string", SymbolKind::Type, None));
+        root_table.insert(Symbol::new("void", SymbolKind::Type, None));
+        root_table.insert(Symbol::new("i32", SymbolKind::Type, None));
+        root_table.insert(Symbol::new("bool", SymbolKind::Type, None));
+        root_table.insert(Symbol::new("char", SymbolKind::Type, None));
+        root_table.insert(Symbol::new("string", SymbolKind::Type, None));
+
+        root_table.insert(Symbol::new(
+            "print",
+            SymbolKind::Function(vec!["string".to_string()]),
+            Some("void"),
+        ));
 
         for statement in &self.ast.statements {
             self.analyze_top_level_statement(statement, &mut root_table)?;
@@ -54,60 +61,72 @@ impl Analyzer {
     ) -> Result<(), String> {
         match statement {
             TopLevelStatement::Function(function) => {
-                let function_name = function.identifier.name.clone();
-                let line = function.identifier.token.position.line;
-                let column = function.identifier.token.position.column;
+                self.analyze_function_declaration(function, table)?
+            }
+        }
 
-                if table.contains(&function_name) {
+        Ok(())
+    }
+
+    fn analyze_function_declaration(
+        &self,
+        function: &Function,
+        table: &mut SymbolTable,
+    ) -> Result<(), String> {
+        let function_name = function.identifier.name.clone();
+        let line = function.identifier.token.position.line;
+        let column = function.identifier.token.position.column;
+
+        if table.contains(&function_name) {
+            return Err(format!(
+                "Duplicated identifier found: {} at Line {} and at Column {}",
+                function_name, line, column
+            ));
+        }
+
+        match &function.type_identifier {
+            None => {
+                table.insert(Symbol::new(&function_name, SymbolKind::Variable, None));
+            }
+            Some(return_type) => {
+                let return_type_name = return_type.name.clone();
+                let line = return_type.token.position.line;
+                let column = return_type.token.position.column;
+
+                if !table.contains(&return_type_name) {
                     return Err(format!(
-                        "Duplicated identifier found: {} at Line {} and at Column {}",
-                        function_name, line, column
+                        "Type not found: {} at Line {} and at Column {}",
+                        return_type_name, line, column
                     ));
                 }
 
-                match &function.type_identifier {
-                    None => {
-                        table.insert(
-                            &function_name,
-                            Symbol::new(&function_name, SymbolKind::Variable, None),
-                        );
-                    }
-                    Some(return_type) => {
-                        let return_type_name = return_type.name.clone();
-                        let line = return_type.token.position.line;
-                        let column = return_type.token.position.column;
-
-                        if !table.contains(&return_type_name) {
-                            return Err(format!(
-                                "Type not found: {} at Line {} and at Column {}",
-                                return_type_name, line, column
-                            ));
-                        }
-
-                        table.insert(
-                            &function_name,
-                            Symbol::new(
-                                &function_name,
-                                SymbolKind::Variable,
-                                Some(&return_type_name),
-                            ),
-                        );
-                    }
-                };
-
-                let type_name = function
-                    .type_identifier
-                    .as_ref()
-                    .map_or("void", |id| &id.name[..]);
-
-                table.insert(
+                table.insert(Symbol::new(
                     &function_name,
-                    Symbol::new(&function_name, SymbolKind::Function, Some(type_name)),
-                );
-
-                self.analyze_function(function, table)?;
+                    SymbolKind::Variable,
+                    Some(&return_type_name),
+                ));
             }
-        }
+        };
+
+        let params: Vec<String> = function
+            .params_declaration
+            .params
+            .iter()
+            .map(|param| param.type_identifier.name.clone())
+            .collect();
+
+        let type_name = function
+            .type_identifier
+            .as_ref()
+            .map_or("void", |id| &id.name[..]);
+
+        table.insert(Symbol::new(
+            &function_name,
+            SymbolKind::Function(params),
+            Some(type_name),
+        ));
+
+        self.analyze_function(function, table)?;
 
         Ok(())
     }
@@ -120,7 +139,7 @@ impl Analyzer {
         let rc = Rc::new(parent_table.clone());
         let mut table = SymbolTable::new(Some(rc));
 
-        for param in &function.params_declaration.0 {
+        for param in &function.params_declaration.params {
             let param_name = param.identifier.name.clone();
             let line = param.identifier.token.position.line;
             let column = param.identifier.token.position.column;
@@ -143,10 +162,11 @@ impl Analyzer {
                 ));
             }
 
-            table.insert(
-                &param_name.clone(),
-                Symbol::new(&param_name, SymbolKind::Parameter, Some(&param_type)),
-            )
+            table.insert(Symbol::new(
+                &param_name,
+                SymbolKind::Parameter,
+                Some(&param_type),
+            ))
         }
 
         for statement in &function.block.statements {
@@ -169,6 +189,7 @@ impl Analyzer {
             Statement::Assignment(assignment) => {
                 self.analyze_assignment_statement(assignment, table)
             }
+            Statement::FunctionCall(call) => self.analyze_function_call(call, table),
             _ => Ok(()),
         }
     }
@@ -216,14 +237,11 @@ impl Analyzer {
                     ));
                 }
 
-                table.insert(
+                table.insert(Symbol::new(
                     &variable_name,
-                    Symbol::new(
-                        &variable_name,
-                        SymbolKind::Variable,
-                        Some(&return_type_name),
-                    ),
-                );
+                    SymbolKind::Variable,
+                    Some(&return_type_name),
+                ));
             }
             Let::WithValue(identifier, return_type, expression) => {
                 let variable_name = identifier.name.clone();
@@ -242,14 +260,11 @@ impl Analyzer {
                     None => {
                         let return_type_name = self.analyze_expression(expression, table)?;
 
-                        table.insert(
+                        table.insert(Symbol::new(
                             &variable_name,
-                            Symbol::new(
-                                &variable_name,
-                                SymbolKind::Variable,
-                                Some(&return_type_name),
-                            ),
-                        );
+                            SymbolKind::Variable,
+                            Some(&return_type_name),
+                        ));
                     }
                     Some(return_type) => {
                         let return_type_name = return_type.name.clone();
@@ -274,14 +289,11 @@ impl Analyzer {
                             ));
                         }
 
-                        table.insert(
+                        table.insert(Symbol::new(
                             &variable_name,
-                            Symbol::new(
-                                &variable_name,
-                                SymbolKind::Variable,
-                                Some(&return_type_name),
-                            ),
-                        );
+                            SymbolKind::Variable,
+                            Some(&return_type_name),
+                        ));
                     }
                 }
             }
@@ -311,14 +323,11 @@ impl Analyzer {
             None => {
                 let return_type_name = self.analyze_expression(&r#const.expression, table)?;
 
-                table.insert(
+                table.insert(Symbol::new(
                     &variable_name,
-                    Symbol::new(
-                        &variable_name,
-                        SymbolKind::Constant,
-                        Some(&return_type_name),
-                    ),
-                );
+                    SymbolKind::Constant,
+                    Some(&return_type_name),
+                ));
             }
             Some(return_type) => {
                 let return_type_name = return_type.name.clone();
@@ -343,14 +352,11 @@ impl Analyzer {
                     ));
                 }
 
-                table.insert(
+                table.insert(Symbol::new(
                     &variable_name,
-                    Symbol::new(
-                        &variable_name,
-                        SymbolKind::Variable,
-                        Some(&return_type_name),
-                    ),
-                );
+                    SymbolKind::Variable,
+                    Some(&return_type_name),
+                ));
             }
         }
 
@@ -438,12 +444,48 @@ impl Analyzer {
                 let line = identifier.token.position.line;
                 let column = identifier.token.position.column;
 
-                match table.get(&identifier_name) {
-                    None => Err(format!(
+                if !table.contains(&identifier_name) {
+                    return Err(format!(
                         "Identifier not found: {} at Line {} and at Column {}",
                         identifier_name, line, column
+                    ));
+                }
+
+                let symbol = table.get(&identifier_name).unwrap();
+
+                match &symbol.kind {
+                    SymbolKind::Constant | SymbolKind::Variable | SymbolKind::Parameter => {
+                        Ok(symbol.symbol_type.as_ref().unwrap().clone())
+                    }
+                    _ => Err(format!(
+                        "Identifier {} is not a constant, a variable or a parameter  at Line {} and Column {}",
+                        identifier_name, line, column
                     )),
-                    Some(symbol) => Ok(symbol.symbol_type.as_ref().unwrap().clone()),
+                }
+            }
+            Expression::FunctionCall(function_call) => {
+                let identifier_name = function_call.identifier.name.clone();
+                let line = function_call.identifier.token.position.line;
+                let column = function_call.identifier.token.position.column;
+
+                if !table.contains(&identifier_name) {
+                    return Err(format!(
+                        "Identifier not found: {} at Line {} and at Column {}",
+                        identifier_name, line, column
+                    ));
+                }
+
+                let symbol = table.get(&identifier_name).unwrap();
+
+                match &symbol.kind {
+                    SymbolKind::Function(_) => {
+                        self.analyze_function_call(function_call, table)?;
+                        Ok(symbol.symbol_type.as_ref().unwrap().clone())
+                    }
+                    _ => Err(format!(
+                        "Identifier {} is not a function at Line {} and Column {}",
+                        identifier_name, line, column
+                    )),
                 }
             }
             Expression::Literal(literal) => match literal {
@@ -532,6 +574,64 @@ impl Analyzer {
                 }
             }
             _ => Err("Error".to_string()),
+        }
+    }
+
+    fn analyze_function_call(
+        &self,
+        function_call: &FunctionCall,
+        table: &SymbolTable,
+    ) -> Result<(), String> {
+        let identifier_name = function_call.identifier.name.clone();
+        let line = function_call.identifier.token.position.line;
+        let column = function_call.identifier.token.position.column;
+
+        if !table.contains(&identifier_name) {
+            return Err(format!(
+                "Identifier not found: {} at Line {} and at Column {}",
+                identifier_name, line, column
+            ));
+        }
+
+        let symbol = table.get(&identifier_name).unwrap();
+
+        match &symbol.kind {
+            SymbolKind::Function(params) => {
+                if params.len() != function_call.params.expressions.len() {
+                    return Err(format!(
+                        "Expected {} parameters but found {} at Line {} and Column {}",
+                        params.len(),
+                        function_call.params.expressions.len(),
+                        line,
+                        column
+                    ));
+                }
+
+                for i in 0..params.len() {
+                    let expected_type_name = params.get(i).unwrap().clone();
+                    let found_type_name = self.analyze_expression(
+                        function_call.params.expressions.get(i).unwrap(),
+                        table,
+                    )?;
+
+                    if expected_type_name != found_type_name {
+                        return Err(format!(
+                            "Expected type '{}' but found type '{}' for parameter {} at Line {} and Column {}",
+                            expected_type_name,
+                            found_type_name,
+                            i + 1,
+                            line,
+                            column
+                        ));
+                    }
+                }
+
+                Ok(())
+            }
+            other => Err(format!(
+                "Function expected, found {} at Line {} and at Column {}",
+                other, line, column
+            )),
         }
     }
 }

@@ -28,11 +28,19 @@ impl TreeDisplay for ParamDeclaration {
     }
 }
 
-pub struct ParamsDeclaration(pub Vec<ParamDeclaration>);
+pub struct ParamsDeclaration {
+    pub params: Vec<ParamDeclaration>,
+}
+
+impl ParamsDeclaration {
+    pub fn new(params: Vec<ParamDeclaration>) -> Self {
+        Self { params }
+    }
+}
 
 impl TreeDisplay for ParamsDeclaration {
     fn display(&self, layer: usize) {
-        for param in &self.0 {
+        for param in &self.params {
             param.display(layer);
         }
     }
