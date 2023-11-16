@@ -1,4 +1,5 @@
 use crate::lang::syntax::lexer::token_kind::TokenKind;
+use crate::lang::syntax::parser::compilation_unit::CompilationUnit;
 use crate::lang::syntax::parser::{
     expressions::{expression::Expression, literal::Literal},
     parser::Parser,
@@ -74,18 +75,22 @@ impl SymbolTable {
 }
 
 pub struct Analyzer {
-    parser: Parser,
+    ast: CompilationUnit,
 }
 
 impl Analyzer {
-    pub fn new(code: &str) -> Self {
-        Self {
-            parser: Parser::new(code),
-        }
+    pub fn from_ast(ast: CompilationUnit) -> Self {
+        Self { ast }
+    }
+
+    pub fn from_code(code: &str) -> Result<Self, String> {
+        let mut parser = Parser::from_code(code);
+        let ast = parser.parse()?;
+
+        Ok(Self { ast })
     }
 
     pub fn analyze(&mut self) -> Result<(), String> {
-        let ast = self.parser.parse()?;
         let mut root_table = SymbolTable::new(None);
 
         root_table.insert("void", Symbol::new("void", SymbolKind::Type, None));
@@ -94,7 +99,7 @@ impl Analyzer {
         root_table.insert("char", Symbol::new("char", SymbolKind::Type, None));
         root_table.insert("string", Symbol::new("string", SymbolKind::Type, None));
 
-        for statement in &ast.statements {
+        for statement in &self.ast.statements {
             self.analyze_top_level_statement(statement, &mut root_table)?;
         }
 
@@ -102,7 +107,7 @@ impl Analyzer {
     }
 
     fn analyze_top_level_statement(
-        &mut self,
+        &self,
         statement: &TopLevelStatement,
         table: &mut SymbolTable,
     ) -> Result<(), String> {
@@ -167,7 +172,7 @@ impl Analyzer {
     }
 
     fn analyze_function(
-        &mut self,
+        &self,
         function: &Function,
         parent_table: &SymbolTable,
     ) -> Result<(), String> {
@@ -175,9 +180,9 @@ impl Analyzer {
         let mut table = SymbolTable::new(Some(rc));
 
         for param in &function.params_declaration.0 {
-            let param_name = param.0.name.clone();
-            let line = param.0.token.position.line;
-            let column = param.0.token.position.column;
+            let param_name = param.identifier.name.clone();
+            let line = param.identifier.token.position.line;
+            let column = param.identifier.token.position.column;
 
             if table.contains(&param_name) {
                 return Err(format!(
@@ -186,9 +191,9 @@ impl Analyzer {
                 ));
             }
 
-            let param_type = param.1.name.clone();
-            let line = param.1.token.position.line;
-            let column = param.1.token.position.column;
+            let param_type = param.type_identifier.name.clone();
+            let line = param.type_identifier.token.position.line;
+            let column = param.type_identifier.token.position.column;
 
             if !table.contains(&param_type) {
                 return Err(format!(
@@ -207,13 +212,11 @@ impl Analyzer {
             self.analyze_statement(function, statement, &mut table)?;
         }
 
-        table.display();
-
         Ok(())
     }
 
     fn analyze_statement(
-        &mut self,
+        &self,
         function: &Function,
         statement: &Statement,
         table: &mut SymbolTable,
@@ -230,7 +233,7 @@ impl Analyzer {
     }
 
     fn analyze_block(
-        &mut self,
+        &self,
         function: &Function,
         block: &Block,
         parent_table: &SymbolTable,
@@ -245,11 +248,7 @@ impl Analyzer {
         Ok(())
     }
 
-    fn analyze_let_statement(
-        &mut self,
-        r#let: &Let,
-        table: &mut SymbolTable,
-    ) -> Result<(), String> {
+    fn analyze_let_statement(&self, r#let: &Let, table: &mut SymbolTable) -> Result<(), String> {
         match r#let {
             Let::WithoutValue(identifier, return_type) => {
                 let variable_name = identifier.name.clone();
@@ -285,7 +284,7 @@ impl Analyzer {
                     ),
                 );
             }
-            Let::WithValue(identifier, return_type, _, expression) => {
+            Let::WithValue(identifier, return_type, expression) => {
                 let variable_name = identifier.name.clone();
 
                 let line = identifier.token.position.line;
@@ -351,7 +350,7 @@ impl Analyzer {
     }
 
     fn analyze_const_statement(
-        &mut self,
+        &self,
         r#const: &Const,
         table: &mut SymbolTable,
     ) -> Result<(), String> {
@@ -418,7 +417,7 @@ impl Analyzer {
     }
 
     fn analyze_assignment_statement(
-        &mut self,
+        &self,
         assignment: &Assignment,
         table: &SymbolTable,
     ) -> Result<(), String> {
@@ -488,7 +487,7 @@ impl Analyzer {
     }
 
     fn analyze_expression(
-        &mut self,
+        &self,
         expression: &Expression,
         table: &SymbolTable,
     ) -> Result<String, String> {

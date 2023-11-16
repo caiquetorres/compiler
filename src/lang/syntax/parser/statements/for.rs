@@ -1,17 +1,34 @@
+use super::statement::Statement;
 use crate::lang::syntax::{
     parser::{expressions::expression::Expression, shared::identifier::Identifier},
     tree_display::TreeDisplay,
 };
 
-use super::statement::Statement;
+pub struct For {
+    pub identifier: Identifier,
+    pub expression: Expression,
+    pub statement: Box<Statement>,
+}
 
-pub struct For(pub Identifier, pub Expression, pub Box<Statement>);
+impl For {
+    pub fn new(identifier: Identifier, expression: Expression, statement: Box<Statement>) -> Self {
+        Self {
+            identifier,
+            expression,
+            statement,
+        }
+    }
+}
 
 impl TreeDisplay for For {
     fn display(&self, layer: usize) {
-        println!("{}ForStatement ({})", " ".repeat(layer), self.0.name);
+        println!(
+            "{}ForStatement ({})",
+            " ".repeat(layer),
+            self.identifier.name
+        );
 
-        self.1.display(layer + 2);
-        self.2.display(layer + 2);
+        self.expression.display(layer + 2);
+        self.statement.display(layer + 2);
     }
 }

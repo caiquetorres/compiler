@@ -1,14 +1,9 @@
 mod cli;
 mod lang;
 
-use std::fs;
-use std::io::{self, Write};
-
 use cli::command_line_parser::CommandLineParser;
 use cli::parsed_options::ParsedOptions;
-use lang::sematic::analyzer::Analyzer;
-use lang::syntax::parser::parser::Parser;
-use lang::syntax::tree_display::TreeDisplay;
+use lang::compiler::Compiler;
 
 fn main() {
     let mut parser = CommandLineParser::new();
@@ -24,9 +19,7 @@ fn main() {
         println!("Verbose mode enabled.");
     }
 
-    if options.has("--repl") {
-        repl();
-    } else if options.has("--compile") {
+    if options.has("--compile") {
         let res = compile(&options);
 
         match res {
@@ -36,33 +29,11 @@ fn main() {
     }
 }
 
-fn repl() {
-    loop {
-        let mut input = String::new();
-
-        print!("> ");
-
-        io::stdout().flush().unwrap();
-        io::stdin().read_line(&mut input).unwrap();
-
-        let text = input.trim();
-
-        let mut parser = Parser::new(text);
-        match parser.parse() {
-            Ok(tree) => tree.display(0),
-            Err(err) => eprintln!("{}", err),
-        };
-    }
-}
-
 fn compile(options: &ParsedOptions) -> Result<(), String> {
-    let path = options.get("--compile").unwrap();
-    let result = fs::read_to_string(path);
+    let file_path = options.get("--compile").unwrap();
 
-    if let Ok(text) = result {
-        let mut analyzer = Analyzer::new(&text);
-        analyzer.analyze()?;
-    }
+    let compiler = Compiler::from_file(file_path).unwrap();
+    compiler.compile()?;
 
     Ok(())
 }

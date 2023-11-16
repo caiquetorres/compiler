@@ -12,8 +12,9 @@ impl Block {
 
 impl TreeDisplay for Block {
     fn display(&self, layer: usize) {
+        println!("{}BlockStatement", " ".repeat(layer));
         for statement in &self.statements {
-            statement.display(layer);
+            statement.display(layer + 2);
         }
     }
 }

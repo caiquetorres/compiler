@@ -3,17 +3,27 @@ use crate::lang::syntax::{
     tree_display::TreeDisplay,
 };
 
-pub struct ParamDeclaration(pub Identifier, pub Identifier);
+pub struct ParamDeclaration {
+    pub identifier: Identifier,
+    pub type_identifier: Identifier,
+}
+
+impl ParamDeclaration {
+    pub fn new(identifier: Identifier, type_identifier: Identifier) -> Self {
+        Self {
+            identifier,
+            type_identifier,
+        }
+    }
+}
 
 impl TreeDisplay for ParamDeclaration {
     fn display(&self, layer: usize) {
-        let id = self.0.name.clone();
-        let type_id = self.1.name.clone();
         println!(
             "{}ParamDeclaration ({}) ({})",
             " ".repeat(layer),
-            id,
-            type_id
+            self.identifier.name,
+            self.type_identifier.name,
         );
     }
 }

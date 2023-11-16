@@ -4,9 +4,9 @@ use crate::lang::syntax::{lexer::token::Token, tree_display::TreeDisplay};
 pub struct UnaryOperator(pub Token);
 
 impl TreeDisplay for UnaryOperator {
-    fn display(&self, _: usize) {
+    fn display(&self, layer: usize) {
         let value = self.0.value.clone();
-        println!("UnaryOperator ({})", value);
+        println!("{}UnaryOperator ({})", " ".repeat(layer), value);
     }
 }
 

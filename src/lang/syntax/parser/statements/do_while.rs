@@ -2,12 +2,24 @@ use crate::lang::syntax::{parser::expressions::expression::Expression, tree_disp
 
 use super::statement::Statement;
 
-pub struct DoWhile(pub Box<Statement>, pub Expression);
+pub struct DoWhile {
+    pub statement: Box<Statement>,
+    pub expression: Expression,
+}
+
+impl DoWhile {
+    pub fn new(statement: Statement, expression: Expression) -> Self {
+        Self {
+            statement: Box::new(statement),
+            expression,
+        }
+    }
+}
 
 impl TreeDisplay for DoWhile {
     fn display(&self, layer: usize) {
         println!("{}DoWhileStatement", " ".repeat(layer));
-        self.0.display(layer + 2);
-        self.1.display(layer + 2);
+        self.statement.display(layer + 2);
+        self.expression.display(layer + 2);
     }
 }

@@ -9,12 +9,12 @@ pub struct Lexer {
 impl Lexer {
     pub fn new(text: &str) -> Self {
         Self {
-            current_position: Position::new(0, 0, 1),
+            current_position: Position::new(0, 0, 0),
             text: text.to_string(),
         }
     }
 
-    fn current_char(&self) -> char {
+    fn get_current_char(&self) -> char {
         self.text
             .chars()
             .nth(self.current_position.position)
@@ -22,7 +22,7 @@ impl Lexer {
     }
 
     fn next_char(&mut self) -> char {
-        let current_char = self.current_char();
+        let current_char = self.get_current_char();
         self.current_position.position += 1;
 
         if current_char == '\n' {
@@ -35,34 +35,50 @@ impl Lexer {
         current_char
     }
 
+    pub fn lex(&mut self) -> Vec<Token> {
+        let mut tokens: Vec<Token> = vec![];
+
+        let mut token = self.next();
+
+        while token.kind != TokenKind::EndOfFile {
+            if token.kind != TokenKind::WhiteSpace {
+                tokens.push(token);
+            }
+            token = self.next();
+        }
+        tokens.push(token);
+
+        tokens
+    }
+
     pub fn next(&mut self) -> Token {
-        if self.current_char() == '\0' {
+        if self.get_current_char() == '\0' {
             return Token::new(TokenKind::EndOfFile, self.current_position, "\0");
         }
 
-        if self.current_char().is_digit(10) {
+        if self.get_current_char().is_digit(10) {
             return self.read_digit();
         }
 
-        if self.current_char().is_alphabetic() || self.current_char() == '_' {
+        if self.get_current_char().is_alphabetic() || self.get_current_char() == '_' {
             return self.read_keyword_or_identifier();
         }
 
-        if self.current_char() == '\'' {
+        if self.get_current_char() == '\'' {
             return self.read_char();
         }
 
-        if self.current_char() == '"' {
+        if self.get_current_char() == '"' {
             return self.read_str();
         }
 
-        if self.current_char().is_whitespace() {
+        if self.get_current_char().is_whitespace() {
             return self.read_whitespace();
         }
 
         let position = self.current_position;
 
-        match self.current_char() {
+        match self.get_current_char() {
             ';' => {
                 self.next_char();
                 Token::new(TokenKind::Semicolon, position, ";")
@@ -101,10 +117,10 @@ impl Lexer {
             }
             '.' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '.' => {
                         self.next_char();
-                        match self.current_char() {
+                        match self.get_current_char() {
                             '=' => {
                                 self.next_char();
                                 Token::new(TokenKind::DotDotEquals, position, "..=")
@@ -117,7 +133,7 @@ impl Lexer {
             }
             '<' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::LessThanEquals, position, "<=")
@@ -131,7 +147,7 @@ impl Lexer {
             }
             '>' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::GreaterThanEquals, position, ">=")
@@ -145,7 +161,7 @@ impl Lexer {
             }
             '=' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::EqualsEquals, position, "==")
@@ -155,7 +171,7 @@ impl Lexer {
             }
             '!' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::ExclamationEquals, position, "!=")
@@ -165,7 +181,7 @@ impl Lexer {
             }
             '&' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::AmpersandEquals, position, "&=")
@@ -179,7 +195,7 @@ impl Lexer {
             }
             '|' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::PipeEquals, position, "|=")
@@ -193,7 +209,7 @@ impl Lexer {
             }
             '~' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::TildeEquals, position, "~=")
@@ -203,7 +219,7 @@ impl Lexer {
             }
             '^' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::CircumflexEquals, position, "^=")
@@ -213,35 +229,27 @@ impl Lexer {
             }
             '+' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::PlusEquals, position, "+=")
-                    }
-                    '+' => {
-                        self.next_char();
-                        Token::new(TokenKind::PlusPlus, position, "++")
                     }
                     _ => Token::new(TokenKind::Plus, position, "+"),
                 }
             }
             '-' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::MinusEquals, position, "-=")
-                    }
-                    '-' => {
-                        self.next_char();
-                        Token::new(TokenKind::MinusMinus, position, "-")
                     }
                     _ => Token::new(TokenKind::Minus, position, "-"),
                 }
             }
             '*' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::StarEquals, position, "*=")
@@ -251,7 +259,7 @@ impl Lexer {
             }
             '/' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::SlashEquals, position, "/=")
@@ -271,7 +279,7 @@ impl Lexer {
             }
             '%' => {
                 self.next_char();
-                match self.current_char() {
+                match self.get_current_char() {
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::ModEquals, position, "%=")
@@ -289,13 +297,13 @@ impl Lexer {
         let mut end = self.current_position.position;
         let number: &str;
 
-        while self.current_char().is_digit(10) {
+        while self.get_current_char().is_digit(10) {
             end += 1;
             self.next_char();
         }
 
         // decimal value
-        if self.current_char() != '.' {
+        if self.get_current_char() != '.' {
             number = &self.text[start..end];
             return Token::new(TokenKind::Number, position, number);
         }
@@ -310,11 +318,11 @@ impl Lexer {
         end += 1;
         self.next_char();
 
-        if !self.current_char().is_digit(10) {
+        if !self.get_current_char().is_digit(10) {
             return Token::new(TokenKind::Bad, self.current_position, "");
         }
 
-        while self.current_char().is_digit(10) {
+        while self.get_current_char().is_digit(10) {
             end += 1;
             self.next_char();
         }
@@ -333,21 +341,21 @@ impl Lexer {
         start += 1;
         self.next_char();
 
-        if self.current_char() == '\\' {
+        if self.get_current_char() == '\\' {
             end += 1;
 
             // consumes the "\"
             self.next_char();
         }
 
-        if self.current_char().is_alphanumeric() {
+        if self.get_current_char().is_alphanumeric() {
             end += 1;
 
             // consumes the char
             self.next_char();
         }
 
-        if self.current_char() == '\'' {
+        if self.get_current_char() == '\'' {
             // consumes the "'"
             self.next_char();
 
@@ -368,12 +376,12 @@ impl Lexer {
         start += 1;
         self.next_char();
 
-        while self.current_char() != '"' && self.current_char() != '\0' {
+        while self.get_current_char() != '"' && self.get_current_char() != '\0' {
             end += 1;
             self.next_char();
         }
 
-        if self.current_char() != '"' {
+        if self.get_current_char() != '"' {
             return Token::new(TokenKind::Bad, self.current_position, "");
         }
 
@@ -385,7 +393,7 @@ impl Lexer {
     }
 
     fn read_single_line_comment(&mut self) {
-        while self.current_char() != '\n' {
+        while self.get_current_char() != '\n' {
             self.next_char();
         }
         self.next_char();
@@ -412,7 +420,7 @@ impl Lexer {
         let start = self.current_position.position;
         let mut end = self.current_position.position;
 
-        while self.current_char().is_alphanumeric() || self.current_char() == '_' {
+        while self.get_current_char().is_alphanumeric() || self.get_current_char() == '_' {
             self.next_char();
             end += 1;
         }
@@ -439,7 +447,7 @@ impl Lexer {
     fn read_whitespace(&mut self) -> Token {
         let position = self.current_position;
 
-        while self.current_char().is_whitespace() && self.current_char() != '\0' {
+        while self.get_current_char().is_whitespace() && self.get_current_char() != '\0' {
             self.next_char();
         }
 
@@ -457,7 +465,9 @@ mod tests {
     #[test]
     fn test_comment() {
         let code = "/* Comment */
-        fun main() { }
+        fun main() {
+
+        }
         ";
         let mut lexer = Lexer::new(code);
 
@@ -466,8 +476,8 @@ mod tests {
 
         let code = "
         fun main() {
-            //test
-         }
+            // test
+        }
         ";
         let mut lexer = Lexer::new(code);
 
@@ -530,7 +540,7 @@ mod tests {
 
     #[test]
     fn test_plus_token() {
-        let code = "+ ++ +=";
+        let code = "+ +=";
         let mut token: Token;
         let mut lexer = Lexer::new(code);
 
@@ -541,29 +551,17 @@ mod tests {
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, TokenKind::PlusPlus);
-
-        // white space
-        lexer.next();
-
-        token = lexer.next();
         assert_eq!(token.kind, TokenKind::PlusEquals);
     }
 
     #[test]
     fn test_minus_token() {
-        let code = "- -- -=";
+        let code = "- -=";
         let mut token: Token;
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
         assert_eq!(token.kind, TokenKind::Minus);
-
-        // white space
-        lexer.next();
-
-        token = lexer.next();
-        assert_eq!(token.kind, TokenKind::MinusMinus);
 
         // white space
         lexer.next();

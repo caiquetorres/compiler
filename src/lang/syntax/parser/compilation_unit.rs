@@ -10,13 +10,11 @@ impl CompilationUnit {
     pub fn new(statements: Vec<TopLevelStatement>) -> Self {
         Self { statements }
     }
-}
 
-impl TreeDisplay for CompilationUnit {
-    fn display(&self, layer: usize) {
+    pub fn display(&self) {
         let statements = &self.statements;
         for statement in statements {
-            statement.display(layer);
+            statement.display(0);
         }
     }
 }

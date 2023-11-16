@@ -10,15 +10,29 @@ impl TreeDisplay for Else {
     }
 }
 
-pub struct If(pub Expression, pub Box<Statement>, pub Option<Else>);
+pub struct If {
+    pub expression: Expression,
+    pub statement: Box<Statement>,
+    pub r#else: Option<Else>,
+}
+
+impl If {
+    pub fn new(expression: Expression, statement: Statement, r#else: Option<Else>) -> Self {
+        Self {
+            expression,
+            statement: Box::new(statement),
+            r#else,
+        }
+    }
+}
 
 impl TreeDisplay for If {
     fn display(&self, layer: usize) {
         println!("{}IfStatement", " ".repeat(layer));
-        self.0.display(layer + 2);
-        self.1.display(layer + 2);
+        self.statement.display(layer + 2);
+        self.expression.display(layer + 2);
 
-        if let Some(r#else) = &self.2 {
+        if let Some(r#else) = &self.r#else {
             println!("{}ElseStatement", " ".repeat(layer));
             r#else.0.display(layer + 2)
         }

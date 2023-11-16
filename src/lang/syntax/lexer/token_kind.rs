@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum TokenKind {
     Identifier,
     Number,
@@ -12,10 +12,8 @@ pub enum TokenKind {
     OpenBrackets,
     CloseBrackets,
     Plus,
-    PlusPlus,
     PlusEquals,
     Minus,
-    MinusMinus,
     MinusEquals,
     Slash,
     SlashEquals,
