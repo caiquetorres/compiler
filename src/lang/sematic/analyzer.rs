@@ -1,78 +1,18 @@
+use super::symbol::{Symbol, SymbolKind};
+use super::symbol_table::SymbolTable;
 use crate::lang::syntax::lexer::token_kind::TokenKind;
 use crate::lang::syntax::parser::compilation_unit::CompilationUnit;
-use crate::lang::syntax::parser::{
-    expressions::{expression::Expression, literal::Literal},
-    parser::Parser,
-    shared::block::Block,
-    statements::{
-        assignment::Assignment, r#const::Const, r#let::Let, r#return::Return, statement::Statement,
-    },
-    top_level_statements::{function::Function, top_level_statement::TopLevelStatement},
-};
-use std::collections::HashMap;
+use crate::lang::syntax::parser::expressions::{expression::Expression, literal::Literal};
+use crate::lang::syntax::parser::parser::Parser;
+use crate::lang::syntax::parser::shared::block::Block;
+use crate::lang::syntax::parser::statements::assignment::Assignment;
+use crate::lang::syntax::parser::statements::r#const::Const;
+use crate::lang::syntax::parser::statements::r#let::Let;
+use crate::lang::syntax::parser::statements::r#return::Return;
+use crate::lang::syntax::parser::statements::statement::Statement;
+use crate::lang::syntax::parser::top_level_statements::function::Function;
+use crate::lang::syntax::parser::top_level_statements::top_level_statement::TopLevelStatement;
 use std::rc::Rc;
-
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
-enum SymbolKind {
-    Variable,
-    Constant,
-    Type,
-    Parameter,
-    Function,
-}
-
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
-struct Symbol {
-    name: String,
-    kind: SymbolKind,
-    symbol_type: Option<String>,
-}
-
-impl Symbol {
-    fn new(name: &str, kind: SymbolKind, symbol_type: Option<&str>) -> Self {
-        Self {
-            name: String::from(name),
-            kind,
-            symbol_type: symbol_type.map(|s| String::from(s)),
-        }
-    }
-}
-
-#[derive(Clone)]
-struct SymbolTable {
-    parent: Option<Rc<SymbolTable>>,
-    symbols: HashMap<String, Symbol>,
-}
-
-impl SymbolTable {
-    pub fn new(parent: Option<Rc<SymbolTable>>) -> Self {
-        Self {
-            parent,
-            symbols: HashMap::new(),
-        }
-    }
-
-    pub fn insert(&mut self, id: &str, symbol: Symbol) {
-        self.symbols.insert(String::from(id), symbol);
-    }
-
-    pub fn get(&self, id: &str) -> Option<&Symbol> {
-        self.symbols
-            .get(id)
-            .or_else(|| self.parent.as_ref().and_then(|p| p.get(id)))
-    }
-
-    pub fn contains(&self, id: &str) -> bool {
-        self.symbols.contains_key(id) || self.parent.as_ref().map_or(false, |p| p.contains(id))
-    }
-
-    pub fn display(&self) {
-        for el in &self.symbols {
-            println!("{:?}", el);
-        }
-        println!("");
-    }
-}
 
 pub struct Analyzer {
     ast: CompilationUnit,
