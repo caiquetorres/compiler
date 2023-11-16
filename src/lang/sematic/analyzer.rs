@@ -6,8 +6,12 @@ use crate::lang::syntax::parser::expressions::{expression::Expression, literal::
 use crate::lang::syntax::parser::shared::block::Block;
 use crate::lang::syntax::parser::shared::function_call::FunctionCall;
 use crate::lang::syntax::parser::statements::assignment::Assignment;
+use crate::lang::syntax::parser::statements::do_while::DoWhile;
 use crate::lang::syntax::parser::statements::r#const::Const;
+use crate::lang::syntax::parser::statements::r#for::For;
+use crate::lang::syntax::parser::statements::r#if::If;
 use crate::lang::syntax::parser::statements::r#let::Let;
+use crate::lang::syntax::parser::statements::r#while::While;
 use crate::lang::syntax::parser::statements::statement::Statement;
 use crate::lang::syntax::parser::top_level_statements::function::Function;
 use crate::lang::syntax::parser::top_level_statements::top_level_statement::TopLevelStatement;
@@ -170,7 +174,7 @@ impl Analyzer {
         }
 
         for statement in &function.block.statements {
-            self.analyze_statement(function, statement, &mut table)?;
+            self.analyze_statement(statement, &mut table)?;
         }
 
         Ok(())
@@ -178,33 +182,32 @@ impl Analyzer {
 
     fn analyze_statement(
         &self,
-        function: &Function,
+
         statement: &Statement,
         table: &mut SymbolTable,
     ) -> Result<(), String> {
         match statement {
-            Statement::Block(block) => self.analyze_block(function, block, table),
+            Statement::Block(block) => self.analyze_block(block, table),
             Statement::Let(r#let) => self.analyze_let_statement(r#let, table),
             Statement::Const(r#const) => self.analyze_const_statement(r#const, table),
             Statement::Assignment(assignment) => {
                 self.analyze_assignment_statement(assignment, table)
             }
             Statement::FunctionCall(call) => self.analyze_function_call(call, table),
+            Statement::While(r#while) => self.analyze_while_statement(r#while, table),
+            Statement::DoWhile(do_while) => self.analyze_do_while_statement(do_while, table),
+            Statement::For(r#for) => self.analyze_for_statement(r#for, table),
+            Statement::If(r#if) => self.analyze_if_statement(r#if, table),
             _ => Ok(()),
         }
     }
 
-    fn analyze_block(
-        &self,
-        function: &Function,
-        block: &Block,
-        parent_table: &SymbolTable,
-    ) -> Result<(), String> {
+    fn analyze_block(&self, block: &Block, parent_table: &SymbolTable) -> Result<(), String> {
         let rc = Rc::new(parent_table.clone());
         let mut local_table = SymbolTable::new(Some(rc));
 
         for statement in &block.statements {
-            self.analyze_statement(function, statement, &mut local_table)?;
+            self.analyze_statement(statement, &mut local_table)?;
         }
 
         Ok(())
@@ -439,6 +442,23 @@ impl Analyzer {
         table: &SymbolTable,
     ) -> Result<String, String> {
         match expression {
+            Expression::Range(range) => {
+                let left_return_type = self.analyze_expression(&range.left, table)?;
+                let right_return_type = self.analyze_expression(&range.right, table)?;
+
+                match range.operator.0.kind {
+                    TokenKind::DotDot | TokenKind::DotDotEquals => {
+                        if left_return_type != "i32" || right_return_type != "i32" {
+                            return Err(format!(
+                                "Expected 'i32' for both operands, found '{}' and '{}'",
+                                left_return_type, right_return_type
+                            ));
+                        }
+                        Ok("range".to_string())
+                    }
+                    _ => unreachable!(),
+                }
+            }
             Expression::Identifier(identifier) => {
                 let identifier_name = identifier.name.clone();
                 let line = identifier.token.position.line;
@@ -573,7 +593,6 @@ impl Analyzer {
                     _ => Err(format!("Mismatch types")),
                 }
             }
-            _ => Err("Error".to_string()),
         }
     }
 
@@ -632,6 +651,99 @@ impl Analyzer {
                 "Function expected, found {} at Line {} and at Column {}",
                 other, line, column
             )),
+        }
+    }
+
+    fn analyze_while_statement(
+        &self,
+
+        r#while: &While,
+        table: &mut SymbolTable,
+    ) -> Result<(), String> {
+        let expression_return_type = self.analyze_expression(&r#while.expression, table)?;
+
+        if expression_return_type != "bool" {
+            return Err(format!(
+                "Expected 'bool' in while condition, found '{}'",
+                expression_return_type
+            ));
+        }
+
+        self.analyze_statement(&r#while.statement, table)?;
+
+        Ok(())
+    }
+
+    fn analyze_do_while_statement(
+        &self,
+        do_while: &DoWhile,
+        table: &mut SymbolTable,
+    ) -> Result<(), String> {
+        self.analyze_statement(&do_while.statement, table)?;
+
+        let expression_return_type = self.analyze_expression(&do_while.expression, table)?;
+
+        if expression_return_type != "bool" {
+            return Err(format!(
+                "Expected 'bool' in do while condition, found '{}'",
+                expression_return_type
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn analyze_if_statement(&self, r#if: &If, table: &SymbolTable) -> Result<(), String> {
+        let rc = Rc::new(table.clone());
+        let mut local_table = SymbolTable::new(Some(rc));
+
+        let expression_return_type = self.analyze_expression(&r#if.expression, table)?;
+
+        if expression_return_type != "bool" {
+            return Err(format!(
+                "Expected 'bool' in if condition, found '{}'",
+                expression_return_type
+            ));
+        }
+
+        match &r#if.r#else {
+            Some(r#else) => {
+                self.analyze_statement(&r#else.0, &mut local_table)?;
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn analyze_for_statement(&self, r#for: &For, table: &SymbolTable) -> Result<(), String> {
+        let rc = Rc::new(table.clone());
+        let mut local_table = SymbolTable::new(Some(rc));
+
+        let identifier_name = r#for.identifier.name.clone();
+        let line = r#for.identifier.token.position.line;
+        let column = r#for.identifier.token.position.column;
+
+        if local_table.contains(&identifier_name) {
+            return Err(format!(
+                "Duplicated identifier found: {} at Line {} and at Column {}",
+                identifier_name, line, column
+            ));
+        }
+
+        local_table.insert(Symbol::new(
+            &identifier_name,
+            SymbolKind::Constant,
+            Some("i32"),
+        ));
+
+        match &r#for.expression {
+            Expression::Range(_) => {
+                self.analyze_expression(&r#for.expression, &local_table)?;
+                self.analyze_statement(&r#for.statement, &mut local_table)?;
+
+                Ok(())
+            }
+            expression => Err(format!("Expected range expression found {}", expression)),
         }
     }
 }

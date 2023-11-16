@@ -9,12 +9,12 @@ fun main() {
     let counter = 0;
 
     while counter < 5 {
-        print("While loop counter: {}", counter);
+        print("While loop counter");
         counter += 1;
     }
 
     for i in 0..5 {
-        print("For loop counter: {}", i);
+        print("For loop counter");
     }
 
     // Comment

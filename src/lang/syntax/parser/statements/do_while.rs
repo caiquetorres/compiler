@@ -1,6 +1,6 @@
-use crate::lang::syntax::{parser::expressions::expression::Expression, tree_display::TreeDisplay};
-
 use super::statement::Statement;
+
+use crate::lang::syntax::{parser::expressions::expression::Expression, tree_display::TreeDisplay};
 
 pub struct DoWhile {
     pub statement: Box<Statement>,

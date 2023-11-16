@@ -1,7 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
-pub enum SymbolKind {
+pub(super) enum SymbolKind {
     Variable,
     Constant,
     Type,
@@ -22,7 +22,7 @@ impl Display for SymbolKind {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
-pub struct Symbol {
+pub(super) struct Symbol {
     pub name: String,
     pub kind: SymbolKind,
     pub symbol_type: Option<String>,

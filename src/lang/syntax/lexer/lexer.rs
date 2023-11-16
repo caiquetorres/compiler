@@ -9,16 +9,19 @@ pub struct Lexer {
 impl Lexer {
     pub fn new(text: &str) -> Self {
         Self {
-            current_position: Position::new(0, 0, 0),
+            current_position: Position::new(0, 1, 1),
             text: text.to_string(),
         }
     }
 
     fn get_current_char(&self) -> char {
-        self.text
+        let current_char = self
+            .text
             .chars()
             .nth(self.current_position.position)
-            .unwrap_or('\0')
+            .unwrap_or('\0');
+
+        current_char
     }
 
     fn next_char(&mut self) -> char {
@@ -26,7 +29,7 @@ impl Lexer {
         self.current_position.position += 1;
 
         if current_char == '\n' {
-            self.current_position.column = 0;
+            self.current_position.column = 1;
             self.current_position.line += 1;
         } else {
             self.current_position.column += 1;
@@ -287,7 +290,10 @@ impl Lexer {
                     _ => Token::new(TokenKind::Mod, position, "%"),
                 }
             }
-            _ => Token::new(TokenKind::Bad, position, ""),
+            _ => {
+                self.next_char();
+                Token::new(TokenKind::Bad, position, "")
+            }
         }
     }
 

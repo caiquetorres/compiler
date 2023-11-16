@@ -62,20 +62,21 @@ impl Parser {
     }
 
     fn use_token(&mut self, kinds: &[TokenKind]) -> Result<Token, String> {
+        let position = self.get_current_token().position;
         let token = self.next_token();
 
         if kinds.len() == 1 {
             if token.kind != kinds[0] {
                 return Err(format!(
                     "Expected a token of type '{}' at Line {} and Column {}",
-                    kinds[0], token.position.line, token.position.column
+                    kinds[0], position.line, position.column
                 ));
             }
         } else {
             if !kinds.iter().any(|&kind| token.kind == kind) {
                 return Err(format!(
                     "Expected a token of types '{:?}' at Line {} and Column {}",
-                    kinds, token.position.line, token.position.column
+                    kinds, position.line, position.column
                 ));
             }
         }
@@ -321,7 +322,7 @@ impl Parser {
         let expression = self.parse_expression(0)?;
         let statement = self.parse_statement()?;
 
-        Ok(Statement::While(While(expression, Box::new(statement))))
+        Ok(Statement::While(While::new(expression, statement)))
     }
 
     /// Parses a 'while' loop statement in the format: `while condition { statement }`.
@@ -485,6 +486,7 @@ impl Parser {
     /// - `Err(String)`: Error message if parsing fails.
     fn parse_variable_declaration_statement(&mut self) -> Result<Statement, String> {
         self.use_token(&[TokenKind::Let])?;
+
         let identifier_token = self.use_token(&[TokenKind::Identifier])?;
 
         let current_token = self.get_current_token();
@@ -545,6 +547,7 @@ impl Parser {
     /// - `Err(String)`: Error message if parsing fails.
     fn parse_constant_declaration_statement(&mut self) -> Result<Statement, String> {
         self.use_token(&[TokenKind::Const])?;
+
         let identifier_token = self.use_token(&[TokenKind::Identifier])?;
 
         let current_token = self.get_current_token();
@@ -592,8 +595,9 @@ impl Parser {
     /// - `Ok(Expression)`: Parsed expression.
     /// - `Err(String)`: Error message if parsing fails.
     fn parse_expression(&mut self, parent_precedence: u32) -> Result<Expression, String> {
-        let mut left_expression: Expression;
         let current_token = self.get_current_token();
+
+        let mut left_expression: Expression;
 
         // Checks whether the current operator is unary or not.
         if is_unary_operator(current_token.kind) {

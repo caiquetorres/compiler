@@ -2,7 +2,7 @@ use super::symbol::Symbol;
 use std::{collections::HashMap, rc::Rc};
 
 #[derive(Clone)]
-pub struct SymbolTable {
+pub(super) struct SymbolTable {
     pub parent: Option<Rc<SymbolTable>>,
     pub symbols: HashMap<String, Symbol>,
 }

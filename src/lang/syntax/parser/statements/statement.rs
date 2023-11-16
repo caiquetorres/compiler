@@ -1,7 +1,3 @@
-use crate::lang::syntax::parser::shared::block::Block;
-use crate::lang::syntax::parser::shared::function_call::FunctionCall;
-use crate::lang::syntax::tree_display::TreeDisplay;
-
 use super::assignment::Assignment;
 use super::do_while::DoWhile;
 use super::r#const::Const;
@@ -10,6 +6,10 @@ use super::r#if::If;
 use super::r#let::Let;
 use super::r#return::Return;
 use super::r#while::While;
+
+use crate::lang::syntax::parser::shared::block::Block;
+use crate::lang::syntax::parser::shared::function_call::FunctionCall;
+use crate::lang::syntax::tree_display::TreeDisplay;
 
 pub enum Statement {
     Let(Let),

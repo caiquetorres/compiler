@@ -3,8 +3,8 @@ use super::token_kind::TokenKind;
 #[derive(Clone, Copy, Debug)]
 pub struct Position {
     pub position: usize,
-    pub column: usize,
     pub line: usize,
+    pub column: usize,
 }
 
 impl Position {
