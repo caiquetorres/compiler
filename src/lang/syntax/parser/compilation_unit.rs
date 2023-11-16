@@ -11,6 +11,7 @@ impl CompilationUnit {
         Self { statements }
     }
 
+    #[allow(dead_code)]
     pub fn display(&self) {
         let statements = &self.statements;
         for statement in statements {

@@ -30,6 +30,7 @@ impl SymbolTable {
         self.symbols.contains_key(id) || self.parent.as_ref().map_or(false, |p| p.contains(id))
     }
 
+    #[allow(dead_code)]
     pub fn display(&self) {
         for el in &self.symbols {
             println!("{:?}", el);

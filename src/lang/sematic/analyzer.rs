@@ -3,12 +3,10 @@ use super::symbol_table::SymbolTable;
 use crate::lang::syntax::lexer::token_kind::TokenKind;
 use crate::lang::syntax::parser::compilation_unit::CompilationUnit;
 use crate::lang::syntax::parser::expressions::{expression::Expression, literal::Literal};
-use crate::lang::syntax::parser::parser::Parser;
 use crate::lang::syntax::parser::shared::block::Block;
 use crate::lang::syntax::parser::statements::assignment::Assignment;
 use crate::lang::syntax::parser::statements::r#const::Const;
 use crate::lang::syntax::parser::statements::r#let::Let;
-use crate::lang::syntax::parser::statements::r#return::Return;
 use crate::lang::syntax::parser::statements::statement::Statement;
 use crate::lang::syntax::parser::top_level_statements::function::Function;
 use crate::lang::syntax::parser::top_level_statements::top_level_statement::TopLevelStatement;
@@ -23,7 +21,10 @@ impl Analyzer {
         Self { ast }
     }
 
+    #[cfg(test)]
     pub fn from_code(code: &str) -> Result<Self, String> {
+        use crate::lang::syntax::parser::parser::Parser;
+
         let mut parser = Parser::from_code(code);
         let ast = parser.parse()?;
 
@@ -533,13 +534,23 @@ impl Analyzer {
             _ => Err("Error".to_string()),
         }
     }
+}
 
-    fn analyze_return_statement(
-        &mut self,
-        function: &Function,
-        r#return: &Return,
-        table: &SymbolTable,
-    ) -> Result<(), String> {
-        Ok(())
+#[cfg(test)]
+mod tests {
+    use super::Analyzer;
+
+    #[test]
+    fn test_expression() {
+        let code = "
+            fun main() {
+                let x = 2;
+            }
+        ";
+
+        let mut analyzer = Analyzer::from_code(code).unwrap();
+        let result = analyzer.analyze();
+
+        assert!(result.is_ok());
     }
 }

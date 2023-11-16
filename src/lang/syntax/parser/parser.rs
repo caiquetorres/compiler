@@ -20,7 +20,6 @@ use super::statements::r#while::While;
 use super::statements::statement::Statement;
 use super::top_level_statements::function::{Function, ParamDeclaration, ParamsDeclaration};
 use super::top_level_statements::top_level_statement::TopLevelStatement;
-use crate::lang::syntax::lexer::lexer::Lexer;
 use crate::lang::syntax::lexer::token::Token;
 use crate::lang::syntax::lexer::token_kind::TokenKind;
 use std::collections::{HashSet, VecDeque};
@@ -36,7 +35,10 @@ impl Parser {
         Self { tokens }
     }
 
+    #[cfg(test)]
     pub fn from_code(code: &str) -> Self {
+        use crate::lang::syntax::lexer::lexer::Lexer;
+
         let mut lexer = Lexer::new(code);
         let mut tokens: Vec<Token> = vec![];
 
