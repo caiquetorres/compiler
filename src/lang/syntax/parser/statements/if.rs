@@ -1,12 +1,22 @@
 use super::statement::Statement;
 use crate::lang::syntax::{parser::expressions::expression::Expression, tree_display::TreeDisplay};
 
-pub struct Else(pub Box<Statement>);
+pub struct Else {
+    pub statement: Box<Statement>,
+}
+
+impl Else {
+    pub fn new(statement: Statement) -> Self {
+        Self {
+            statement: Box::new(statement),
+        }
+    }
+}
 
 impl TreeDisplay for Else {
     fn display(&self, layer: usize) {
         println!("{}ElseStatement", " ".repeat(layer));
-        self.0.display(layer + 2)
+        self.statement.display(layer + 2)
     }
 }
 
@@ -34,7 +44,7 @@ impl TreeDisplay for If {
 
         if let Some(r#else) = &self.r#else {
             println!("{}ElseStatement", " ".repeat(layer));
-            r#else.0.display(layer + 2)
+            r#else.statement.display(layer + 2)
         }
     }
 }

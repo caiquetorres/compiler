@@ -1,11 +1,19 @@
 use super::expression::Expression;
 use crate::lang::syntax::{lexer::token::Token, tree_display::TreeDisplay};
 
-pub struct UnaryOperator(pub Token);
+pub struct UnaryOperator {
+    pub token: Token,
+}
+
+impl UnaryOperator {
+    pub fn new(token: Token) -> Self {
+        Self { token }
+    }
+}
 
 impl TreeDisplay for UnaryOperator {
     fn display(&self, layer: usize) {
-        let value = self.0.value.clone();
+        let value = self.token.value.clone();
         println!("{}UnaryOperator ({})", " ".repeat(layer), value);
     }
 }

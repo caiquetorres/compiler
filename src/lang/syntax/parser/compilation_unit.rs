@@ -14,6 +14,7 @@ impl CompilationUnit {
     #[allow(dead_code)]
     pub fn display(&self) {
         let statements = &self.statements;
+
         for statement in statements {
             statement.display(0);
         }

@@ -2,11 +2,19 @@ use crate::lang::syntax::{lexer::token::Token, tree_display::TreeDisplay};
 
 use super::expression::Expression;
 
-pub struct RangeOperator(pub Token);
+pub struct RangeOperator {
+    pub token: Token,
+}
+
+impl RangeOperator {
+    pub fn new(token: Token) -> Self {
+        Self { token }
+    }
+}
 
 impl TreeDisplay for RangeOperator {
     fn display(&self, layer: usize) {
-        let value = self.0.value.clone();
+        let value = self.token.value.clone();
         println!("{}RangeOperator ({})", " ".repeat(layer), value);
     }
 }

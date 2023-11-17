@@ -505,7 +505,7 @@ impl Analyzer {
                 let left_return_type = self.analyze_expression(&range.left, table)?;
                 let right_return_type = self.analyze_expression(&range.right, table)?;
 
-                match range.operator.0.kind {
+                match range.operator.token.kind {
                     TokenKind::DotDot | TokenKind::DotDotEquals => {
                         if !is_number(&left_return_type) || !is_number(&right_return_type) {
                             Err(format!(
@@ -581,12 +581,12 @@ impl Analyzer {
                 Literal::String(_) => Ok("string".to_string()),
             },
             Expression::Parenthesized(parenthesize) => {
-                self.analyze_expression(parenthesize.0.as_ref(), table)
+                self.analyze_expression(&parenthesize.expression.as_ref(), table)
             }
             Expression::Unary(unary) => {
                 let return_type = self.analyze_expression(&unary.expression, table)?;
 
-                match unary.operator.0.kind {
+                match unary.operator.token.kind {
                     TokenKind::Tilde => {
                         if !is_integer(&return_type) {
                             Err(format!("Expected integer, found {}", return_type))
@@ -615,7 +615,7 @@ impl Analyzer {
                 let left_return_type = self.analyze_expression(&binary.left, table)?;
                 let right_return_type = self.analyze_expression(&binary.right, table)?;
 
-                match binary.operator.0.kind {
+                match binary.operator.token.kind {
                     TokenKind::EqualsEquals => {
                         if left_return_type != right_return_type {
                             Err(format!(
@@ -789,7 +789,7 @@ impl Analyzer {
             ))
         } else {
             if let Some(r#else) = &r#if.r#else {
-                self.analyze_statement(&r#else.0, &mut local_table)?;
+                self.analyze_statement(&r#else.statement, &mut local_table)?;
             }
 
             Ok(())

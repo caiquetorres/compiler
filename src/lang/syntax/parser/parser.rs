@@ -354,7 +354,7 @@ impl Parser {
         Ok(Statement::For(For::new(
             Identifier::new(identifier_token),
             expression,
-            Box::new(statement),
+            statement,
         )))
     }
 
@@ -382,7 +382,7 @@ impl Parser {
                 Ok(Statement::If(If::new(
                     expression,
                     statement,
-                    Some(Else(Box::new(else_statement))),
+                    Some(Else::new(else_statement)),
                 )))
             }
             _ => Ok(Statement::If(If::new(expression, statement, None))),
@@ -606,7 +606,7 @@ impl Parser {
             let expression = self.parse_expression(MAX)?;
 
             left_expression =
-                Expression::Unary(Unary::new(UnaryOperator(operator_token), expression));
+                Expression::Unary(Unary::new(UnaryOperator::new(operator_token), expression));
         } else {
             left_expression = self.parse_factor()?;
         }
@@ -626,7 +626,7 @@ impl Parser {
 
             match operator_token.kind {
                 TokenKind::DotDot | TokenKind::DotDotEquals => {
-                    let range_operator = RangeOperator(operator_token);
+                    let range_operator = RangeOperator::new(operator_token);
                     let right_expression = self.parse_expression(precedence)?;
 
                     left_expression = Expression::Range(Range::new(
@@ -644,7 +644,7 @@ impl Parser {
                     precedence = get_binary_operator_precedence(current_token.kind);
                 }
                 _ => {
-                    let binary_operator = BinaryOperator(operator_token);
+                    let binary_operator = BinaryOperator::new(operator_token);
                     let right_expression = self.parse_expression(precedence)?;
 
                     left_expression = Expression::Binary(Binary::new(
@@ -714,9 +714,7 @@ impl Parser {
                 let expression = self.parse_expression(0)?;
                 self.use_token(&[TokenKind::RightParenthesis])?;
 
-                Ok(Expression::Parenthesized(Parenthesized(Box::new(
-                    expression,
-                ))))
+                Ok(Expression::Parenthesized(Parenthesized::new(expression)))
             }
             _ => Err(SyntaxError::ExpressionExpected {
                 position: token.position,

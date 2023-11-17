@@ -1,11 +1,19 @@
 use super::expression::Expression;
 use crate::lang::syntax::{lexer::token::Token, tree_display::TreeDisplay};
 
-pub struct BinaryOperator(pub Token);
+pub struct BinaryOperator {
+    pub token: Token,
+}
+
+impl BinaryOperator {
+    pub fn new(token: Token) -> Self {
+        Self { token }
+    }
+}
 
 impl TreeDisplay for BinaryOperator {
     fn display(&self, layer: usize) {
-        let value = self.0.value.clone();
+        let value = self.token.value.clone();
         println!("{}BinaryOperator ({})", " ".repeat(layer), value);
     }
 }

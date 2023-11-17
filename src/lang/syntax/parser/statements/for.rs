@@ -12,11 +12,11 @@ pub struct For {
 }
 
 impl For {
-    pub fn new(identifier: Identifier, expression: Expression, statement: Box<Statement>) -> Self {
+    pub fn new(identifier: Identifier, expression: Expression, statement: Statement) -> Self {
         Self {
             identifier,
             expression,
-            statement,
+            statement: Box::new(statement),
         }
     }
 }
