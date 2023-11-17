@@ -453,6 +453,8 @@ impl Lexer {
             "else" => Token::new(TokenKind::ElseKeyword, position, "else"),
             "true" => Token::new(TokenKind::BooleanLiteral, position, "true"),
             "false" => Token::new(TokenKind::BooleanLiteral, position, "false"),
+            "break" => Token::new(TokenKind::BreakKeyword, position, "break"),
+            "continue" => Token::new(TokenKind::ContinueKeyword, position, "continue"),
             _ => Token::new(TokenKind::Identifier, position, id),
         }
     }

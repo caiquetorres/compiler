@@ -38,6 +38,8 @@ pub enum TokenKind {
     ForKeyword,
     InKeyword,
     ReturnKeyword,
+    BreakKeyword,
+    ContinueKeyword,
     BadToken,
     Equals,
     EqualsEquals,

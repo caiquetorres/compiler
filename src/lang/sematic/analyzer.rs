@@ -1,10 +1,12 @@
+use super::scope::Scope;
 use super::symbol::{Symbol, SymbolKind};
-use super::symbol_table::SymbolTable;
 
 use crate::lang::syntax::lexer::token_kind::TokenKind;
 use crate::lang::syntax::parser::compilation_unit::CompilationUnit;
 use crate::lang::syntax::parser::expressions::{expression::Expression, literal::Literal};
 use crate::lang::syntax::parser::shared::{block::Block, function_call::FunctionCall};
+use crate::lang::syntax::parser::statements::r#break::Break;
+use crate::lang::syntax::parser::statements::r#continue::Continue;
 use crate::lang::syntax::parser::statements::{
     assignment::Assignment, do_while::DoWhile, r#const::Const, r#for::For, r#if::If, r#let::Let,
     r#while::While, statement::Statement,
@@ -81,7 +83,7 @@ impl Analyzer {
     }
 
     pub fn analyze(&mut self) -> Result<(), String> {
-        let mut root_table = SymbolTable::new(None);
+        let mut root_table = Scope::new(None, false);
 
         let default_types = [
             "void", "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64", "bool",
@@ -89,10 +91,10 @@ impl Analyzer {
         ];
 
         for default_type in &default_types {
-            root_table.insert(Symbol::new(default_type, SymbolKind::Type, None));
+            root_table.insert_symbol(Symbol::new(default_type, SymbolKind::Type, None));
         }
 
-        root_table.insert(Symbol::new(
+        root_table.insert_symbol(Symbol::new(
             "print",
             SymbolKind::Function(vec!["string".to_string()]),
             Some("void"),
@@ -108,7 +110,7 @@ impl Analyzer {
     fn analyze_top_level_statement(
         &self,
         statement: &TopLevelStatement,
-        table: &mut SymbolTable,
+        table: &mut Scope,
     ) -> Result<(), String> {
         match statement {
             TopLevelStatement::Function(function) => {
@@ -122,13 +124,13 @@ impl Analyzer {
     fn analyze_function_declaration(
         &self,
         function: &Function,
-        table: &mut SymbolTable,
+        table: &mut Scope,
     ) -> Result<(), String> {
         let function_name = function.identifier.name.clone();
         let line = function.identifier.token.position.line;
         let column = function.identifier.token.position.column;
 
-        if table.contains(&function_name) {
+        if table.get_symbol(&function_name).is_some() {
             return Err(format!(
                 "Duplicated identifier found: {} at Line {} and at Column {}",
                 function_name, line, column
@@ -137,21 +139,21 @@ impl Analyzer {
 
         match &function.type_identifier {
             None => {
-                table.insert(Symbol::new(&function_name, SymbolKind::Variable, None));
+                table.insert_symbol(Symbol::new(&function_name, SymbolKind::Variable, None));
             }
             Some(return_type) => {
                 let return_type_name = return_type.name.clone();
                 let line = return_type.token.position.line;
                 let column = return_type.token.position.column;
 
-                if !table.contains(&return_type_name) {
+                if !table.get_symbol(&return_type_name).is_some() {
                     return Err(format!(
                         "Type not found: {} at Line {} and at Column {}",
                         return_type_name, line, column
                     ));
                 }
 
-                table.insert(Symbol::new(
+                table.insert_symbol(Symbol::new(
                     &function_name,
                     SymbolKind::Variable,
                     Some(&return_type_name),
@@ -171,7 +173,7 @@ impl Analyzer {
             .as_ref()
             .map_or("void", |id| &id.name[..]);
 
-        table.insert(Symbol::new(
+        table.insert_symbol(Symbol::new(
             &function_name,
             SymbolKind::Function(params),
             Some(type_name),
@@ -182,20 +184,16 @@ impl Analyzer {
         Ok(())
     }
 
-    fn analyze_function(
-        &self,
-        function: &Function,
-        parent_table: &SymbolTable,
-    ) -> Result<(), String> {
+    fn analyze_function(&self, function: &Function, parent_table: &Scope) -> Result<(), String> {
         let rc = Rc::new(parent_table.clone());
-        let mut table = SymbolTable::new(Some(rc));
+        let mut table = Scope::new(Some(rc), false);
 
         for param in &function.params_declaration.params {
             let param_name = param.identifier.name.clone();
             let line = param.identifier.token.position.line;
             let column = param.identifier.token.position.column;
 
-            if table.contains(&param_name) {
+            if table.get_symbol(&param_name).is_some() {
                 return Err(format!(
                     "Duplicated parameter found: {} at Line {} and at Column {}",
                     param_name, line, column
@@ -206,14 +204,14 @@ impl Analyzer {
             let line = param.type_identifier.token.position.line;
             let column = param.type_identifier.token.position.column;
 
-            if !table.contains(&param_type) {
+            if !table.get_symbol(&param_type).is_some() {
                 return Err(format!(
                     "Type not found: {} at Line {} and at Column {}",
                     param_type, line, column
                 ));
             }
 
-            table.insert(Symbol::new(
+            table.insert_symbol(Symbol::new(
                 &param_name,
                 SymbolKind::Parameter,
                 Some(&param_type),
@@ -227,11 +225,7 @@ impl Analyzer {
         Ok(())
     }
 
-    fn analyze_statement(
-        &self,
-        statement: &Statement,
-        table: &mut SymbolTable,
-    ) -> Result<(), String> {
+    fn analyze_statement(&self, statement: &Statement, table: &mut Scope) -> Result<(), String> {
         match statement {
             Statement::Block(block) => self.analyze_block(block, table),
             Statement::Let(r#let) => self.analyze_let_statement(r#let, table),
@@ -244,13 +238,31 @@ impl Analyzer {
             Statement::DoWhile(do_while) => self.analyze_do_while_statement(do_while, table),
             Statement::For(r#for) => self.analyze_for_statement(r#for, table),
             Statement::If(r#if) => self.analyze_if_statement(r#if, table),
+            Statement::Break(r#break) => self.analyze_break_statement(r#break, table),
+            Statement::Continue(r#continue) => self.analyze_continue_statement(r#continue, table),
             _ => Ok(()),
         }
     }
 
-    fn analyze_block(&self, block: &Block, parent_table: &SymbolTable) -> Result<(), String> {
+    fn analyze_break_statement(&self, _: &Break, scope: &Scope) -> Result<(), String> {
+        if !scope.is_loop() {
+            return Err(format!("Break statement outside of loop"));
+        } else {
+            Ok(())
+        }
+    }
+
+    fn analyze_continue_statement(&self, _: &Continue, scope: &Scope) -> Result<(), String> {
+        if !scope.is_loop() {
+            return Err(format!("Continue statement outside of loop"));
+        } else {
+            Ok(())
+        }
+    }
+
+    fn analyze_block(&self, block: &Block, parent_table: &Scope) -> Result<(), String> {
         let rc = Rc::new(parent_table.clone());
-        let mut local_table = SymbolTable::new(Some(rc));
+        let mut local_table = Scope::new(Some(rc), false);
 
         for statement in &block.statements {
             self.analyze_statement(statement, &mut local_table)?;
@@ -259,7 +271,7 @@ impl Analyzer {
         Ok(())
     }
 
-    fn analyze_let_statement(&self, r#let: &Let, table: &mut SymbolTable) -> Result<(), String> {
+    fn analyze_let_statement(&self, r#let: &Let, table: &mut Scope) -> Result<(), String> {
         match r#let {
             Let::WithoutValue(identifier, return_type) => {
                 let variable_name = identifier.name.clone();
@@ -267,7 +279,7 @@ impl Analyzer {
                 let line = identifier.token.position.line;
                 let column = identifier.token.position.column;
 
-                if table.contains(&variable_name) {
+                if table.get_symbol(&variable_name).is_some() {
                     return Err(format!(
                         "Duplicated identifier found: {} at Line {} and at Column {}",
                         variable_name, line, column
@@ -279,18 +291,20 @@ impl Analyzer {
                 let line = return_type.token.position.line;
                 let column = return_type.token.position.column;
 
-                if !table.contains(&return_type_name) {
+                if !table.get_symbol(&return_type_name).is_some() {
                     return Err(format!(
                         "Type not found: {} at Line {} and at Column {}",
                         return_type_name, line, column
                     ));
                 }
 
-                table.insert(Symbol::new(
+                table.insert_symbol(Symbol::new(
                     &variable_name,
                     SymbolKind::Variable,
                     Some(&return_type_name),
                 ));
+
+                Ok(())
             }
             Let::WithValue(identifier, return_type, expression) => {
                 let variable_name = identifier.name.clone();
@@ -298,7 +312,7 @@ impl Analyzer {
                 let line = identifier.token.position.line;
                 let column = identifier.token.position.column;
 
-                if table.contains(&variable_name) {
+                if table.get_symbol(&variable_name).is_some() {
                     return Err(format!(
                         "Duplicated identifier found: {} at Line {} and at Column {}",
                         variable_name, line, column
@@ -309,11 +323,13 @@ impl Analyzer {
                     None => {
                         let return_type_name = self.analyze_expression(expression, table)?;
 
-                        table.insert(Symbol::new(
+                        table.insert_symbol(Symbol::new(
                             &variable_name,
                             SymbolKind::Variable,
                             Some(&return_type_name),
                         ));
+
+                        Ok(())
                     }
                     Some(return_type) => {
                         let return_type_name = return_type.name.clone();
@@ -321,7 +337,7 @@ impl Analyzer {
                         let line = return_type.token.position.line;
                         let column = return_type.token.position.column;
 
-                        if !table.contains(&return_type_name) {
+                        if !table.get_symbol(&return_type_name).is_some() {
                             return Err(format!(
                                 "Type not found: {} at Line {} and at Column {}",
                                 return_type_name, line, column
@@ -334,36 +350,32 @@ impl Analyzer {
                         if is_number(&expression_return_type_name) && is_number(&return_type_name)
                             || expression_return_type_name == return_type_name
                         {
-                            table.insert(Symbol::new(
+                            table.insert_symbol(Symbol::new(
                                 &variable_name,
                                 SymbolKind::Variable,
                                 Some(&return_type_name),
                             ));
+
+                            Ok(())
                         } else {
-                            return Err(format!(
+                            Err(format!(
                                 "Type mismatch, expected: {}, found: {}",
                                 return_type_name, expression_return_type_name
-                            ));
+                            ))
                         }
                     }
                 }
             }
         }
-
-        Ok(())
     }
 
-    fn analyze_const_statement(
-        &self,
-        r#const: &Const,
-        table: &mut SymbolTable,
-    ) -> Result<(), String> {
+    fn analyze_const_statement(&self, r#const: &Const, table: &mut Scope) -> Result<(), String> {
         let variable_name = r#const.identifier.name.clone();
 
         let line = r#const.identifier.token.position.line;
         let column = r#const.identifier.token.position.column;
 
-        if table.contains(&variable_name) {
+        if table.get_symbol(&variable_name).is_some() {
             return Err(format!(
                 "Duplicated identifier found: {} at Line {} and at Column {}",
                 variable_name, line, column
@@ -374,11 +386,13 @@ impl Analyzer {
             None => {
                 let return_type_name = self.analyze_expression(&r#const.expression, table)?;
 
-                table.insert(Symbol::new(
+                table.insert_symbol(Symbol::new(
                     &variable_name,
                     SymbolKind::Constant,
                     Some(&return_type_name),
                 ));
+
+                Ok(())
             }
             Some(return_type) => {
                 let return_type_name = return_type.name.clone();
@@ -386,7 +400,7 @@ impl Analyzer {
                 let line = return_type.token.position.line;
                 let column = return_type.token.position.column;
 
-                if !table.contains(&return_type_name) {
+                if !table.get_symbol(&return_type_name).is_some() {
                     return Err(format!(
                         "Type not found: {} at Line {} and at Column {}",
                         return_type_name, line, column
@@ -399,94 +413,93 @@ impl Analyzer {
                 if is_number(&expression_return_type_name) && is_number(&return_type_name)
                     || expression_return_type_name == return_type_name
                 {
-                    table.insert(Symbol::new(
+                    table.insert_symbol(Symbol::new(
                         &variable_name,
                         SymbolKind::Constant,
                         Some(&return_type_name),
                     ));
+
+                    Ok(())
                 } else {
-                    return Err(format!(
+                    Err(format!(
                         "Type mismatch, expected: {}, found: {}",
                         return_type_name, expression_return_type_name
-                    ));
+                    ))
                 }
             }
         }
-
-        Ok(())
     }
 
     fn analyze_assignment_statement(
         &self,
         assignment: &Assignment,
-        table: &SymbolTable,
+        table: &Scope,
     ) -> Result<(), String> {
         let identifier_name = assignment.identifier.name.clone();
         let line = assignment.identifier.token.position.line;
         let column = assignment.identifier.token.position.column;
 
-        if !table.contains(&identifier_name) {
+        if !table.get_symbol(&identifier_name).is_some() {
             return Err(format!(
                 "Identifier not found: {} at Line {} and at Column {}",
                 identifier_name, line, column
             ));
         }
 
-        let symbol = table.get(&identifier_name).unwrap();
+        let symbol = table.get_symbol(&identifier_name).unwrap();
         let variable_type = symbol.symbol_type.as_ref().unwrap().clone();
         let expression_return_type = self.analyze_expression(&assignment.expression, table)?;
 
-        if let SymbolKind::Variable = &symbol.kind {
-            match assignment.operator.token.kind {
-                TokenKind::Equals => {}
-                TokenKind::PlusEquals
-                | TokenKind::MinusEquals
-                | TokenKind::StarEquals
-                | TokenKind::SlashEquals
-                | TokenKind::ModEquals
-                | TokenKind::AmpersandEquals
-                | TokenKind::PipeEquals
-                | TokenKind::CircumflexEquals => {
-                    if !is_number(&variable_type) {
-                        return Err(format!(
-                            "Type mismatch in {}: expected number for the left-hand side, found {}",
-                            assignment.operator.token.value, variable_type
-                        ));
-                    }
+        match &symbol.kind {
+            SymbolKind::Variable => {
+                match assignment.operator.token.kind {
+                    TokenKind::Equals => {}
+                    TokenKind::PlusEquals
+                    | TokenKind::MinusEquals
+                    | TokenKind::StarEquals
+                    | TokenKind::SlashEquals
+                    | TokenKind::ModEquals
+                    | TokenKind::AmpersandEquals
+                    | TokenKind::PipeEquals
+                    | TokenKind::CircumflexEquals => {
+                        if !is_number(&variable_type) {
+                            return Err(format!(
+                                "Type mismatch in {}: expected number for the left-hand side, found {}",
+                                assignment.operator.token.value, variable_type
+                            ));
+                        }
 
-                    if !is_number(&expression_return_type) {
-                        return Err(format!(
-                            "Type mismatch in {}: expected number for the right-hand side, found {}",
-                            assignment.operator.token.value, expression_return_type
-                        ));
+                        if !is_number(&expression_return_type) {
+                            return Err(format!(
+                                "Type mismatch in {}: expected number for the right-hand side, found {}",
+                                assignment.operator.token.value, expression_return_type
+                            ));
+                        }
                     }
+                    _ => return Err(format!("Type mismatch in assignment: {}", identifier_name)),
+                };
+
+                if is_number(&variable_type) && is_number(&expression_return_type) {
+                    Ok(())
+                } else if variable_type == expression_return_type {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "Type mismatch in {}: expected {}, found {}",
+                        identifier_name, variable_type, expression_return_type
+                    ))
                 }
-                _ => return Err(format!("Type mismatch in assignment: {}", identifier_name)),
-            };
-
-            if is_number(&variable_type) && is_number(&expression_return_type)
-                || variable_type == expression_return_type
-            {
-                Ok(())
-            } else {
-                return Err(format!(
-                    "Type mismatch in {}: expected {}, found {}",
-                    identifier_name, variable_type, expression_return_type
-                ));
             }
-        } else {
-            Err(format!(
+            _ => {
+                 Err(format!(
                 "Assignment to {} is not allowed; only variables can be reassigned. Found at Line {} and Column {}",
                 identifier_name, line, column
             ))
+            }
         }
     }
 
-    fn analyze_expression(
-        &self,
-        expression: &Expression,
-        table: &SymbolTable,
-    ) -> Result<String, String> {
+    fn analyze_expression(&self, expression: &Expression, table: &Scope) -> Result<String, String> {
         match expression {
             Expression::Range(range) => {
                 let left_return_type = self.analyze_expression(&range.left, table)?;
@@ -495,12 +508,13 @@ impl Analyzer {
                 match range.operator.0.kind {
                     TokenKind::DotDot | TokenKind::DotDotEquals => {
                         if !is_number(&left_return_type) || !is_number(&right_return_type) {
-                            return Err(format!(
+                            Err(format!(
                                 "Expected number for both operands, found {} and {}",
                                 left_return_type, right_return_type
-                            ));
+                            ))
+                        } else {
+                            Ok("range".to_string())
                         }
-                        Ok("range".to_string())
                     }
                     _ => unreachable!(),
                 }
@@ -510,23 +524,23 @@ impl Analyzer {
                 let line = identifier.token.position.line;
                 let column = identifier.token.position.column;
 
-                if !table.contains(&identifier_name) {
-                    return Err(format!(
+                if !table.get_symbol(&identifier_name).is_some() {
+                    Err(format!(
                         "Identifier not found: {} at Line {} and at Column {}",
                         identifier_name, line, column
-                    ));
-                }
+                    ))
+                } else {
+                    let symbol = table.get_symbol(&identifier_name).unwrap();
 
-                let symbol = table.get(&identifier_name).unwrap();
-
-                match &symbol.kind {
-                    SymbolKind::Constant | SymbolKind::Variable | SymbolKind::Parameter => {
-                        Ok(symbol.symbol_type.as_ref().unwrap().clone())
+                    match &symbol.kind {
+                        SymbolKind::Constant | SymbolKind::Variable | SymbolKind::Parameter => {
+                            Ok(symbol.symbol_type.as_ref().unwrap().clone())
+                        }
+                        _ => Err(format!(
+                            "Identifier {} is not a constant, a variable or a parameter at Line {} and Column {}",
+                            identifier_name, line, column
+                        )),
                     }
-                    _ => Err(format!(
-                        "Identifier {} is not a constant, a variable or a parameter at Line {} and Column {}",
-                        identifier_name, line, column
-                    )),
                 }
             }
             Expression::FunctionCall(function_call) => {
@@ -534,24 +548,24 @@ impl Analyzer {
                 let line = function_call.identifier.token.position.line;
                 let column = function_call.identifier.token.position.column;
 
-                if !table.contains(&identifier_name) {
-                    return Err(format!(
+                if !table.get_symbol(&identifier_name).is_some() {
+                    Err(format!(
                         "Identifier not found: {} at Line {} and at Column {}",
                         identifier_name, line, column
-                    ));
-                }
+                    ))
+                } else {
+                    let symbol = table.get_symbol(&identifier_name).unwrap();
 
-                let symbol = table.get(&identifier_name).unwrap();
-
-                match &symbol.kind {
-                    SymbolKind::Function(_) => {
-                        self.analyze_function_call(function_call, table)?;
-                        Ok(symbol.symbol_type.as_ref().unwrap().clone())
+                    match &symbol.kind {
+                        SymbolKind::Function(_) => {
+                            self.analyze_function_call(function_call, table)?;
+                            Ok(symbol.symbol_type.as_ref().unwrap().clone())
+                        }
+                        _ => Err(format!(
+                            "Identifier {} is not a function at Line {} and Column {}",
+                            identifier_name, line, column
+                        )),
                     }
-                    _ => Err(format!(
-                        "Identifier {} is not a function at Line {} and Column {}",
-                        identifier_name, line, column
-                    )),
                 }
             }
             Expression::Literal(literal) => match literal {
@@ -575,26 +589,26 @@ impl Analyzer {
                 match unary.operator.0.kind {
                     TokenKind::Tilde => {
                         if !is_integer(&return_type) {
-                            return Err(format!("Expected integer, found {}", return_type,));
+                            Err(format!("Expected integer, found {}", return_type))
+                        } else {
+                            Ok(return_type)
                         }
-
-                        Ok(return_type)
                     }
                     TokenKind::Plus | TokenKind::Minus => {
                         if !is_number(&return_type) {
-                            return Err(format!("Expected type number, found {}", return_type,));
+                            Err(format!("Expected type number, found {}", return_type))
+                        } else {
+                            Ok(return_type)
                         }
-
-                        Ok(return_type)
                     }
                     TokenKind::Exclamation => {
                         if return_type != "bool" {
-                            return Err(format!("Expected type 'bool', found {}", return_type,));
+                            Err(format!("Expected type 'bool', found {}", return_type))
+                        } else {
+                            Ok("bool".to_string())
                         }
-
-                        Ok("bool".to_string())
                     }
-                    _ => Err(format!("Mismatch types")),
+                    _ => unreachable!(),
                 }
             }
             Expression::Binary(binary) => {
@@ -604,12 +618,13 @@ impl Analyzer {
                 match binary.operator.0.kind {
                     TokenKind::EqualsEquals => {
                         if left_return_type != right_return_type {
-                            return Err(format!(
+                            Err(format!(
                                 "Mismatched types for equality comparison: {} and {}",
                                 left_return_type, right_return_type
-                            ));
+                            ))
+                        } else {
+                            Ok("bool".to_string())
                         }
-                        Ok("bool".to_string())
                     }
                     TokenKind::Plus
                     | TokenKind::Minus
@@ -621,36 +636,41 @@ impl Analyzer {
                     | TokenKind::Tilde
                     | TokenKind::Circumflex => {
                         if !is_number(&left_return_type) || !is_number(&right_return_type) {
-                            return Err(format!(
+                            Err(format!(
                                 "Expected number for both operands, found {} and {}",
                                 left_return_type, right_return_type
-                            ));
+                            ))
+                        } else {
+                            let return_type = String::from(number_type_precedence(vec![
+                                &left_return_type,
+                                &right_return_type,
+                            ]));
+
+                            Ok(return_type)
                         }
-                        Ok(
-                            number_type_precedence(vec![&left_return_type, &right_return_type])
-                                .to_string(),
-                        )
                     }
                     TokenKind::GreaterThan
                     | TokenKind::GreaterThanEquals
                     | TokenKind::LessThan
                     | TokenKind::LessThanEquals => {
                         if !is_number(&left_return_type) || !is_number(&right_return_type) {
-                            return Err(format!(
+                            Err(format!(
                                 "Expected number for both operands, found {} and {}",
                                 left_return_type, right_return_type
-                            ));
+                            ))
+                        } else {
+                            Ok("bool".to_string())
                         }
-                        Ok("bool".to_string())
                     }
                     TokenKind::AmpersandAmpersand | TokenKind::PipePipe => {
                         if left_return_type != "bool" || right_return_type != "bool" {
-                            return Err(format!(
+                            Err(format!(
                                 "Expected 'bool' for both operands, found {} and {}",
                                 left_return_type, right_return_type
-                            ));
+                            ))
+                        } else {
+                            Ok("bool".to_string())
                         }
-                        Ok("bool".to_string())
                     }
                     _ => Err(format!("Mismatch types")),
                 }
@@ -661,42 +681,41 @@ impl Analyzer {
     fn analyze_function_call(
         &self,
         function_call: &FunctionCall,
-        table: &SymbolTable,
+        table: &Scope,
     ) -> Result<(), String> {
         let identifier_name = function_call.identifier.name.clone();
         let line = function_call.identifier.token.position.line;
         let column = function_call.identifier.token.position.column;
 
-        if !table.contains(&identifier_name) {
+        if !table.get_symbol(&identifier_name).is_some() {
             return Err(format!(
                 "Identifier not found: {} at Line {} and at Column {}",
                 identifier_name, line, column
             ));
         }
 
-        let symbol = table.get(&identifier_name).unwrap();
+        let symbol = table.get_symbol(&identifier_name).unwrap();
 
         match &symbol.kind {
             SymbolKind::Function(params) => {
                 if params.len() != function_call.params.expressions.len() {
-                    return Err(format!(
+                    Err(format!(
                         "Expected {} parameters but found {} at Line {} and Column {}",
                         params.len(),
                         function_call.params.expressions.len(),
                         line,
                         column
-                    ));
-                }
+                    ))
+                } else {
+                    for i in 0..params.len() {
+                        let expected_type_name = params.get(i).unwrap().clone();
+                        let found_type_name = self.analyze_expression(
+                            function_call.params.expressions.get(i).unwrap(),
+                            table,
+                        )?;
 
-                for i in 0..params.len() {
-                    let expected_type_name = params.get(i).unwrap().clone();
-                    let found_type_name = self.analyze_expression(
-                        function_call.params.expressions.get(i).unwrap(),
-                        table,
-                    )?;
-
-                    if expected_type_name != found_type_name {
-                        return Err(format!(
+                        if expected_type_name != found_type_name {
+                            return Err(format!(
                             "Expected type {} but found type {} for parameter {} at Line {} and Column {}",
                             expected_type_name,
                             found_type_name,
@@ -704,10 +723,11 @@ impl Analyzer {
                             line,
                             column
                         ));
+                        }
                     }
-                }
 
-                Ok(())
+                    Ok(())
+                }
             }
             other => Err(format!(
                 "Function expected, found {} at Line {} and at Column {}",
@@ -716,96 +736,95 @@ impl Analyzer {
         }
     }
 
-    fn analyze_while_statement(
-        &self,
+    fn analyze_while_statement(&self, r#while: &While, scope: &mut Scope) -> Result<(), String> {
+        let rc = Rc::new(scope.clone());
+        let mut local_scope = Scope::new(Some(rc), true);
 
-        r#while: &While,
-        table: &mut SymbolTable,
-    ) -> Result<(), String> {
-        let expression_return_type = self.analyze_expression(&r#while.expression, table)?;
+        let expression_return_type = self.analyze_expression(&r#while.expression, &local_scope)?;
 
         if expression_return_type != "bool" {
-            return Err(format!(
+            Err(format!(
                 "Expected 'bool' in while condition, found {}",
                 expression_return_type
-            ));
+            ))
+        } else {
+            self.analyze_statement(&r#while.statement, &mut local_scope)?;
+
+            Ok(())
         }
-
-        self.analyze_statement(&r#while.statement, table)?;
-
-        Ok(())
     }
 
     fn analyze_do_while_statement(
         &self,
         do_while: &DoWhile,
-        table: &mut SymbolTable,
+        scope: &mut Scope,
     ) -> Result<(), String> {
-        self.analyze_statement(&do_while.statement, table)?;
+        let rc = Rc::new(scope.clone());
+        let mut local_scope = Scope::new(Some(rc), true);
 
-        let expression_return_type = self.analyze_expression(&do_while.expression, table)?;
+        self.analyze_statement(&do_while.statement, &mut local_scope)?;
+
+        let expression_return_type = self.analyze_expression(&do_while.expression, &local_scope)?;
 
         if expression_return_type != "bool" {
-            return Err(format!(
+            Err(format!(
                 "Expected 'bool' in do while condition, found {}",
                 expression_return_type
-            ));
+            ))
+        } else {
+            Ok(())
         }
-
-        Ok(())
     }
 
-    fn analyze_if_statement(&self, r#if: &If, table: &SymbolTable) -> Result<(), String> {
+    fn analyze_if_statement(&self, r#if: &If, table: &Scope) -> Result<(), String> {
         let rc = Rc::new(table.clone());
-        let mut local_table = SymbolTable::new(Some(rc));
+        let mut local_table = Scope::new(Some(rc), false);
 
         let expression_return_type = self.analyze_expression(&r#if.expression, table)?;
 
         if expression_return_type != "bool" {
-            return Err(format!(
+            Err(format!(
                 "Expected 'bool' in if condition, found {}",
                 expression_return_type
-            ));
-        }
-
-        match &r#if.r#else {
-            Some(r#else) => {
+            ))
+        } else {
+            if let Some(r#else) = &r#if.r#else {
                 self.analyze_statement(&r#else.0, &mut local_table)?;
-                Ok(())
             }
-            _ => Ok(()),
+
+            Ok(())
         }
     }
 
-    fn analyze_for_statement(&self, r#for: &For, table: &SymbolTable) -> Result<(), String> {
-        let rc = Rc::new(table.clone());
-        let mut local_table = SymbolTable::new(Some(rc));
+    fn analyze_for_statement(&self, r#for: &For, scope: &Scope) -> Result<(), String> {
+        let rc = Rc::new(scope.clone());
+        let mut local_scope = Scope::new(Some(rc), true);
 
         let identifier_name = r#for.identifier.name.clone();
         let line = r#for.identifier.token.position.line;
         let column = r#for.identifier.token.position.column;
 
-        if local_table.contains(&identifier_name) {
-            return Err(format!(
+        if local_scope.get_symbol(&identifier_name).is_some() {
+            Err(format!(
                 "Duplicated identifier found: {} at Line {} and at Column {}",
                 identifier_name, line, column
+            ))
+        } else {
+            local_scope.insert_symbol(Symbol::new(
+                &identifier_name,
+                SymbolKind::Constant,
+                Some("i32"),
             ));
-        }
 
-        local_table.insert(Symbol::new(
-            &identifier_name,
-            SymbolKind::Constant,
-            Some("i32"),
-        ));
+            match &r#for.expression {
+                Expression::Range(_) => {
+                    self.analyze_expression(&r#for.expression, &local_scope)?;
+                    self.analyze_statement(&r#for.statement, &mut local_scope)?;
 
-        match &r#for.expression {
-            Expression::Range(_) => {
-                self.analyze_expression(&r#for.expression, &local_table)?;
-                self.analyze_statement(&r#for.statement, &mut local_table)?;
-
-                Ok(())
+                    Ok(())
+                }
+                expression => Err(format!("Expected range expression found {}", expression)),
             }
-            expression => Err(format!("Expected range expression found {}", expression)),
         }
     }
 }

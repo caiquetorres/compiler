@@ -1,6 +1,8 @@
 use super::assignment::Assignment;
 use super::do_while::DoWhile;
+use super::r#break::Break;
 use super::r#const::Const;
+use super::r#continue::Continue;
 use super::r#for::For;
 use super::r#if::If;
 use super::r#let::Let;
@@ -22,6 +24,8 @@ pub enum Statement {
     While(While),
     DoWhile(DoWhile),
     For(For),
+    Break(Break),
+    Continue(Continue),
 }
 
 impl TreeDisplay for Statement {
@@ -37,6 +41,8 @@ impl TreeDisplay for Statement {
             Self::While(r#while) => r#while.display(layer),
             Self::DoWhile(do_while) => do_while.display(layer),
             Self::For(r#for) => r#for.display(layer),
+            Self::Break(r#break) => r#break.display(layer),
+            Self::Continue(r#continue) => r#continue.display(layer),
         }
     }
 }

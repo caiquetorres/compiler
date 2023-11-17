@@ -13,6 +13,8 @@ use super::shared::{
     function_call::{FunctionCall, Params},
     identifier::Identifier,
 };
+use super::statements::r#break::Break;
+use super::statements::r#continue::Continue;
 use super::statements::{
     assignment::Assignment,
     do_while::DoWhile,
@@ -232,10 +234,24 @@ impl Parser {
             TokenKind::LetKeyword => Ok(self.parse_variable_declaration_statement()?),
             TokenKind::ConstKeyword => Ok(self.parse_constant_declaration_statement()?),
             TokenKind::ReturnKeyword => self.parse_return_statement(),
+            TokenKind::BreakKeyword => self.parse_break_statement(),
+            TokenKind::ContinueKeyword => self.parse_continue_statement(),
             _ => Err(SyntaxError::StatementExpected {
                 position: current_token.position,
             }),
         }
+    }
+
+    fn parse_continue_statement(&mut self) -> Result<Statement, SyntaxError> {
+        self.use_token(&[TokenKind::ContinueKeyword])?;
+        self.use_token(&[TokenKind::Semicolon])?;
+        Ok(Statement::Continue(Continue))
+    }
+
+    fn parse_break_statement(&mut self) -> Result<Statement, SyntaxError> {
+        self.use_token(&[TokenKind::BreakKeyword])?;
+        self.use_token(&[TokenKind::Semicolon])?;
+        Ok(Statement::Break(Break))
     }
 
     /// Parses a 'return' statement.
