@@ -1,32 +1,32 @@
-use super::token::{Position, Token};
+use crate::lang::position::Position;
+
+use super::token::Token;
 use super::token_kind::TokenKind;
 
 pub struct Lexer {
     text: String,
+    position: usize,
     current_position: Position,
 }
 
 impl Lexer {
     pub fn new(text: &str) -> Self {
         Self {
-            current_position: Position::new(0, 1, 1),
+            current_position: Position::new(1, 1),
             text: text.to_string(),
+            position: 0,
         }
     }
 
     fn get_current_char(&self) -> char {
-        let current_char = self
-            .text
-            .chars()
-            .nth(self.current_position.position)
-            .unwrap_or('\0');
+        let current_char = self.text.chars().nth(self.position).unwrap_or('\0');
 
         current_char
     }
 
     fn next_char(&mut self) -> char {
         let current_char = self.get_current_char();
-        self.current_position.position += 1;
+        self.position += 1;
 
         if current_char == '\n' {
             self.current_position.column = 1;
@@ -38,12 +38,19 @@ impl Lexer {
         current_char
     }
 
-    pub fn lex(&mut self) -> Vec<Token> {
+    pub fn lex(&mut self) -> Result<Vec<Token>, String> {
         let mut tokens: Vec<Token> = vec![];
 
         let mut token = self.next();
 
         while token.kind != TokenKind::EndOfFile {
+            if token.kind == TokenKind::BadToken {
+                return Err(format!(
+                    "Invalid token found at Line {} and Column {}",
+                    token.position.line, token.position.column
+                ));
+            }
+
             if token.kind != TokenKind::WhiteSpace {
                 tokens.push(token);
             }
@@ -51,7 +58,7 @@ impl Lexer {
         }
         tokens.push(token);
 
-        tokens
+        Ok(tokens)
     }
 
     pub fn next(&mut self) -> Token {
@@ -96,27 +103,27 @@ impl Lexer {
             }
             '{' => {
                 self.next_char();
-                Token::new(TokenKind::OpenBraces, position, "{")
+                Token::new(TokenKind::LeftBrace, position, "{")
             }
             '}' => {
                 self.next_char();
-                Token::new(TokenKind::CloseBraces, position, "}")
+                Token::new(TokenKind::RightBrace, position, "}")
             }
             '(' => {
                 self.next_char();
-                Token::new(TokenKind::OpenParenthesis, position, "(")
+                Token::new(TokenKind::LeftParenthesis, position, "(")
             }
             ')' => {
                 self.next_char();
-                Token::new(TokenKind::CloseParenthesis, position, ")")
+                Token::new(TokenKind::RightParenthesis, position, ")")
             }
             '[' => {
                 self.next_char();
-                Token::new(TokenKind::OpenBrackets, position, "[")
+                Token::new(TokenKind::LeftBracket, position, "[")
             }
             ']' => {
                 self.next_char();
-                Token::new(TokenKind::CloseBrackets, position, "]")
+                Token::new(TokenKind::RightBracket, position, "]")
             }
             '.' => {
                 self.next_char();
@@ -292,15 +299,15 @@ impl Lexer {
             }
             _ => {
                 self.next_char();
-                Token::new(TokenKind::Bad, position, "")
+                Token::new(TokenKind::BadToken, position, "")
             }
         }
     }
 
     fn read_digit(&mut self) -> Token {
         let position = self.current_position;
-        let start = self.current_position.position;
-        let mut end = self.current_position.position;
+        let start = self.position;
+        let mut end = self.position;
         let number: &str;
 
         while self.get_current_char().is_digit(10) {
@@ -311,13 +318,13 @@ impl Lexer {
         // decimal value
         if self.get_current_char() != '.' {
             number = &self.text[start..end];
-            return Token::new(TokenKind::Number, position, number);
+            return Token::new(TokenKind::NumberLiteral, position, number);
         }
 
-        if let Some(c) = self.text.chars().nth(self.current_position.position + 1) {
+        if let Some(c) = self.text.chars().nth(self.position + 1) {
             if c == '.' {
                 number = &self.text[start..end];
-                return Token::new(TokenKind::Number, position, number);
+                return Token::new(TokenKind::NumberLiteral, position, number);
             }
         }
 
@@ -325,7 +332,7 @@ impl Lexer {
         self.next_char();
 
         if !self.get_current_char().is_digit(10) {
-            return Token::new(TokenKind::Bad, self.current_position, "");
+            return Token::new(TokenKind::BadToken, self.current_position, "");
         }
 
         while self.get_current_char().is_digit(10) {
@@ -334,13 +341,13 @@ impl Lexer {
         }
 
         number = &self.text[start..end];
-        Token::new(TokenKind::Number, position, number)
+        Token::new(TokenKind::NumberLiteral, position, number)
     }
 
     fn read_char(&mut self) -> Token {
         let position = self.current_position;
-        let mut start = self.current_position.position;
-        let mut end = self.current_position.position;
+        let mut start = self.position;
+        let mut end = self.position;
 
         // consumes the "'"
         end += 1;
@@ -366,16 +373,16 @@ impl Lexer {
             self.next_char();
 
             let c = &self.text[start..end];
-            return Token::new(TokenKind::Char, position, c);
+            return Token::new(TokenKind::CharLiteral, position, c);
         }
 
-        Token::new(TokenKind::Bad, self.current_position, "")
+        Token::new(TokenKind::BadToken, self.current_position, "")
     }
 
     fn read_str(&mut self) -> Token {
         let position = self.current_position;
-        let mut start = self.current_position.position;
-        let mut end = self.current_position.position;
+        let mut start = self.position;
+        let mut end = self.position;
 
         // consumes the '"'
         end += 1;
@@ -388,14 +395,14 @@ impl Lexer {
         }
 
         if self.get_current_char() != '"' {
-            return Token::new(TokenKind::Bad, self.current_position, "");
+            return Token::new(TokenKind::BadToken, self.current_position, "");
         }
 
         // consumes the '"'
         self.next_char();
 
         let text = &self.text[start..end];
-        Token::new(TokenKind::String, position, text)
+        Token::new(TokenKind::StringLiteral, position, text)
     }
 
     fn read_single_line_comment(&mut self) {
@@ -407,7 +414,7 @@ impl Lexer {
 
     fn read_multi_line_comment(&mut self) {
         loop {
-            let pos = self.current_position.position;
+            let pos = self.position;
             let current_char = self.text.chars().nth(pos).unwrap_or(' ');
             let next_char = self.text.chars().nth(pos + 1).unwrap_or(' ');
 
@@ -423,8 +430,8 @@ impl Lexer {
 
     fn read_keyword_or_identifier(&mut self) -> Token {
         let position = self.current_position;
-        let start = self.current_position.position;
-        let mut end = self.current_position.position;
+        let start = self.position;
+        let mut end = self.position;
 
         while self.get_current_char().is_alphanumeric() || self.get_current_char() == '_' {
             self.next_char();
@@ -434,18 +441,18 @@ impl Lexer {
         let id = &self.text[start..end];
 
         match id {
-            "fun" => Token::new(TokenKind::Fun, position, "fun"),
-            "let" => Token::new(TokenKind::Let, position, "let"),
-            "const" => Token::new(TokenKind::Const, position, "const"),
-            "return" => Token::new(TokenKind::Return, position, "return"),
-            "while" => Token::new(TokenKind::While, position, "while"),
-            "do" => Token::new(TokenKind::Do, position, "do"),
-            "for" => Token::new(TokenKind::For, position, "for"),
-            "in" => Token::new(TokenKind::In, position, "in"),
-            "if" => Token::new(TokenKind::If, position, "if"),
-            "else" => Token::new(TokenKind::Else, position, "else"),
-            "true" => Token::new(TokenKind::Boolean, position, "true"),
-            "false" => Token::new(TokenKind::Boolean, position, "false"),
+            "fun" => Token::new(TokenKind::FunKeyword, position, "fun"),
+            "let" => Token::new(TokenKind::LetKeyword, position, "let"),
+            "const" => Token::new(TokenKind::ConstKeyword, position, "const"),
+            "return" => Token::new(TokenKind::ReturnKeyword, position, "return"),
+            "while" => Token::new(TokenKind::WhileKeyword, position, "while"),
+            "do" => Token::new(TokenKind::DoKeyword, position, "do"),
+            "for" => Token::new(TokenKind::ForKeyword, position, "for"),
+            "in" => Token::new(TokenKind::InKeyword, position, "in"),
+            "if" => Token::new(TokenKind::IfKeyword, position, "if"),
+            "else" => Token::new(TokenKind::ElseKeyword, position, "else"),
+            "true" => Token::new(TokenKind::BooleanLiteral, position, "true"),
+            "false" => Token::new(TokenKind::BooleanLiteral, position, "false"),
             _ => Token::new(TokenKind::Identifier, position, id),
         }
     }
@@ -478,7 +485,7 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         lexer.next();
-        assert_eq!(lexer.next().kind, TokenKind::Fun);
+        assert_eq!(lexer.next().kind, TokenKind::FunKeyword);
 
         let code = "
         fun main() {
@@ -488,7 +495,7 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         lexer.next();
-        assert_eq!(lexer.next().kind, TokenKind::Fun);
+        assert_eq!(lexer.next().kind, TokenKind::FunKeyword);
     }
 
     #[test]
@@ -501,34 +508,34 @@ mod tests {
         let code = "2..3";
         let mut lexer = Lexer::new(code);
 
-        assert_eq!(lexer.next().kind, TokenKind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::NumberLiteral);
         assert_eq!(lexer.next().kind, TokenKind::DotDot);
-        assert_eq!(lexer.next().kind, TokenKind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::NumberLiteral);
 
         let code = "2..=3";
         let mut lexer = Lexer::new(code);
 
-        assert_eq!(lexer.next().kind, TokenKind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::NumberLiteral);
         assert_eq!(lexer.next().kind, TokenKind::DotDotEquals);
-        assert_eq!(lexer.next().kind, TokenKind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::NumberLiteral);
 
         let code = "2..";
         let mut lexer = Lexer::new(code);
 
-        assert_eq!(lexer.next().kind, TokenKind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::NumberLiteral);
         assert_eq!(lexer.next().kind, TokenKind::DotDot);
 
         let code = "..3";
         let mut lexer = Lexer::new(code);
 
         assert_eq!(lexer.next().kind, TokenKind::DotDot);
-        assert_eq!(lexer.next().kind, TokenKind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::NumberLiteral);
 
         let code = "..=3";
         let mut lexer = Lexer::new(code);
 
         assert_eq!(lexer.next().kind, TokenKind::DotDotEquals);
-        assert_eq!(lexer.next().kind, TokenKind::Number);
+        assert_eq!(lexer.next().kind, TokenKind::NumberLiteral);
     }
 
     #[test]
@@ -536,12 +543,12 @@ mod tests {
         let code = "([{}])";
         let mut lexer = Lexer::new(code);
 
-        assert_eq!(lexer.next().kind, TokenKind::OpenParenthesis);
-        assert_eq!(lexer.next().kind, TokenKind::OpenBrackets);
-        assert_eq!(lexer.next().kind, TokenKind::OpenBraces);
-        assert_eq!(lexer.next().kind, TokenKind::CloseBraces);
-        assert_eq!(lexer.next().kind, TokenKind::CloseBrackets);
-        assert_eq!(lexer.next().kind, TokenKind::CloseParenthesis);
+        assert_eq!(lexer.next().kind, TokenKind::LeftParenthesis);
+        assert_eq!(lexer.next().kind, TokenKind::LeftBracket);
+        assert_eq!(lexer.next().kind, TokenKind::LeftBrace);
+        assert_eq!(lexer.next().kind, TokenKind::RightBrace);
+        assert_eq!(lexer.next().kind, TokenKind::RightBracket);
+        assert_eq!(lexer.next().kind, TokenKind::RightParenthesis);
     }
 
     #[test]
@@ -783,19 +790,19 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, TokenKind::While);
+        assert_eq!(token.kind, TokenKind::WhileKeyword);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, TokenKind::Boolean);
+        assert_eq!(token.kind, TokenKind::BooleanLiteral);
 
         // white space
         lexer.next();
 
         token = lexer.next();
-        assert_eq!(token.kind, TokenKind::For);
+        assert_eq!(token.kind, TokenKind::ForKeyword);
 
         // white space
         lexer.next();
@@ -811,21 +818,21 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, TokenKind::Number);
+        assert_eq!(token.kind, TokenKind::NumberLiteral);
         assert_eq!(token.value, "23");
 
         code = "23.2";
         lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, TokenKind::Number);
+        assert_eq!(token.kind, TokenKind::NumberLiteral);
         assert_eq!(token.value, "23.2");
 
         code = "2.";
         lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, TokenKind::Bad);
+        assert_eq!(token.kind, TokenKind::BadToken);
     }
 
     #[test]
@@ -835,26 +842,26 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, TokenKind::Char);
+        assert_eq!(token.kind, TokenKind::CharLiteral);
         assert_eq!(token.value, "c");
 
         code = "'\\0'";
         lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, TokenKind::Char);
+        assert_eq!(token.kind, TokenKind::CharLiteral);
 
         code = "'c";
         lexer = Lexer::new(code);
         token = lexer.next();
 
-        assert_eq!(token.kind, TokenKind::Bad);
+        assert_eq!(token.kind, TokenKind::BadToken);
 
         code = "\\";
         lexer = Lexer::new(code);
         token = lexer.next();
 
-        assert_eq!(token.kind, TokenKind::Bad);
+        assert_eq!(token.kind, TokenKind::BadToken);
     }
 
     #[test]
@@ -864,20 +871,20 @@ mod tests {
         let mut lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, TokenKind::String);
+        assert_eq!(token.kind, TokenKind::StringLiteral);
         assert_eq!(token.value, "test string");
 
         code = "\"test string 2\"";
         lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, TokenKind::String);
+        assert_eq!(token.kind, TokenKind::StringLiteral);
         assert_eq!(token.value, "test string 2");
 
         code = "'\"test string";
         lexer = Lexer::new(code);
 
         token = lexer.next();
-        assert_eq!(token.kind, TokenKind::Bad);
+        assert_eq!(token.kind, TokenKind::BadToken);
     }
 }

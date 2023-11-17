@@ -15,6 +15,52 @@ use crate::lang::syntax::parser::top_level_statements::{
 
 use std::rc::Rc;
 
+fn is_number(text: &str) -> bool {
+    matches!(
+        text,
+        "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64"
+    )
+}
+
+fn number_type_precedence(v: Vec<&str>) -> String {
+    if v.contains(&"f64") {
+        return String::from("f64");
+    }
+    if v.contains(&"f32") {
+        return String::from("f32");
+    }
+    if v.contains(&"i64") {
+        return String::from("i64");
+    }
+    if v.contains(&"u64") {
+        return String::from("u64");
+    }
+    if v.contains(&"i32") {
+        return String::from("i32");
+    }
+    if v.contains(&"u32") {
+        return String::from("u32");
+    }
+    if v.contains(&"i16") {
+        return String::from("i16");
+    }
+    if v.contains(&"u16") {
+        return String::from("u16");
+    }
+    if v.contains(&"i8") {
+        return String::from("i8");
+    }
+
+    return String::from("u8");
+}
+
+fn is_integer(text: &str) -> bool {
+    matches!(
+        text,
+        "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64"
+    )
+}
+
 pub struct Analyzer {
     ast: CompilationUnit,
 }
@@ -29,7 +75,7 @@ impl Analyzer {
         use crate::lang::syntax::parser::parser::Parser;
 
         let mut parser = Parser::from_code(code);
-        let ast = parser.parse()?;
+        let ast = parser.parse().unwrap();
 
         Ok(Self { ast })
     }
@@ -37,11 +83,14 @@ impl Analyzer {
     pub fn analyze(&mut self) -> Result<(), String> {
         let mut root_table = SymbolTable::new(None);
 
-        root_table.insert(Symbol::new("void", SymbolKind::Type, None));
-        root_table.insert(Symbol::new("i32", SymbolKind::Type, None));
-        root_table.insert(Symbol::new("bool", SymbolKind::Type, None));
-        root_table.insert(Symbol::new("char", SymbolKind::Type, None));
-        root_table.insert(Symbol::new("string", SymbolKind::Type, None));
+        let default_types = [
+            "void", "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64", "bool",
+            "char",
+        ];
+
+        for default_type in &default_types {
+            root_table.insert(Symbol::new(default_type, SymbolKind::Type, None));
+        }
 
         root_table.insert(Symbol::new(
             "print",
@@ -180,7 +229,6 @@ impl Analyzer {
 
     fn analyze_statement(
         &self,
-
         statement: &Statement,
         table: &mut SymbolTable,
     ) -> Result<(), String> {
@@ -283,18 +331,20 @@ impl Analyzer {
                         let expression_return_type_name =
                             self.analyze_expression(expression, table)?;
 
-                        if expression_return_type_name != return_type_name {
+                        if is_number(&expression_return_type_name) && is_number(&return_type_name)
+                            || expression_return_type_name == return_type_name
+                        {
+                            table.insert(Symbol::new(
+                                &variable_name,
+                                SymbolKind::Variable,
+                                Some(&return_type_name),
+                            ));
+                        } else {
                             return Err(format!(
                                 "Type mismatch, expected: {}, found: {}",
                                 return_type_name, expression_return_type_name
                             ));
                         }
-
-                        table.insert(Symbol::new(
-                            &variable_name,
-                            SymbolKind::Variable,
-                            Some(&return_type_name),
-                        ));
                     }
                 }
             }
@@ -346,18 +396,20 @@ impl Analyzer {
                 let expression_return_type_name =
                     self.analyze_expression(&r#const.expression, table)?;
 
-                if expression_return_type_name != return_type_name {
+                if is_number(&expression_return_type_name) && is_number(&return_type_name)
+                    || expression_return_type_name == return_type_name
+                {
+                    table.insert(Symbol::new(
+                        &variable_name,
+                        SymbolKind::Constant,
+                        Some(&return_type_name),
+                    ));
+                } else {
                     return Err(format!(
                         "Type mismatch, expected: {}, found: {}",
                         return_type_name, expression_return_type_name
                     ));
                 }
-
-                table.insert(Symbol::new(
-                    &variable_name,
-                    SymbolKind::Variable,
-                    Some(&return_type_name),
-                ));
             }
         }
 
@@ -395,40 +447,36 @@ impl Analyzer {
                 | TokenKind::AmpersandEquals
                 | TokenKind::PipeEquals
                 | TokenKind::CircumflexEquals => {
-                    if variable_type != "i32" {
+                    if !is_number(&variable_type) {
                         return Err(format!(
-                            "Type mismatch in '{}': expected 'i32' for the left-hand side, found '{}'",
+                            "Type mismatch in {}: expected number for the left-hand side, found {}",
                             assignment.operator.token.value, variable_type
                         ));
                     }
 
-                    if expression_return_type != "i32" {
+                    if !is_number(&expression_return_type) {
                         return Err(format!(
-                            "Type mismatch in '{}': expected 'i32' for the right-hand side, found '{}'",
-                            assignment.operator.token.value,
-                            expression_return_type
+                            "Type mismatch in {}: expected number for the right-hand side, found {}",
+                            assignment.operator.token.value, expression_return_type
                         ));
                     }
                 }
-                _ => {
-                    return Err(format!(
-                        "Type mismatch in assignment: '{}'",
-                        identifier_name,
-                    ))
-                }
+                _ => return Err(format!("Type mismatch in assignment: {}", identifier_name)),
             };
 
-            if variable_type != expression_return_type {
+            if is_number(&variable_type) && is_number(&expression_return_type)
+                || variable_type == expression_return_type
+            {
+                Ok(())
+            } else {
                 return Err(format!(
-                    "Type mismatch in '{}': expected '{}', found '{}'",
+                    "Type mismatch in {}: expected {}, found {}",
                     identifier_name, variable_type, expression_return_type
                 ));
             }
-
-            Ok(())
         } else {
             Err(format!(
-                "Only variables can change its value, assignment not allowed: {} at Line {} and at Column {}",
+                "Assignment to {} is not allowed; only variables can be reassigned. Found at Line {} and Column {}",
                 identifier_name, line, column
             ))
         }
@@ -446,9 +494,9 @@ impl Analyzer {
 
                 match range.operator.0.kind {
                     TokenKind::DotDot | TokenKind::DotDotEquals => {
-                        if left_return_type != "i32" || right_return_type != "i32" {
+                        if !is_number(&left_return_type) || !is_number(&right_return_type) {
                             return Err(format!(
-                                "Expected 'i32' for both operands, found '{}' and '{}'",
+                                "Expected number for both operands, found {} and {}",
                                 left_return_type, right_return_type
                             ));
                         }
@@ -476,7 +524,7 @@ impl Analyzer {
                         Ok(symbol.symbol_type.as_ref().unwrap().clone())
                     }
                     _ => Err(format!(
-                        "Identifier {} is not a constant, a variable or a parameter  at Line {} and Column {}",
+                        "Identifier {} is not a constant, a variable or a parameter at Line {} and Column {}",
                         identifier_name, line, column
                     )),
                 }
@@ -507,7 +555,13 @@ impl Analyzer {
                 }
             }
             Expression::Literal(literal) => match literal {
-                Literal::Number(_) => Ok("i32".to_string()),
+                Literal::Number(token) => {
+                    if token.value.contains(".") {
+                        Ok("f32".to_string())
+                    } else {
+                        Ok("i32".to_string())
+                    }
+                }
                 Literal::Boolean(_) => Ok("bool".to_string()),
                 Literal::Char(_) => Ok("char".to_string()),
                 Literal::String(_) => Ok("string".to_string()),
@@ -519,16 +573,23 @@ impl Analyzer {
                 let return_type = self.analyze_expression(&unary.expression, table)?;
 
                 match unary.operator.0.kind {
-                    TokenKind::Plus | TokenKind::Minus | TokenKind::Tilde => {
-                        if return_type != "i32" {
-                            return Err(format!("Expected type 'i32', found '{}'", return_type,));
+                    TokenKind::Tilde => {
+                        if !is_integer(&return_type) {
+                            return Err(format!("Expected integer, found {}", return_type,));
                         }
 
-                        Ok("i32".to_string())
+                        Ok(return_type)
+                    }
+                    TokenKind::Plus | TokenKind::Minus => {
+                        if !is_number(&return_type) {
+                            return Err(format!("Expected type number, found {}", return_type,));
+                        }
+
+                        Ok(return_type)
                     }
                     TokenKind::Exclamation => {
                         if return_type != "bool" {
-                            return Err(format!("Expected type 'bool', found '{}'", return_type,));
+                            return Err(format!("Expected type 'bool', found {}", return_type,));
                         }
 
                         Ok("bool".to_string())
@@ -544,7 +605,7 @@ impl Analyzer {
                     TokenKind::EqualsEquals => {
                         if left_return_type != right_return_type {
                             return Err(format!(
-                                "Mismatched types for equality comparison: '{}' and '{}'",
+                                "Mismatched types for equality comparison: {} and {}",
                                 left_return_type, right_return_type
                             ));
                         }
@@ -559,21 +620,24 @@ impl Analyzer {
                     | TokenKind::Pipe
                     | TokenKind::Tilde
                     | TokenKind::Circumflex => {
-                        if left_return_type != "i32" || right_return_type != "i32" {
+                        if !is_number(&left_return_type) || !is_number(&right_return_type) {
                             return Err(format!(
-                                "Expected 'i32' for both operands, found '{}' and '{}'",
+                                "Expected number for both operands, found {} and {}",
                                 left_return_type, right_return_type
                             ));
                         }
-                        Ok("i32".to_string())
+                        Ok(
+                            number_type_precedence(vec![&left_return_type, &right_return_type])
+                                .to_string(),
+                        )
                     }
                     TokenKind::GreaterThan
                     | TokenKind::GreaterThanEquals
                     | TokenKind::LessThan
                     | TokenKind::LessThanEquals => {
-                        if left_return_type != "i32" || right_return_type != "i32" {
+                        if !is_number(&left_return_type) || !is_number(&right_return_type) {
                             return Err(format!(
-                                "Expected 'i32' for both operands, found '{}' and '{}'",
+                                "Expected number for both operands, found {} and {}",
                                 left_return_type, right_return_type
                             ));
                         }
@@ -582,7 +646,7 @@ impl Analyzer {
                     TokenKind::AmpersandAmpersand | TokenKind::PipePipe => {
                         if left_return_type != "bool" || right_return_type != "bool" {
                             return Err(format!(
-                                "Expected 'bool' for both operands, found '{}' and '{}'",
+                                "Expected 'bool' for both operands, found {} and {}",
                                 left_return_type, right_return_type
                             ));
                         }
@@ -633,7 +697,7 @@ impl Analyzer {
 
                     if expected_type_name != found_type_name {
                         return Err(format!(
-                            "Expected type '{}' but found type '{}' for parameter {} at Line {} and Column {}",
+                            "Expected type {} but found type {} for parameter {} at Line {} and Column {}",
                             expected_type_name,
                             found_type_name,
                             i + 1,
@@ -662,7 +726,7 @@ impl Analyzer {
 
         if expression_return_type != "bool" {
             return Err(format!(
-                "Expected 'bool' in while condition, found '{}'",
+                "Expected 'bool' in while condition, found {}",
                 expression_return_type
             ));
         }
@@ -683,7 +747,7 @@ impl Analyzer {
 
         if expression_return_type != "bool" {
             return Err(format!(
-                "Expected 'bool' in do while condition, found '{}'",
+                "Expected 'bool' in do while condition, found {}",
                 expression_return_type
             ));
         }
@@ -699,7 +763,7 @@ impl Analyzer {
 
         if expression_return_type != "bool" {
             return Err(format!(
-                "Expected 'bool' in if condition, found '{}'",
+                "Expected 'bool' in if condition, found {}",
                 expression_return_type
             ));
         }

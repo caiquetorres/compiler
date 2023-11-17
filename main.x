@@ -6,9 +6,9 @@ fun greet() {
 }
 
 fun main() {
-    let counter = 0;
+    const counter: u8 = 0;
 
-    while counter < 5 {
+    while counter < 5.0 {
         print("While loop counter");
         counter += 1;
     }

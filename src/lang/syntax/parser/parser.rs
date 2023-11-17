@@ -24,6 +24,7 @@ use super::statements::{
     r#while::While,
     statement::Statement,
 };
+use super::syntax_error::SyntaxError;
 use super::top_level_statements::{
     function::{Function, ParamDeclaration, ParamsDeclaration},
     top_level_statement::TopLevelStatement,
@@ -49,17 +50,7 @@ impl Parser {
         use crate::lang::syntax::lexer::lexer::Lexer;
 
         let mut lexer = Lexer::new(code);
-        let mut tokens: Vec<Token> = vec![];
-
-        let mut token = lexer.next();
-
-        while token.kind != TokenKind::EndOfFile {
-            if token.kind != TokenKind::WhiteSpace {
-                tokens.push(token);
-            }
-            token = lexer.next();
-        }
-        tokens.push(token);
+        let tokens = lexer.lex().unwrap();
 
         Self {
             tokens: VecDeque::from_iter(tokens),
@@ -70,46 +61,29 @@ impl Parser {
         self.tokens.get(0).unwrap()
     }
 
-    fn use_token(&mut self, kinds: &[TokenKind]) -> Result<Token, String> {
-        let position = self.get_current_token().position;
+    fn use_token(&mut self, kinds: &[TokenKind]) -> Result<Token, SyntaxError> {
+        // REVIEW: Should we rethink this method?
+
+        let current_token = self.get_current_token();
+        let position = current_token.position;
         let token = self.next_token();
 
-        if kinds.len() == 1 {
-            if token.kind != kinds[0] {
-                return Err(format!(
-                    "Expected a token of type '{}' at Line {} and Column {}",
-                    kinds[0], position.line, position.column
-                ));
-            }
+        if kinds.contains(&token.kind) {
+            Ok(token)
         } else {
-            if !kinds.iter().any(|&kind| token.kind == kind) {
-                return Err(format!(
-                    "Expected a token of types '{:?}' at Line {} and Column {}",
-                    kinds, position.line, position.column
-                ));
-            }
+            Err(SyntaxError::UnexpectedToken {
+                expected: kinds.to_vec(),
+                found: token.kind,
+                position,
+            })
         }
-
-        Ok(token)
     }
 
     fn next_token(&mut self) -> Token {
         self.tokens.pop_front().unwrap()
     }
 
-    pub fn parse(&mut self) -> Result<CompilationUnit, String> {
-        let bad_token = self
-            .tokens
-            .iter()
-            .find(|token| token.kind == TokenKind::Bad);
-
-        if let Some(bad_token) = bad_token {
-            return Err(format!(
-                "Invalid token found at Line {} and Column {}",
-                bad_token.position.line, bad_token.position.column
-            ));
-        }
-
+    pub fn parse(&mut self) -> Result<CompilationUnit, SyntaxError> {
         let mut statements: Vec<TopLevelStatement> = vec![];
 
         let mut current_token = self.get_current_token();
@@ -128,16 +102,18 @@ impl Parser {
     /// # Returns
     /// - `Ok(TopLevelStatement)`: Parsed top-level statement.
     /// - `Err(String)`: Error message if parsing fails.
-    fn parse_top_level_statement(&mut self) -> Result<TopLevelStatement, String> {
+    fn parse_top_level_statement(&mut self) -> Result<TopLevelStatement, SyntaxError> {
         let current_token = self.get_current_token();
 
         match current_token.kind {
-            TokenKind::Fun => self.parse_function_declaration(),
-            _ => Err(format!("Top-level statement expected")),
+            TokenKind::FunKeyword => self.parse_function_declaration(),
+            _ => Err(SyntaxError::TopLevelStatementExpected {
+                position: current_token.position,
+            }),
         }
     }
 
-    fn parse_type(&mut self) -> Result<Option<Identifier>, String> {
+    fn parse_type(&mut self) -> Result<Option<Identifier>, SyntaxError> {
         // TODO: Apply in const and let declarations
 
         let current_token = self.get_current_token();
@@ -158,16 +134,16 @@ impl Parser {
     /// # Returns
     /// - `Ok(TopLevelStatement)`: Parsed function declaration as a top-level statement.
     /// - `Err(String)`: Error message if parsing fails.
-    fn parse_function_declaration(&mut self) -> Result<TopLevelStatement, String> {
-        self.use_token(&[TokenKind::Fun])?;
+    fn parse_function_declaration(&mut self) -> Result<TopLevelStatement, SyntaxError> {
+        self.use_token(&[TokenKind::FunKeyword])?;
 
         let identifier_token = self.use_token(&[TokenKind::Identifier])?;
 
-        self.use_token(&[TokenKind::OpenParenthesis])?;
+        self.use_token(&[TokenKind::LeftParenthesis])?;
 
         let params: Vec<ParamDeclaration> = self.parse_params_declaration()?;
 
-        self.use_token(&[TokenKind::CloseParenthesis])?;
+        self.use_token(&[TokenKind::RightParenthesis])?;
 
         let identifier_type = self.parse_type()?;
         let block = self.parse_block_statement()?;
@@ -185,7 +161,7 @@ impl Parser {
     /// # Returns
     /// - `Ok(Vec<ParamDeclaration>)`: Parsed parameter declarations.
     /// - `Err(String)`: Parsing error message.
-    fn parse_params_declaration(&mut self) -> Result<Vec<ParamDeclaration>, String> {
+    fn parse_params_declaration(&mut self) -> Result<Vec<ParamDeclaration>, SyntaxError> {
         let current_token = self.get_current_token();
 
         match current_token.kind {
@@ -213,7 +189,7 @@ impl Parser {
     /// # Returns
     /// - `Ok(ParamDeclaration)`: Parsed parameter declaration.
     /// - `Err(String)`: Parsing error message.
-    fn parse_param_declaration(&mut self) -> Result<ParamDeclaration, String> {
+    fn parse_param_declaration(&mut self) -> Result<ParamDeclaration, SyntaxError> {
         let param_name_token = self.use_token(&[TokenKind::Identifier])?;
 
         self.use_token(&[TokenKind::Colon])?;
@@ -230,16 +206,16 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Statement)`: Parsed statement.
-    /// - `Err(String)`: Error message if parsing fails.
-    fn parse_statement(&mut self) -> Result<Statement, String> {
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
+    fn parse_statement(&mut self) -> Result<Statement, SyntaxError> {
         let current_token = self.get_current_token();
 
         match current_token.kind {
-            TokenKind::For => self.parse_for_statement(),
-            TokenKind::Do => self.parse_do_while_statement(),
-            TokenKind::While => self.parse_while_statement(),
-            TokenKind::If => self.parse_if_statement(),
-            TokenKind::OpenBraces => self
+            TokenKind::ForKeyword => self.parse_for_statement(),
+            TokenKind::DoKeyword => self.parse_do_while_statement(),
+            TokenKind::WhileKeyword => self.parse_while_statement(),
+            TokenKind::IfKeyword => self.parse_if_statement(),
+            TokenKind::LeftBrace => self
                 .parse_block_statement()
                 .map(|block| Statement::Block(block)),
             TokenKind::Identifier => {
@@ -247,27 +223,18 @@ impl Parser {
                 let current_token = self.get_current_token();
 
                 match current_token.kind {
-                    TokenKind::OpenParenthesis => {
+                    TokenKind::LeftParenthesis => {
                         self.parse_function_call_statement(identifier_token)
                     }
-                    TokenKind::Equals
-                    | TokenKind::AmpersandEquals
-                    | TokenKind::PipeEquals
-                    | TokenKind::PlusEquals
-                    | TokenKind::MinusEquals
-                    | TokenKind::StarEquals
-                    | TokenKind::SlashEquals
-                    | TokenKind::ModEquals
-                    | TokenKind::CircumflexEquals => {
-                        self.parse_assignment_statement(identifier_token)
-                    }
-                    _ => Err(format!("Assignment operator or function call expected",)),
+                    _ => self.parse_assignment_statement(identifier_token),
                 }
             }
-            TokenKind::Let => Ok(self.parse_variable_declaration_statement()?),
-            TokenKind::Const => Ok(self.parse_constant_declaration_statement()?),
-            TokenKind::Return => self.parse_return_statement(),
-            _ => Err("Statement expected".to_string()),
+            TokenKind::LetKeyword => Ok(self.parse_variable_declaration_statement()?),
+            TokenKind::ConstKeyword => Ok(self.parse_constant_declaration_statement()?),
+            TokenKind::ReturnKeyword => self.parse_return_statement(),
+            _ => Err(SyntaxError::StatementExpected {
+                position: current_token.position,
+            }),
         }
     }
 
@@ -275,9 +242,9 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Statement)`: Parsed 'return' statement.
-    /// - `Err(String)`: Error message if parsing fails.
-    fn parse_return_statement(&mut self) -> Result<Statement, String> {
-        self.use_token(&[TokenKind::Return])?;
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
+    fn parse_return_statement(&mut self) -> Result<Statement, SyntaxError> {
+        self.use_token(&[TokenKind::ReturnKeyword])?;
 
         let current_token = self.get_current_token();
 
@@ -301,21 +268,21 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Block)`: Parsed block of statements.
-    /// - `Err(String)`: Error message if parsing fails.
-    fn parse_block_statement(&mut self) -> Result<Block, String> {
-        self.use_token(&[TokenKind::OpenBraces])?;
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
+    fn parse_block_statement(&mut self) -> Result<Block, SyntaxError> {
+        self.use_token(&[TokenKind::LeftBrace])?;
 
         let mut statements: Vec<Statement> = vec![];
         let mut current_token = self.get_current_token();
 
-        while current_token.kind != TokenKind::CloseBraces {
+        while current_token.kind != TokenKind::RightBrace {
             let statement = self.parse_statement()?;
             statements.push(statement);
 
             current_token = self.get_current_token();
         }
 
-        self.use_token(&[TokenKind::CloseBraces])?;
+        self.use_token(&[TokenKind::RightBrace])?;
 
         Ok(Block::new(statements))
     }
@@ -324,9 +291,9 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Statement)`: Parsed 'while' loop statement.
-    /// - `Err(String)`: Error message if parsing fails.
-    fn parse_while_statement(&mut self) -> Result<Statement, String> {
-        self.use_token(&[TokenKind::While])?;
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
+    fn parse_while_statement(&mut self) -> Result<Statement, SyntaxError> {
+        self.use_token(&[TokenKind::WhileKeyword])?;
 
         let expression = self.parse_expression(0)?;
         let statement = self.parse_statement()?;
@@ -338,13 +305,13 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Statement)`: Parsed 'while' loop statement.
-    /// - `Err(String)`: Error message if parsing fails.
-    fn parse_do_while_statement(&mut self) -> Result<Statement, String> {
-        self.use_token(&[TokenKind::Do])?;
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
+    fn parse_do_while_statement(&mut self) -> Result<Statement, SyntaxError> {
+        self.use_token(&[TokenKind::DoKeyword])?;
 
         let statement = self.parse_statement()?;
 
-        self.use_token(&[TokenKind::While])?;
+        self.use_token(&[TokenKind::WhileKeyword])?;
 
         let expression = self.parse_expression(0)?;
 
@@ -357,13 +324,13 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Statement)`: Parsed 'for' loop statement.
-    /// - `Err(String)`: Error message if parsing fails.
-    fn parse_for_statement(&mut self) -> Result<Statement, String> {
-        self.use_token(&[TokenKind::For])?;
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
+    fn parse_for_statement(&mut self) -> Result<Statement, SyntaxError> {
+        self.use_token(&[TokenKind::ForKeyword])?;
 
         let identifier_token = self.use_token(&[TokenKind::Identifier])?;
 
-        self.use_token(&[TokenKind::In])?;
+        self.use_token(&[TokenKind::InKeyword])?;
 
         let expression = self.parse_expression(0)?;
         let statement = self.parse_statement()?;
@@ -381,9 +348,9 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Statement)`: Parsed 'if' statement.
-    /// - `Err(String)`: Error message if parsing fails.
-    fn parse_if_statement(&mut self) -> Result<Statement, String> {
-        self.use_token(&[TokenKind::If])?;
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
+    fn parse_if_statement(&mut self) -> Result<Statement, SyntaxError> {
+        self.use_token(&[TokenKind::IfKeyword])?;
 
         let expression = self.parse_expression(0)?;
         let statement = self.parse_statement()?;
@@ -391,8 +358,8 @@ impl Parser {
         let current_token = self.get_current_token();
 
         match current_token.kind {
-            TokenKind::Else => {
-                self.use_token(&[TokenKind::Else])?;
+            TokenKind::ElseKeyword => {
+                self.use_token(&[TokenKind::ElseKeyword])?;
 
                 let else_statement = self.parse_statement()?;
 
@@ -413,16 +380,16 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Statement)`: Parsed function call statement.
-    /// - `Err(String)`: Error message if parsing fails.
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
     fn parse_function_call_statement(
         &mut self,
         identifier_token: Token,
-    ) -> Result<Statement, String> {
-        self.use_token(&[TokenKind::OpenParenthesis])?;
+    ) -> Result<Statement, SyntaxError> {
+        self.use_token(&[TokenKind::LeftParenthesis])?;
 
         let params = self.parse_params()?;
 
-        self.use_token(&[TokenKind::CloseParenthesis])?;
+        self.use_token(&[TokenKind::RightParenthesis])?;
         self.use_token(&[TokenKind::Semicolon])?;
 
         Ok(Statement::FunctionCall(FunctionCall::new(
@@ -438,16 +405,16 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Statement)`: Parsed function call expression.
-    /// - `Err(String)`: Error message if parsing fails.
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
     fn parse_function_call_expression(
         &mut self,
         identifier_token: Token,
-    ) -> Result<Expression, String> {
-        self.use_token(&[TokenKind::OpenParenthesis])?;
+    ) -> Result<Expression, SyntaxError> {
+        self.use_token(&[TokenKind::LeftParenthesis])?;
 
         let params = self.parse_params()?;
 
-        self.use_token(&[TokenKind::CloseParenthesis])?;
+        self.use_token(&[TokenKind::RightParenthesis])?;
 
         Ok(Expression::FunctionCall(FunctionCall::new(
             Identifier::new(identifier_token),
@@ -462,58 +429,53 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Statement)`: Parsed function call statement.
-    /// - `Err(String)`: Error message if parsing fails.
-    fn parse_assignment_statement(&mut self, identifier_token: Token) -> Result<Statement, String> {
-        let operator_token = self.use_token(&[
-            TokenKind::Equals,
-            TokenKind::AmpersandEquals,
-            TokenKind::PipeEquals,
-            TokenKind::CircumflexEquals,
-            TokenKind::TildeEquals,
-            TokenKind::PlusEquals,
-            TokenKind::MinusEquals,
-            TokenKind::StarEquals,
-            TokenKind::SlashEquals,
-            TokenKind::ModEquals,
-        ])?;
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
+    fn parse_assignment_statement(
+        &mut self,
+        identifier_token: Token,
+    ) -> Result<Statement, SyntaxError> {
+        let operator_token = self.next_token();
 
-        let expression = self.parse_expression(0)?;
+        match operator_token.kind {
+            TokenKind::Equals
+            | TokenKind::AmpersandEquals
+            | TokenKind::PipeEquals
+            | TokenKind::CircumflexEquals
+            | TokenKind::TildeEquals
+            | TokenKind::PlusEquals
+            | TokenKind::MinusEquals
+            | TokenKind::StarEquals
+            | TokenKind::SlashEquals
+            | TokenKind::ModEquals => {
+                let expression = self.parse_expression(0)?;
 
-        self.use_token(&[TokenKind::Semicolon])?;
+                self.use_token(&[TokenKind::Semicolon])?;
 
-        Ok(Statement::Assignment(Assignment::new(
-            Identifier::new(identifier_token),
-            AssignmentOperator::new(operator_token),
-            expression,
-        )))
+                Ok(Statement::Assignment(Assignment::new(
+                    Identifier::new(identifier_token),
+                    AssignmentOperator::new(operator_token),
+                    expression,
+                )))
+            }
+            _ => Err(SyntaxError::AssignmentExpected {
+                position: operator_token.position,
+            }),
+        }
     }
 
     /// Parses a variable declaration statement in the format: "let id = expression;" or "let id: type = expression;" or "let id: type;".
     ///
     /// # Returns
     /// - `Ok(Statement)`: Parsed variable declaration statement.
-    /// - `Err(String)`: Error message if parsing fails.
-    fn parse_variable_declaration_statement(&mut self) -> Result<Statement, String> {
-        self.use_token(&[TokenKind::Let])?;
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
+    fn parse_variable_declaration_statement(&mut self) -> Result<Statement, SyntaxError> {
+        self.use_token(&[TokenKind::LetKeyword])?;
 
         let identifier_token = self.use_token(&[TokenKind::Identifier])?;
 
         let current_token = self.get_current_token();
 
         match current_token.kind {
-            TokenKind::Equals => {
-                self.use_token(&[TokenKind::Equals])?;
-
-                let expression = self.parse_expression(0)?;
-
-                self.use_token(&[TokenKind::Semicolon])?;
-
-                Ok(Statement::Let(Let::WithValue(
-                    Identifier::new(identifier_token),
-                    None,
-                    expression,
-                )))
-            }
             TokenKind::Colon => {
                 self.use_token(&[TokenKind::Colon])?;
                 let type_identifier_token = self.use_token(&[TokenKind::Identifier])?;
@@ -529,7 +491,7 @@ impl Parser {
                             Identifier::new(type_identifier_token),
                         )))
                     }
-                    TokenKind::Equals => {
+                    _ => {
                         self.use_token(&[TokenKind::Equals])?;
 
                         let expression = self.parse_expression(0)?;
@@ -542,10 +504,21 @@ impl Parser {
                             expression,
                         )))
                     }
-                    _ => Err("Semicolon or assignment operator expected".to_string()),
                 }
             }
-            _ => Err("Assignment operator or colon expected".to_string()),
+            _ => {
+                self.use_token(&[TokenKind::Equals])?;
+
+                let expression = self.parse_expression(0)?;
+
+                self.use_token(&[TokenKind::Semicolon])?;
+
+                Ok(Statement::Let(Let::WithValue(
+                    Identifier::new(identifier_token),
+                    None,
+                    expression,
+                )))
+            }
         }
     }
 
@@ -553,28 +526,15 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Statement)`: Parsed constant declaration statement.
-    /// - `Err(String)`: Error message if parsing fails.
-    fn parse_constant_declaration_statement(&mut self) -> Result<Statement, String> {
-        self.use_token(&[TokenKind::Const])?;
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
+    fn parse_constant_declaration_statement(&mut self) -> Result<Statement, SyntaxError> {
+        self.use_token(&[TokenKind::ConstKeyword])?;
 
         let identifier_token = self.use_token(&[TokenKind::Identifier])?;
 
         let current_token = self.get_current_token();
 
         match current_token.kind {
-            TokenKind::Equals => {
-                let assignment_token = self.use_token(&[TokenKind::Equals])?;
-                let expression = self.parse_expression(0)?;
-
-                self.use_token(&[TokenKind::Semicolon])?;
-
-                Ok(Statement::Const(Const::new(
-                    Identifier::new(identifier_token),
-                    None,
-                    AssignmentOperator::new(assignment_token),
-                    expression,
-                )))
-            }
             TokenKind::Colon => {
                 self.use_token(&[TokenKind::Colon])?;
                 let type_identifier_token = self.use_token(&[TokenKind::Identifier])?;
@@ -591,7 +551,19 @@ impl Parser {
                     expression,
                 )))
             }
-            _ => Err("Assignment operator or colon expected".to_string()),
+            _ => {
+                let assignment_token = self.use_token(&[TokenKind::Equals])?;
+                let expression = self.parse_expression(0)?;
+
+                self.use_token(&[TokenKind::Semicolon])?;
+
+                Ok(Statement::Const(Const::new(
+                    Identifier::new(identifier_token),
+                    None,
+                    AssignmentOperator::new(assignment_token),
+                    expression,
+                )))
+            }
         }
     }
 
@@ -602,8 +574,8 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Expression)`: Parsed expression.
-    /// - `Err(String)`: Error message if parsing fails.
-    fn parse_expression(&mut self, parent_precedence: u32) -> Result<Expression, String> {
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
+    fn parse_expression(&mut self, parent_precedence: u32) -> Result<Expression, SyntaxError> {
         let current_token = self.get_current_token();
 
         let mut left_expression: Expression;
@@ -683,11 +655,11 @@ impl Parser {
     ///
     /// # Returns
     /// - `Ok(Params)`: Parsed parameters.
-    /// - `Err(String)`: Error message if parsing fails.
-    fn parse_params(&mut self) -> Result<Params, String> {
+    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
+    fn parse_params(&mut self) -> Result<Params, SyntaxError> {
         let mut current_token = self.get_current_token();
 
-        if current_token.kind == TokenKind::CloseParenthesis {
+        if current_token.kind == TokenKind::RightParenthesis {
             return Ok(Params::new(vec![]));
         }
 
@@ -698,7 +670,7 @@ impl Parser {
 
         current_token = self.get_current_token();
 
-        while current_token.kind != TokenKind::CloseParenthesis {
+        while current_token.kind != TokenKind::RightParenthesis {
             self.use_token(&[TokenKind::Comma])?;
 
             let expression = self.parse_expression(0)?;
@@ -710,27 +682,29 @@ impl Parser {
         Ok(Params::new(expressions))
     }
 
-    fn parse_factor(&mut self) -> Result<Expression, String> {
+    fn parse_factor(&mut self) -> Result<Expression, SyntaxError> {
         let token = self.next_token();
 
         match token.kind {
-            TokenKind::Boolean => Ok(Expression::Literal(Literal::Boolean(token))),
-            TokenKind::Char => Ok(Expression::Literal(Literal::Char(token))),
-            TokenKind::String => Ok(Expression::Literal(Literal::String(token))),
-            TokenKind::Number => Ok(Expression::Literal(Literal::Number(token))),
+            TokenKind::BooleanLiteral => Ok(Expression::Literal(Literal::Boolean(token))),
+            TokenKind::CharLiteral => Ok(Expression::Literal(Literal::Char(token))),
+            TokenKind::StringLiteral => Ok(Expression::Literal(Literal::String(token))),
+            TokenKind::NumberLiteral => Ok(Expression::Literal(Literal::Number(token))),
             TokenKind::Identifier => match self.get_current_token().kind {
-                TokenKind::OpenParenthesis => self.parse_function_call_expression(token),
+                TokenKind::LeftParenthesis => self.parse_function_call_expression(token),
                 _ => Ok(Expression::Identifier(Identifier::new(token))),
             },
-            TokenKind::OpenParenthesis => {
+            TokenKind::LeftParenthesis => {
                 let expression = self.parse_expression(0)?;
-                self.use_token(&[TokenKind::CloseParenthesis])?;
+                self.use_token(&[TokenKind::RightParenthesis])?;
 
                 Ok(Expression::Parenthesized(Parenthesized(Box::new(
                     expression,
                 ))))
             }
-            _ => Err("Expression expected".to_string()),
+            _ => Err(SyntaxError::ExpressionExpected {
+                position: token.position,
+            }),
         }
     }
 }
@@ -798,15 +772,15 @@ fn get_binary_operator_precedence(kind: TokenKind) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::Parser;
-    use crate::lang::syntax::{
-        lexer::{
-            token::{Position, Token},
-            token_kind::TokenKind,
-        },
-        parser::{
-            expressions::expression::Expression,
-            statements::{r#let::Let, statement::Statement},
-            top_level_statements::top_level_statement::TopLevelStatement,
+    use crate::lang::{
+        position::Position,
+        syntax::{
+            lexer::{token::Token, token_kind::TokenKind},
+            parser::{
+                expressions::expression::Expression,
+                statements::{r#let::Let, statement::Statement},
+                top_level_statements::top_level_statement::TopLevelStatement,
+            },
         },
     };
 
@@ -1039,7 +1013,7 @@ mod tests {
         let code = " (a, b); ";
         let mut parser = Parser::from_code(code);
 
-        let identifier = Token::new(TokenKind::Identifier, Position::new(0, 0, 0), "fun");
+        let identifier = Token::new(TokenKind::Identifier, Position::new(0, 0), "fun");
 
         let result = parser.parse_function_call_statement(identifier);
         assert!(result.is_ok());
@@ -1064,7 +1038,7 @@ mod tests {
         let code = " += 2; ";
         let mut parser = Parser::from_code(code);
 
-        let identifier = Token::new(TokenKind::Identifier, Position::new(0, 0, 0), "a");
+        let identifier = Token::new(TokenKind::Identifier, Position::new(0, 0), "a");
 
         let result = parser.parse_assignment_statement(identifier);
         assert!(result.is_ok());

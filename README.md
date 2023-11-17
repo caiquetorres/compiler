@@ -7,9 +7,7 @@ This repository contains a Rust compiler developed as part of a graduation proje
 We are actively working on building the foundational components of the compiler, including:
 
 -   **Semantic Analyses**
-    -   **Variable and Constant**
-    -   **Function**
-    -   **Expression**
+    -   **Number implicit conversions**
 
 Stay tuned for updates as we make progress on the project!
 
@@ -59,9 +57,9 @@ fun greet() {
 }
 
 fun main() {
-    let counter = 0;
+    let counter: u8 = 0;
 
-    while counter < 5 {
+    while counter < 5.0 {
         print("While loop counter");
         counter += 1;
     }

@@ -1,21 +1,5 @@
 use super::token_kind::TokenKind;
-
-#[derive(Clone, Copy, Debug)]
-pub struct Position {
-    pub position: usize,
-    pub line: usize,
-    pub column: usize,
-}
-
-impl Position {
-    pub fn new(position: usize, column: usize, line: usize) -> Self {
-        Self {
-            position,
-            column,
-            line,
-        }
-    }
-}
+use crate::lang::position::Position;
 
 #[derive(Debug)]
 pub struct Token {

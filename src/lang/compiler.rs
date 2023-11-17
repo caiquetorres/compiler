@@ -24,10 +24,10 @@ impl Compiler {
 
     pub fn compile(&self) -> Result<(), String> {
         let mut lexer = Lexer::new(&self.code);
-        let tokens = lexer.lex();
+        let tokens = lexer.lex()?;
 
         let mut parser = Parser::from_tokens(tokens);
-        let ast = parser.parse()?;
+        let ast = parser.parse().map_err(|e| format!("{}", e))?;
 
         let mut analyzer = Analyzer::from_ast(ast);
         analyzer.analyze()?;
