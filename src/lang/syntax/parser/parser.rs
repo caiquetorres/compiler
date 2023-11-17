@@ -1,27 +1,36 @@
 use super::compilation_unit::CompilationUnit;
-use super::expressions::binary::{Binary, BinaryOperator};
-use super::expressions::expression::Expression;
-use super::expressions::literal::Literal;
-use super::expressions::parenthesized::Parenthesized;
-use super::expressions::range::{Range, RangeOperator};
-use super::expressions::unary::{Unary, UnaryOperator};
-use super::shared::assignment_operator::AssignmentOperator;
-use super::shared::block::Block;
-use super::shared::function_call::{FunctionCall, Params};
-use super::shared::identifier::Identifier;
-use super::statements::assignment::Assignment;
-use super::statements::do_while::DoWhile;
-use super::statements::r#const::Const;
-use super::statements::r#for::For;
-use super::statements::r#if::{Else, If};
-use super::statements::r#let::Let;
-use super::statements::r#return::Return;
-use super::statements::r#while::While;
-use super::statements::statement::Statement;
-use super::top_level_statements::function::{Function, ParamDeclaration, ParamsDeclaration};
-use super::top_level_statements::top_level_statement::TopLevelStatement;
-use crate::lang::syntax::lexer::token::Token;
-use crate::lang::syntax::lexer::token_kind::TokenKind;
+use super::expressions::{
+    binary::{Binary, BinaryOperator},
+    expression::Expression,
+    literal::Literal,
+    parenthesized::Parenthesized,
+    range::{Range, RangeOperator},
+    unary::{Unary, UnaryOperator},
+};
+use super::shared::{
+    assignment_operator::AssignmentOperator,
+    block::Block,
+    function_call::{FunctionCall, Params},
+    identifier::Identifier,
+};
+use super::statements::{
+    assignment::Assignment,
+    do_while::DoWhile,
+    r#const::Const,
+    r#for::For,
+    r#if::{Else, If},
+    r#let::Let,
+    r#return::Return,
+    r#while::While,
+    statement::Statement,
+};
+use super::top_level_statements::{
+    function::{Function, ParamDeclaration, ParamsDeclaration},
+    top_level_statement::TopLevelStatement,
+};
+
+use crate::lang::syntax::lexer::{token::Token, token_kind::TokenKind};
+
 use std::collections::{HashSet, VecDeque};
 use std::u32::MAX;
 

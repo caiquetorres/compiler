@@ -1,20 +1,18 @@
 use super::symbol::{Symbol, SymbolKind};
 use super::symbol_table::SymbolTable;
+
 use crate::lang::syntax::lexer::token_kind::TokenKind;
 use crate::lang::syntax::parser::compilation_unit::CompilationUnit;
 use crate::lang::syntax::parser::expressions::{expression::Expression, literal::Literal};
-use crate::lang::syntax::parser::shared::block::Block;
-use crate::lang::syntax::parser::shared::function_call::FunctionCall;
-use crate::lang::syntax::parser::statements::assignment::Assignment;
-use crate::lang::syntax::parser::statements::do_while::DoWhile;
-use crate::lang::syntax::parser::statements::r#const::Const;
-use crate::lang::syntax::parser::statements::r#for::For;
-use crate::lang::syntax::parser::statements::r#if::If;
-use crate::lang::syntax::parser::statements::r#let::Let;
-use crate::lang::syntax::parser::statements::r#while::While;
-use crate::lang::syntax::parser::statements::statement::Statement;
-use crate::lang::syntax::parser::top_level_statements::function::Function;
-use crate::lang::syntax::parser::top_level_statements::top_level_statement::TopLevelStatement;
+use crate::lang::syntax::parser::shared::{block::Block, function_call::FunctionCall};
+use crate::lang::syntax::parser::statements::{
+    assignment::Assignment, do_while::DoWhile, r#const::Const, r#for::For, r#if::If, r#let::Let,
+    r#while::While, statement::Statement,
+};
+use crate::lang::syntax::parser::top_level_statements::{
+    function::Function, top_level_statement::TopLevelStatement,
+};
+
 use std::rc::Rc;
 
 pub struct Analyzer {

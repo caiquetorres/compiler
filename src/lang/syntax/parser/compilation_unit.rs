@@ -1,6 +1,6 @@
-use crate::lang::syntax::tree_display::TreeDisplay;
-
 use super::top_level_statements::top_level_statement::TopLevelStatement;
+
+use crate::lang::syntax::tree_display::TreeDisplay;
 
 pub struct CompilationUnit {
     pub statements: Vec<TopLevelStatement>,
