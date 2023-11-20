@@ -1,5 +1,6 @@
-fun greet() {
+fun greet(): i32 {
     print("Hello world!");
+    return 2.0;
 }
 
 fun main() {

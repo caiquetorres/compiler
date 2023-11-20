@@ -7,6 +7,7 @@ use crate::lang::syntax::parser::expressions::{expression::Expression, literal::
 use crate::lang::syntax::parser::shared::{block::Block, function_call::FunctionCall};
 use crate::lang::syntax::parser::statements::r#break::Break;
 use crate::lang::syntax::parser::statements::r#continue::Continue;
+use crate::lang::syntax::parser::statements::r#return::Return;
 use crate::lang::syntax::parser::statements::{
     assignment::Assignment, do_while::DoWhile, r#const::Const, r#for::For, r#if::If, r#let::Let,
     r#while::While, statement::Statement,
@@ -21,6 +22,13 @@ fn is_number(text: &str) -> bool {
     matches!(
         text,
         "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64"
+    )
+}
+
+fn is_integer(text: &str) -> bool {
+    matches!(
+        text,
+        "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64"
     )
 }
 
@@ -56,13 +64,6 @@ fn number_type_precedence(v: Vec<&str>) -> String {
     return String::from("u8");
 }
 
-fn is_integer(text: &str) -> bool {
-    matches!(
-        text,
-        "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64"
-    )
-}
-
 pub struct Analyzer {
     ast: CompilationUnit,
 }
@@ -83,7 +84,7 @@ impl Analyzer {
     }
 
     pub fn analyze(&mut self) -> Result<(), String> {
-        let mut root_table = Scope::new(None, false);
+        let mut root_table = Scope::new(None, false, None);
 
         let default_types = [
             "void", "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64", "bool",
@@ -102,6 +103,10 @@ impl Analyzer {
 
         for statement in &self.ast.statements {
             self.analyze_top_level_statement(statement, &mut root_table)?;
+        }
+
+        if root_table.get_symbol("main").is_none() {
+            return Err(format!("Missing main function",));
         }
 
         Ok(())
@@ -184,16 +189,25 @@ impl Analyzer {
         Ok(())
     }
 
-    fn analyze_function(&self, function: &Function, parent_table: &Scope) -> Result<(), String> {
-        let rc = Rc::new(parent_table.clone());
-        let mut table = Scope::new(Some(rc), false);
+    fn analyze_function(&self, function: &Function, parent_scope: &Scope) -> Result<(), String> {
+        let rc = Rc::new(parent_scope.clone());
+        let mut scope = Scope::new(
+            Some(rc),
+            false,
+            Some(
+                function
+                    .type_identifier
+                    .as_ref()
+                    .map_or("void".to_string(), |id| id.name.clone()),
+            ),
+        );
 
         for param in &function.params_declaration.params {
             let param_name = param.identifier.name.clone();
             let line = param.identifier.token.position.line;
             let column = param.identifier.token.position.column;
 
-            if table.get_symbol(&param_name).is_some() {
+            if scope.get_symbol(&param_name).is_some() {
                 return Err(format!(
                     "Duplicated parameter found: {} at Line {} and at Column {}",
                     param_name, line, column
@@ -204,14 +218,14 @@ impl Analyzer {
             let line = param.type_identifier.token.position.line;
             let column = param.type_identifier.token.position.column;
 
-            if !table.get_symbol(&param_type).is_some() {
+            if !scope.get_symbol(&param_type).is_some() {
                 return Err(format!(
                     "Type not found: {} at Line {} and at Column {}",
                     param_type, line, column
                 ));
             }
 
-            table.insert_symbol(Symbol::new(
+            scope.insert_symbol(Symbol::new(
                 &param_name,
                 SymbolKind::Parameter,
                 Some(&param_type),
@@ -219,7 +233,7 @@ impl Analyzer {
         }
 
         for statement in &function.block.statements {
-            self.analyze_statement(statement, &mut table)?;
+            self.analyze_statement(statement, &mut scope)?;
         }
 
         Ok(())
@@ -240,13 +254,36 @@ impl Analyzer {
             Statement::If(r#if) => self.analyze_if_statement(r#if, table),
             Statement::Break(r#break) => self.analyze_break_statement(r#break, table),
             Statement::Continue(r#continue) => self.analyze_continue_statement(r#continue, table),
-            _ => Ok(()),
+            Statement::Return(r#return) => self.analyze_return_statement(r#return, table),
+        }
+    }
+
+    fn analyze_return_statement(&self, r#return: &Return, scope: &Scope) -> Result<(), String> {
+        match scope.get_fun_return_type() {
+            None => Err(format!("Return statement not allowed here")),
+            Some(fun_return_type) => {
+                let return_value = match &r#return.expression {
+                    None => "void".to_string(),
+                    Some(e) => self.analyze_expression(&e, scope)?,
+                };
+
+                if is_number(&return_value) && is_number(&fun_return_type)
+                    || return_value == fun_return_type
+                {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "Expected return type '{}', found '{}'",
+                        fun_return_type, return_value
+                    ))
+                }
+            }
         }
     }
 
     fn analyze_break_statement(&self, _: &Break, scope: &Scope) -> Result<(), String> {
         if !scope.is_loop() {
-            return Err(format!("Break statement outside of loop"));
+            Err(format!("Break statement outside of loop"))
         } else {
             Ok(())
         }
@@ -262,7 +299,7 @@ impl Analyzer {
 
     fn analyze_block(&self, block: &Block, parent_table: &Scope) -> Result<(), String> {
         let rc = Rc::new(parent_table.clone());
-        let mut local_table = Scope::new(Some(rc), false);
+        let mut local_table = Scope::new(Some(rc), false, None);
 
         for statement in &block.statements {
             self.analyze_statement(statement, &mut local_table)?;
@@ -738,7 +775,7 @@ impl Analyzer {
 
     fn analyze_while_statement(&self, r#while: &While, scope: &mut Scope) -> Result<(), String> {
         let rc = Rc::new(scope.clone());
-        let mut local_scope = Scope::new(Some(rc), true);
+        let mut local_scope = Scope::new(Some(rc), true, None);
 
         let expression_return_type = self.analyze_expression(&r#while.expression, &local_scope)?;
 
@@ -760,7 +797,7 @@ impl Analyzer {
         scope: &mut Scope,
     ) -> Result<(), String> {
         let rc = Rc::new(scope.clone());
-        let mut local_scope = Scope::new(Some(rc), true);
+        let mut local_scope = Scope::new(Some(rc), true, None);
 
         self.analyze_statement(&do_while.statement, &mut local_scope)?;
 
@@ -778,7 +815,7 @@ impl Analyzer {
 
     fn analyze_if_statement(&self, r#if: &If, table: &Scope) -> Result<(), String> {
         let rc = Rc::new(table.clone());
-        let mut local_table = Scope::new(Some(rc), false);
+        let mut local_table = Scope::new(Some(rc), false, None);
 
         let expression_return_type = self.analyze_expression(&r#if.expression, table)?;
 
@@ -798,7 +835,7 @@ impl Analyzer {
 
     fn analyze_for_statement(&self, r#for: &For, scope: &Scope) -> Result<(), String> {
         let rc = Rc::new(scope.clone());
-        let mut local_scope = Scope::new(Some(rc), true);
+        let mut local_scope = Scope::new(Some(rc), true, None);
 
         let identifier_name = r#for.identifier.name.clone();
         let line = r#for.identifier.token.position.line;
