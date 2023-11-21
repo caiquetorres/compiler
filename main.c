@@ -1,7 +1,7 @@
-signed int fib(signed int n) {
+unsigned long long int fib(unsigned int n) {
   signed int a = 0;
   signed int b = 1;
-  signed int c;
+  unsigned long long int c;
   if (n == 0) {
     return a;
   }

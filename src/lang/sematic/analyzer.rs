@@ -660,13 +660,15 @@ impl Analyzer {
 
                 match binary.operator.token.kind {
                     TokenKind::EqualsEquals | TokenKind::ExclamationEquals => {
-                        if left_return_type != right_return_type {
+                        if is_number(&left_return_type) && is_number(&right_return_type)
+                            || left_return_type == right_return_type
+                        {
+                            Ok("bool".to_string())
+                        } else {
                             Err(format!(
                                 "Mismatched types for equality comparison: {} and {}",
                                 left_return_type, right_return_type
                             ))
-                        } else {
-                            Ok("bool".to_string())
                         }
                     }
                     TokenKind::Plus
@@ -757,15 +759,19 @@ impl Analyzer {
                             scope,
                         )?;
 
-                        if expected_type_name != found_type_name {
-                            return Err(format!(
-                            "Expected type {} but found type {} for parameter {} at Line {} and Column {}",
-                            expected_type_name,
-                            found_type_name,
-                            i + 1,
-                            line,
-                            column
-                        ));
+                        if is_number(&expected_type_name) && is_number(&found_type_name)
+                            || expected_type_name == found_type_name
+                        {
+                            return Ok(());
+                        } else {
+                            return  Err(format!(
+                                "Expected type {} but found type {} for parameter {} at Line {} and Column {}",
+                                expected_type_name,
+                                found_type_name,
+                                i + 1,
+                                line,
+                                column
+                            ));
                         }
                     }
 
