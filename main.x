@@ -1,10 +1,7 @@
-/**
-  * Fibonnaci function
-  */
-fun fib(n: u32): u64 {
+fun fib(n: i32): i32 {
     let a = 0;
     let b = 1;
-    let c: u64;
+    let c: i32;
 
     if n == 0 {
         return a;
@@ -21,7 +18,7 @@ fun fib(n: u32): u64 {
 
 fun main() {
     let n = 9;
-    fib(n);
+    let result = fib(n);
 
-    // Print result
+    println "Result ", result;
 }

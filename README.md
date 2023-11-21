@@ -6,9 +6,12 @@ This repository contains a Rust compiler developed as part of a graduation proje
 
 We are actively working on building the foundational components of the compiler, including:
 
+-   **Code translation to C**
+-   **Syntax Analyses**
+    -   **Vectors and strings**
 -   **Semantic Analyses**
     -   **Number implicit conversions**
--   **Code conversion**
+    -   **Control flow graph**
 
 Stay tuned for updates as we make progress on the project!
 

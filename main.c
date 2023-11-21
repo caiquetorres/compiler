@@ -1,7 +1,8 @@
-unsigned long long int fib(unsigned int n) {
+#include <stdio.h>
+signed int fib(signed int n) {
   signed int a = 0;
   signed int b = 1;
-  unsigned long long int c;
+  signed int c;
   if (n == 0) {
     return a;
   }
@@ -15,5 +16,8 @@ unsigned long long int fib(unsigned int n) {
 }
 void main() {
   signed int n = 9;
-  fib(n);
+  signed int result = fib(n);
+  printf("%s", "Result ");
+  printf("%d", result);
+  printf("\n");
 }

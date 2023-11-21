@@ -361,12 +361,9 @@ impl Lexer {
             self.next_char();
         }
 
-        if self.get_current_char().is_alphanumeric() {
-            end += 1;
-
-            // consumes the char
-            self.next_char();
-        }
+        end += 1;
+        // consumes the char
+        self.next_char();
 
         if self.get_current_char() == '\'' {
             // consumes the "'"
@@ -455,6 +452,8 @@ impl Lexer {
             "false" => Token::new(TokenKind::BooleanLiteral, position, "false"),
             "break" => Token::new(TokenKind::BreakKeyword, position, "break"),
             "continue" => Token::new(TokenKind::ContinueKeyword, position, "continue"),
+            "print" => Token::new(TokenKind::PrintKeyword, position, "print"),
+            "println" => Token::new(TokenKind::PrintlnKeyword, position, "println"),
             _ => Token::new(TokenKind::Identifier, position, id),
         }
     }

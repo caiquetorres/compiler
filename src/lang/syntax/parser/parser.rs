@@ -13,6 +13,7 @@ use super::shared::{
     function_call::{FunctionCall, Params},
     identifier::Identifier,
 };
+use super::statements::print::Print;
 use super::statements::r#break::Break;
 use super::statements::r#continue::Continue;
 use super::statements::{
@@ -234,6 +235,7 @@ impl Parser {
             TokenKind::ReturnKeyword => self.parse_return_statement(),
             TokenKind::BreakKeyword => self.parse_break_statement(),
             TokenKind::ContinueKeyword => self.parse_continue_statement(),
+            TokenKind::PrintKeyword | TokenKind::PrintlnKeyword => self.parse_print_statement(),
             _ => Err(SyntaxError::StatementExpected {
                 position: current_token.position,
             }),
@@ -244,6 +246,29 @@ impl Parser {
         self.use_token(&[TokenKind::ContinueKeyword])?;
         self.use_token(&[TokenKind::Semicolon])?;
         Ok(Statement::Continue(Continue))
+    }
+
+    fn parse_print_statement(&mut self) -> Result<Statement, SyntaxError> {
+        let token = self.use_token(&[TokenKind::PrintKeyword, TokenKind::PrintlnKeyword])?;
+
+        let new_line = token.kind == TokenKind::PrintlnKeyword;
+        let mut expressions: Vec<Expression> = vec![];
+
+        loop {
+            let expression = self.parse_expression(0)?;
+
+            expressions.push(expression);
+
+            let current_token = self.get_current_token();
+            if current_token.kind != TokenKind::Comma {
+                break;
+            }
+            self.next_token();
+        }
+
+        self.use_token(&[TokenKind::Semicolon])?;
+
+        Ok(Statement::Print(Print::new(new_line, expressions)))
     }
 
     fn parse_break_statement(&mut self) -> Result<Statement, SyntaxError> {
@@ -702,6 +727,7 @@ impl Parser {
         match token.kind {
             TokenKind::BooleanLiteral => Ok(Expression::Literal(Literal::Boolean(token))),
             TokenKind::CharLiteral => Ok(Expression::Literal(Literal::Char(token))),
+            TokenKind::StringLiteral => Ok(Expression::Literal(Literal::String(token))),
             TokenKind::NumberLiteral => Ok(Expression::Literal(Literal::Number(token))),
             TokenKind::Identifier => match self.get_current_token().kind {
                 TokenKind::LeftParenthesis => self.parse_function_call_expression(token),

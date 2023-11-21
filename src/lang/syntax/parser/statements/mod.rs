@@ -6,6 +6,7 @@ pub mod do_while;
 pub mod r#for;
 pub mod r#if;
 pub mod r#let;
+pub mod print;
 pub mod r#return;
 pub mod statement;
 pub mod r#while;

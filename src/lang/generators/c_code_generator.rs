@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::lang::{
-    sematic::scope::Scope,
+    sematic::{expression_analyzer::ExpressionAnalyzer, scope::Scope},
     syntax::{
         lexer::token_kind::TokenKind,
         parser::{
@@ -11,9 +11,9 @@ use crate::lang::{
             expressions::{expression::Expression, literal::Literal},
             shared::{block::Block, function_call::FunctionCall},
             statements::{
-                assignment::Assignment, do_while::DoWhile, r#break::Break, r#const::Const,
-                r#continue::Continue, r#for::For, r#if::If, r#let::Let, r#return::Return,
-                r#while::While, statement::Statement,
+                assignment::Assignment, do_while::DoWhile, print::Print, r#break::Break,
+                r#const::Const, r#continue::Continue, r#for::For, r#if::If, r#let::Let,
+                r#return::Return, r#while::While, statement::Statement,
             },
             top_level_statements::top_level_statement::TopLevelStatement,
         },
@@ -35,6 +35,7 @@ fn convert_to_c_type(lang_type: &str) -> String {
         "i64" => "signed long long int",
         "f32" => "float",
         "f64" => "double",
+        "string" => "char*",
         _ => unreachable!(),
     }
     .to_string()
@@ -51,7 +52,7 @@ impl CCodeGenerator {
     }
 
     pub fn generate(&self) -> String {
-        let mut code = String::new();
+        let mut code = String::from("#include <stdio.h>\n");
 
         for statement in &self.ast.statements {
             self.generate_top_level_statement(statement, &mut code);
@@ -63,12 +64,14 @@ impl CCodeGenerator {
     fn generate_top_level_statement(&self, statement: &TopLevelStatement, code: &mut String) {
         match statement {
             TopLevelStatement::Function(function) => {
+                // TODO: Deal with the main function when converting to C.
+
+                let function_name = function.identifier.name.clone();
+
                 let return_type_name = function
                     .type_identifier
                     .as_ref()
                     .map_or("void".to_string(), |id| id.name.clone());
-
-                let function_name = function.identifier.name.clone();
 
                 code.push_str(&format!(
                     "{} {}(",
@@ -123,6 +126,7 @@ impl CCodeGenerator {
             Statement::For(r#for) => self.generate_for_statement(r#for, code),
             Statement::Break(r#break) => self.generate_break_statement(r#break, code),
             Statement::Continue(r#continue) => self.generate_continue_statement(r#continue, code),
+            Statement::Print(print) => self.generate_print_statement(print, scope, code),
         }
     }
 
@@ -217,6 +221,7 @@ impl CCodeGenerator {
             Expression::Literal(literal) => match literal {
                 Literal::Number(token) => code.push_str(&token.value),
                 Literal::Char(token) => code.push_str(&format!("'{}'", token.value)),
+                Literal::String(token) => code.push_str(&format!("\"{}\"", token.value)),
                 Literal::Boolean(token) => match &token.value[..] {
                     "true" => code.push_str("1"),
                     _ => code.push_str("0"),
@@ -322,5 +327,37 @@ impl CCodeGenerator {
 
     fn generate_continue_statement(&self, _: &Continue, code: &mut String) {
         code.push_str("continue;");
+    }
+
+    fn generate_print_statement(&self, print: &Print, scope: &Scope, code: &mut String) {
+        for expression in &print.expressions {
+            code.push_str("printf(\"");
+
+            let mut analyzer = ExpressionAnalyzer::new(expression.clone(), scope.clone());
+
+            let expression_return_type = &analyzer.analyze().unwrap()[..];
+
+            let c_print_shortcut = match expression_return_type {
+                "string" => "%s",
+                "i32" => "%d",
+                "i64" => "%ld",
+                "u32" => "%u",
+                "u64" => "%lu",
+                "f32" => "%f",
+                "f64" => "%lf",
+                "bool" => "%c",
+                "char" => "%c",
+                _ => "",
+            };
+
+            code.push_str(&format!("{}", c_print_shortcut));
+            code.push_str("\",");
+            self.generate_expression(expression, code);
+            code.push_str(");");
+        }
+
+        if print.new_line {
+            code.push_str("printf(\"\\n\");");
+        }
     }
 }

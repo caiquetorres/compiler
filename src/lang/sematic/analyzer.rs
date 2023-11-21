@@ -7,6 +7,7 @@ use crate::lang::syntax::lexer::token_kind::TokenKind;
 use crate::lang::syntax::parser::compilation_unit::CompilationUnit;
 use crate::lang::syntax::parser::expressions::{expression::Expression, literal::Literal};
 use crate::lang::syntax::parser::shared::{block::Block, function_call::FunctionCall};
+use crate::lang::syntax::parser::statements::print::Print;
 use crate::lang::syntax::parser::statements::r#break::Break;
 use crate::lang::syntax::parser::statements::r#continue::Continue;
 use crate::lang::syntax::parser::statements::r#return::Return;
@@ -91,18 +92,12 @@ impl Analyzer {
 
         let default_types = [
             "void", "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64", "bool",
-            "char",
+            "char", "string",
         ];
 
         for default_type in &default_types {
             root_scope.insert_symbol(Symbol::new(default_type, SymbolKind::Type, None));
         }
-
-        root_scope.insert_symbol(Symbol::new(
-            "print",
-            SymbolKind::Function(vec!["string".to_string()]),
-            Some("void"),
-        ));
 
         for statement in &self.ast.statements {
             self.analyze_top_level_statement(statement, &mut root_scope, &mut block_map)?;
@@ -169,6 +164,10 @@ impl Analyzer {
             .iter()
             .map(|param| param.type_identifier.name.clone())
             .collect();
+
+        if function_name == "main" && params.len() != 0 {
+            return Err(format!("Main function cannot have params",));
+        }
 
         let type_name = function
             .type_identifier
@@ -258,6 +257,7 @@ impl Analyzer {
             Statement::Break(r#break) => self.analyze_break_statement(r#break, scope),
             Statement::Continue(r#continue) => self.analyze_continue_statement(r#continue, scope),
             Statement::Return(r#return) => self.analyze_return_statement(r#return, scope),
+            Statement::Print(print) => self.analyze_print_statement(print, scope),
         }
     }
 
@@ -622,6 +622,7 @@ impl Analyzer {
                 }
                 Literal::Boolean(_) => Ok("bool".to_string()),
                 Literal::Char(_) => Ok("char".to_string()),
+                Literal::String(_) => Ok("string".to_string()),
             },
             Expression::Parenthesized(parenthesize) => {
                 self.analyze_expression(&parenthesize.expression.as_ref(), scope)
@@ -887,6 +888,14 @@ impl Analyzer {
                 expression => Err(format!("Expected range expression found {}", expression)),
             }
         }
+    }
+
+    fn analyze_print_statement(&self, print: &Print, scope: &Scope) -> Result<(), String> {
+        for expression in &print.expressions {
+            self.analyze_expression(expression, scope)?;
+        }
+
+        Ok(())
     }
 }
 
