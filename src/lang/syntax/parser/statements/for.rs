@@ -1,7 +1,8 @@
-use super::statement::Statement;
-
 use crate::lang::syntax::{
-    parser::{expressions::expression::Expression, shared::identifier::Identifier},
+    parser::{
+        expressions::expression::Expression,
+        shared::{block::Block, identifier::Identifier},
+    },
     tree_display::TreeDisplay,
 };
 
@@ -9,15 +10,15 @@ use crate::lang::syntax::{
 pub struct For {
     pub identifier: Identifier,
     pub expression: Expression,
-    pub statement: Box<Statement>,
+    pub block: Block,
 }
 
 impl For {
-    pub fn new(identifier: Identifier, expression: Expression, statement: Statement) -> Self {
+    pub fn new(identifier: Identifier, expression: Expression, block: Block) -> Self {
         Self {
             identifier,
             expression,
-            statement: Box::new(statement),
+            block,
         }
     }
 }
@@ -31,6 +32,6 @@ impl TreeDisplay for For {
         );
 
         self.expression.display(layer + 2);
-        self.statement.display(layer + 2);
+        self.block.display(layer + 2);
     }
 }

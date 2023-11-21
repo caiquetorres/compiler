@@ -1,26 +1,24 @@
-use super::statement::Statement;
-
-use crate::lang::syntax::{parser::expressions::expression::Expression, tree_display::TreeDisplay};
+use crate::lang::syntax::{
+    parser::{expressions::expression::Expression, shared::block::Block},
+    tree_display::TreeDisplay,
+};
 
 #[derive(Clone)]
 pub struct DoWhile {
-    pub statement: Box<Statement>,
+    pub block: Block,
     pub expression: Expression,
 }
 
 impl DoWhile {
-    pub fn new(statement: Statement, expression: Expression) -> Self {
-        Self {
-            statement: Box::new(statement),
-            expression,
-        }
+    pub fn new(block: Block, expression: Expression) -> Self {
+        Self { block, expression }
     }
 }
 
 impl TreeDisplay for DoWhile {
     fn display(&self, layer: usize) {
         println!("{}DoWhileStatement", " ".repeat(layer));
-        self.statement.display(layer + 2);
+        self.block.display(layer + 2);
         self.expression.display(layer + 2);
     }
 }

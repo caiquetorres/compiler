@@ -1,13 +1,19 @@
+use uuid::Uuid;
+
 use crate::lang::syntax::{parser::statements::statement::Statement, tree_display::TreeDisplay};
 
 #[derive(Clone)]
 pub struct Block {
+    pub id: Uuid,
     pub statements: Vec<Statement>,
 }
 
 impl Block {
     pub fn new(statements: Vec<Statement>) -> Self {
-        Self { statements }
+        Self {
+            id: Uuid::new_v4(),
+            statements,
+        }
     }
 }
 

@@ -2,8 +2,8 @@ use super::symbol::Symbol;
 
 use std::{collections::HashMap, rc::Rc};
 
-#[derive(Clone)]
-pub(super) struct Scope {
+#[derive(Clone, Debug)]
+pub struct Scope {
     is_loop: bool,
     function_return_type: Option<String>,
     pub parent: Option<Rc<Scope>>,
@@ -11,16 +11,34 @@ pub(super) struct Scope {
 }
 
 impl Scope {
-    pub fn new(
-        parent: Option<Rc<Scope>>,
-        is_loop: bool,
-        function_return_type: Option<String>,
-    ) -> Self {
+    pub fn global() -> Self {
         Self {
-            is_loop,
-            parent,
+            parent: None,
+            is_loop: false,
+            function_return_type: None,
             symbol_table: HashMap::new(),
+        }
+    }
+
+    pub fn extend(scope: Scope) -> Self {
+        Self { ..scope }
+    }
+
+    pub fn block(parent: Scope, is_loop: bool) -> Self {
+        Self {
+            parent: Some(Rc::new(parent)),
+            is_loop,
+            function_return_type: None,
+            symbol_table: HashMap::new(),
+        }
+    }
+
+    pub fn new(parent: Scope, is_loop: bool, function_return_type: Option<String>) -> Self {
+        Self {
+            parent: Some(Rc::new(parent)),
+            is_loop,
             function_return_type,
+            symbol_table: HashMap::new(),
         }
     }
 

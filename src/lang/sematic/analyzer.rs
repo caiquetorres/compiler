@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use super::scope::Scope;
 use super::symbol::{Symbol, SymbolKind};
 
@@ -16,7 +18,7 @@ use crate::lang::syntax::parser::top_level_statements::{
     function::Function, top_level_statement::TopLevelStatement,
 };
 
-use std::rc::Rc;
+use std::collections::HashMap;
 
 fn is_number(text: &str) -> bool {
     matches!(
@@ -83,8 +85,9 @@ impl Analyzer {
         Ok(Self { ast })
     }
 
-    pub fn analyze(&mut self) -> Result<(), String> {
-        let mut root_table = Scope::new(None, false, None);
+    pub fn analyze(&mut self) -> Result<HashMap<Uuid, Scope>, String> {
+        let mut block_map: HashMap<Uuid, Scope> = HashMap::new();
+        let mut root_scope = Scope::global();
 
         let default_types = [
             "void", "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64", "bool",
@@ -92,34 +95,35 @@ impl Analyzer {
         ];
 
         for default_type in &default_types {
-            root_table.insert_symbol(Symbol::new(default_type, SymbolKind::Type, None));
+            root_scope.insert_symbol(Symbol::new(default_type, SymbolKind::Type, None));
         }
 
-        root_table.insert_symbol(Symbol::new(
+        root_scope.insert_symbol(Symbol::new(
             "print",
             SymbolKind::Function(vec!["string".to_string()]),
             Some("void"),
         ));
 
         for statement in &self.ast.statements {
-            self.analyze_top_level_statement(statement, &mut root_table)?;
+            self.analyze_top_level_statement(statement, &mut root_scope, &mut block_map)?;
         }
 
-        if root_table.get_symbol("main").is_none() {
+        if root_scope.get_symbol("main").is_none() {
             return Err(format!("Missing main function",));
         }
 
-        Ok(())
+        Ok(block_map)
     }
 
     fn analyze_top_level_statement(
         &self,
         statement: &TopLevelStatement,
-        table: &mut Scope,
+        scope: &mut Scope,
+        block_map: &mut HashMap<Uuid, Scope>,
     ) -> Result<(), String> {
         match statement {
             TopLevelStatement::Function(function) => {
-                self.analyze_function_declaration(function, table)?
+                self.analyze_function_declaration(function, scope, block_map)?
             }
         }
 
@@ -129,13 +133,14 @@ impl Analyzer {
     fn analyze_function_declaration(
         &self,
         function: &Function,
-        table: &mut Scope,
+        global_scope: &mut Scope,
+        block_map: &mut HashMap<Uuid, Scope>,
     ) -> Result<(), String> {
         let function_name = function.identifier.name.clone();
         let line = function.identifier.token.position.line;
         let column = function.identifier.token.position.column;
 
-        if table.get_symbol(&function_name).is_some() {
+        if global_scope.get_symbol(&function_name).is_some() {
             return Err(format!(
                 "Duplicated identifier found: {} at Line {} and at Column {}",
                 function_name, line, column
@@ -143,26 +148,18 @@ impl Analyzer {
         }
 
         match &function.type_identifier {
-            None => {
-                table.insert_symbol(Symbol::new(&function_name, SymbolKind::Variable, None));
-            }
+            None => {}
             Some(return_type) => {
                 let return_type_name = return_type.name.clone();
                 let line = return_type.token.position.line;
                 let column = return_type.token.position.column;
 
-                if !table.get_symbol(&return_type_name).is_some() {
+                if !global_scope.get_symbol(&return_type_name).is_some() {
                     return Err(format!(
                         "Type not found: {} at Line {} and at Column {}",
                         return_type_name, line, column
                     ));
                 }
-
-                table.insert_symbol(Symbol::new(
-                    &function_name,
-                    SymbolKind::Variable,
-                    Some(&return_type_name),
-                ));
             }
         };
 
@@ -178,29 +175,29 @@ impl Analyzer {
             .as_ref()
             .map_or("void", |id| &id.name[..]);
 
-        table.insert_symbol(Symbol::new(
+        global_scope.insert_symbol(Symbol::new(
             &function_name,
             SymbolKind::Function(params),
             Some(type_name),
         ));
 
-        self.analyze_function(function, table)?;
+        self.analyze_function(function, &global_scope, block_map)?;
 
         Ok(())
     }
 
-    fn analyze_function(&self, function: &Function, parent_scope: &Scope) -> Result<(), String> {
-        let rc = Rc::new(parent_scope.clone());
-        let mut scope = Scope::new(
-            Some(rc),
-            false,
-            Some(
-                function
-                    .type_identifier
-                    .as_ref()
-                    .map_or("void".to_string(), |id| id.name.clone()),
-            ),
-        );
+    fn analyze_function(
+        &self,
+        function: &Function,
+        parent_scope: &Scope,
+        block_map: &mut HashMap<Uuid, Scope>,
+    ) -> Result<(), String> {
+        let function_return_type_name = function
+            .type_identifier
+            .as_ref()
+            .map_or("void".to_string(), |id| id.name.clone());
+
+        let mut scope = Scope::new(parent_scope.clone(), false, Some(function_return_type_name));
 
         for param in &function.params_declaration.params {
             let param_name = param.identifier.name.clone();
@@ -232,29 +229,35 @@ impl Analyzer {
             ))
         }
 
-        for statement in &function.block.statements {
-            self.analyze_statement(statement, &mut scope)?;
-        }
+        let mut block_scope = Scope::extend(scope);
+        self.analyze_block(&function.block, &mut block_scope, block_map)?;
 
         Ok(())
     }
 
-    fn analyze_statement(&self, statement: &Statement, table: &mut Scope) -> Result<(), String> {
+    fn analyze_statement(
+        &self,
+        statement: &Statement,
+        scope: &mut Scope,
+        block_map: &mut HashMap<Uuid, Scope>,
+    ) -> Result<(), String> {
         match statement {
-            Statement::Block(block) => self.analyze_block(block, table),
-            Statement::Let(r#let) => self.analyze_let_statement(r#let, table),
-            Statement::Const(r#const) => self.analyze_const_statement(r#const, table),
+            Statement::Block(block) => self.analyze_block(block, scope, block_map),
+            Statement::Let(r#let) => self.analyze_let_statement(r#let, scope),
+            Statement::Const(r#const) => self.analyze_const_statement(r#const, scope),
             Statement::Assignment(assignment) => {
-                self.analyze_assignment_statement(assignment, table)
+                self.analyze_assignment_statement(assignment, scope)
             }
-            Statement::FunctionCall(call) => self.analyze_function_call(call, table),
-            Statement::While(r#while) => self.analyze_while_statement(r#while, table),
-            Statement::DoWhile(do_while) => self.analyze_do_while_statement(do_while, table),
-            Statement::For(r#for) => self.analyze_for_statement(r#for, table),
-            Statement::If(r#if) => self.analyze_if_statement(r#if, table),
-            Statement::Break(r#break) => self.analyze_break_statement(r#break, table),
-            Statement::Continue(r#continue) => self.analyze_continue_statement(r#continue, table),
-            Statement::Return(r#return) => self.analyze_return_statement(r#return, table),
+            Statement::FunctionCall(call) => self.analyze_function_call(call, scope),
+            Statement::While(r#while) => self.analyze_while_statement(r#while, scope, block_map),
+            Statement::DoWhile(do_while) => {
+                self.analyze_do_while_statement(do_while, scope, block_map)
+            }
+            Statement::For(r#for) => self.analyze_for_statement(r#for, scope, block_map),
+            Statement::If(r#if) => self.analyze_if_statement(r#if, scope, block_map),
+            Statement::Break(r#break) => self.analyze_break_statement(r#break, scope),
+            Statement::Continue(r#continue) => self.analyze_continue_statement(r#continue, scope),
+            Statement::Return(r#return) => self.analyze_return_statement(r#return, scope),
         }
     }
 
@@ -297,18 +300,22 @@ impl Analyzer {
         }
     }
 
-    fn analyze_block(&self, block: &Block, parent_table: &Scope) -> Result<(), String> {
-        let rc = Rc::new(parent_table.clone());
-        let mut local_table = Scope::new(Some(rc), false, None);
-
+    fn analyze_block(
+        &self,
+        block: &Block,
+        scope: &mut Scope,
+        block_map: &mut HashMap<Uuid, Scope>,
+    ) -> Result<(), String> {
         for statement in &block.statements {
-            self.analyze_statement(statement, &mut local_table)?;
+            self.analyze_statement(statement, scope, block_map)?;
         }
+
+        block_map.insert(block.id, scope.clone());
 
         Ok(())
     }
 
-    fn analyze_let_statement(&self, r#let: &Let, table: &mut Scope) -> Result<(), String> {
+    fn analyze_let_statement(&self, r#let: &Let, scope: &mut Scope) -> Result<(), String> {
         match r#let {
             Let::WithoutValue(identifier, return_type) => {
                 let variable_name = identifier.name.clone();
@@ -316,7 +323,7 @@ impl Analyzer {
                 let line = identifier.token.position.line;
                 let column = identifier.token.position.column;
 
-                if table.get_symbol(&variable_name).is_some() {
+                if scope.get_symbol(&variable_name).is_some() {
                     return Err(format!(
                         "Duplicated identifier found: {} at Line {} and at Column {}",
                         variable_name, line, column
@@ -328,14 +335,14 @@ impl Analyzer {
                 let line = return_type.token.position.line;
                 let column = return_type.token.position.column;
 
-                if !table.get_symbol(&return_type_name).is_some() {
+                if !scope.get_symbol(&return_type_name).is_some() {
                     return Err(format!(
                         "Type not found: {} at Line {} and at Column {}",
                         return_type_name, line, column
                     ));
                 }
 
-                table.insert_symbol(Symbol::new(
+                scope.insert_symbol(Symbol::new(
                     &variable_name,
                     SymbolKind::Variable,
                     Some(&return_type_name),
@@ -349,7 +356,7 @@ impl Analyzer {
                 let line = identifier.token.position.line;
                 let column = identifier.token.position.column;
 
-                if table.get_symbol(&variable_name).is_some() {
+                if scope.get_symbol(&variable_name).is_some() {
                     return Err(format!(
                         "Duplicated identifier found: {} at Line {} and at Column {}",
                         variable_name, line, column
@@ -358,9 +365,9 @@ impl Analyzer {
 
                 match return_type {
                     None => {
-                        let return_type_name = self.analyze_expression(expression, table)?;
+                        let return_type_name = self.analyze_expression(expression, scope)?;
 
-                        table.insert_symbol(Symbol::new(
+                        scope.insert_symbol(Symbol::new(
                             &variable_name,
                             SymbolKind::Variable,
                             Some(&return_type_name),
@@ -374,7 +381,7 @@ impl Analyzer {
                         let line = return_type.token.position.line;
                         let column = return_type.token.position.column;
 
-                        if !table.get_symbol(&return_type_name).is_some() {
+                        if !scope.get_symbol(&return_type_name).is_some() {
                             return Err(format!(
                                 "Type not found: {} at Line {} and at Column {}",
                                 return_type_name, line, column
@@ -382,12 +389,12 @@ impl Analyzer {
                         }
 
                         let expression_return_type_name =
-                            self.analyze_expression(expression, table)?;
+                            self.analyze_expression(expression, scope)?;
 
                         if is_number(&expression_return_type_name) && is_number(&return_type_name)
                             || expression_return_type_name == return_type_name
                         {
-                            table.insert_symbol(Symbol::new(
+                            scope.insert_symbol(Symbol::new(
                                 &variable_name,
                                 SymbolKind::Variable,
                                 Some(&return_type_name),
@@ -406,13 +413,13 @@ impl Analyzer {
         }
     }
 
-    fn analyze_const_statement(&self, r#const: &Const, table: &mut Scope) -> Result<(), String> {
+    fn analyze_const_statement(&self, r#const: &Const, scope: &mut Scope) -> Result<(), String> {
         let variable_name = r#const.identifier.name.clone();
 
         let line = r#const.identifier.token.position.line;
         let column = r#const.identifier.token.position.column;
 
-        if table.get_symbol(&variable_name).is_some() {
+        if scope.get_symbol(&variable_name).is_some() {
             return Err(format!(
                 "Duplicated identifier found: {} at Line {} and at Column {}",
                 variable_name, line, column
@@ -421,9 +428,9 @@ impl Analyzer {
 
         match &r#const.type_identifier {
             None => {
-                let return_type_name = self.analyze_expression(&r#const.expression, table)?;
+                let return_type_name = self.analyze_expression(&r#const.expression, scope)?;
 
-                table.insert_symbol(Symbol::new(
+                scope.insert_symbol(Symbol::new(
                     &variable_name,
                     SymbolKind::Constant,
                     Some(&return_type_name),
@@ -437,7 +444,7 @@ impl Analyzer {
                 let line = return_type.token.position.line;
                 let column = return_type.token.position.column;
 
-                if !table.get_symbol(&return_type_name).is_some() {
+                if !scope.get_symbol(&return_type_name).is_some() {
                     return Err(format!(
                         "Type not found: {} at Line {} and at Column {}",
                         return_type_name, line, column
@@ -445,12 +452,12 @@ impl Analyzer {
                 }
 
                 let expression_return_type_name =
-                    self.analyze_expression(&r#const.expression, table)?;
+                    self.analyze_expression(&r#const.expression, scope)?;
 
                 if is_number(&expression_return_type_name) && is_number(&return_type_name)
                     || expression_return_type_name == return_type_name
                 {
-                    table.insert_symbol(Symbol::new(
+                    scope.insert_symbol(Symbol::new(
                         &variable_name,
                         SymbolKind::Constant,
                         Some(&return_type_name),
@@ -470,22 +477,22 @@ impl Analyzer {
     fn analyze_assignment_statement(
         &self,
         assignment: &Assignment,
-        table: &Scope,
+        scope: &Scope,
     ) -> Result<(), String> {
         let identifier_name = assignment.identifier.name.clone();
         let line = assignment.identifier.token.position.line;
         let column = assignment.identifier.token.position.column;
 
-        if !table.get_symbol(&identifier_name).is_some() {
+        if !scope.get_symbol(&identifier_name).is_some() {
             return Err(format!(
                 "Identifier not found: {} at Line {} and at Column {}",
                 identifier_name, line, column
             ));
         }
 
-        let symbol = table.get_symbol(&identifier_name).unwrap();
+        let symbol = scope.get_symbol(&identifier_name).unwrap();
         let variable_type = symbol.symbol_type.as_ref().unwrap().clone();
-        let expression_return_type = self.analyze_expression(&assignment.expression, table)?;
+        let expression_return_type = self.analyze_expression(&assignment.expression, scope)?;
 
         match &symbol.kind {
             SymbolKind::Variable => {
@@ -536,11 +543,11 @@ impl Analyzer {
         }
     }
 
-    fn analyze_expression(&self, expression: &Expression, table: &Scope) -> Result<String, String> {
+    fn analyze_expression(&self, expression: &Expression, scope: &Scope) -> Result<String, String> {
         match expression {
             Expression::Range(range) => {
-                let left_return_type = self.analyze_expression(&range.left, table)?;
-                let right_return_type = self.analyze_expression(&range.right, table)?;
+                let left_return_type = self.analyze_expression(&range.left, scope)?;
+                let right_return_type = self.analyze_expression(&range.right, scope)?;
 
                 match range.operator.token.kind {
                     TokenKind::DotDot | TokenKind::DotDotEquals => {
@@ -561,13 +568,13 @@ impl Analyzer {
                 let line = identifier.token.position.line;
                 let column = identifier.token.position.column;
 
-                if !table.get_symbol(&identifier_name).is_some() {
+                if !scope.get_symbol(&identifier_name).is_some() {
                     Err(format!(
                         "Identifier not found: {} at Line {} and at Column {}",
                         identifier_name, line, column
                     ))
                 } else {
-                    let symbol = table.get_symbol(&identifier_name).unwrap();
+                    let symbol = scope.get_symbol(&identifier_name).unwrap();
 
                     match &symbol.kind {
                         SymbolKind::Constant | SymbolKind::Variable | SymbolKind::Parameter => {
@@ -585,17 +592,17 @@ impl Analyzer {
                 let line = function_call.identifier.token.position.line;
                 let column = function_call.identifier.token.position.column;
 
-                if !table.get_symbol(&identifier_name).is_some() {
+                if !scope.get_symbol(&identifier_name).is_some() {
                     Err(format!(
                         "Identifier not found: {} at Line {} and at Column {}",
                         identifier_name, line, column
                     ))
                 } else {
-                    let symbol = table.get_symbol(&identifier_name).unwrap();
+                    let symbol = scope.get_symbol(&identifier_name).unwrap();
 
                     match &symbol.kind {
                         SymbolKind::Function(_) => {
-                            self.analyze_function_call(function_call, table)?;
+                            self.analyze_function_call(function_call, scope)?;
                             Ok(symbol.symbol_type.as_ref().unwrap().clone())
                         }
                         _ => Err(format!(
@@ -617,10 +624,10 @@ impl Analyzer {
                 Literal::Char(_) => Ok("char".to_string()),
             },
             Expression::Parenthesized(parenthesize) => {
-                self.analyze_expression(&parenthesize.expression.as_ref(), table)
+                self.analyze_expression(&parenthesize.expression.as_ref(), scope)
             }
             Expression::Unary(unary) => {
-                let return_type = self.analyze_expression(&unary.expression, table)?;
+                let return_type = self.analyze_expression(&unary.expression, scope)?;
 
                 match unary.operator.token.kind {
                     TokenKind::Tilde => {
@@ -648,11 +655,11 @@ impl Analyzer {
                 }
             }
             Expression::Binary(binary) => {
-                let left_return_type = self.analyze_expression(&binary.left, table)?;
-                let right_return_type = self.analyze_expression(&binary.right, table)?;
+                let left_return_type = self.analyze_expression(&binary.left, scope)?;
+                let right_return_type = self.analyze_expression(&binary.right, scope)?;
 
                 match binary.operator.token.kind {
-                    TokenKind::EqualsEquals => {
+                    TokenKind::EqualsEquals | TokenKind::ExclamationEquals => {
                         if left_return_type != right_return_type {
                             Err(format!(
                                 "Mismatched types for equality comparison: {} and {}",
@@ -717,20 +724,20 @@ impl Analyzer {
     fn analyze_function_call(
         &self,
         function_call: &FunctionCall,
-        table: &Scope,
+        scope: &Scope,
     ) -> Result<(), String> {
         let identifier_name = function_call.identifier.name.clone();
         let line = function_call.identifier.token.position.line;
         let column = function_call.identifier.token.position.column;
 
-        if !table.get_symbol(&identifier_name).is_some() {
+        if !scope.get_symbol(&identifier_name).is_some() {
             return Err(format!(
                 "Identifier not found: {} at Line {} and at Column {}",
                 identifier_name, line, column
             ));
         }
 
-        let symbol = table.get_symbol(&identifier_name).unwrap();
+        let symbol = scope.get_symbol(&identifier_name).unwrap();
 
         match &symbol.kind {
             SymbolKind::Function(params) => {
@@ -747,7 +754,7 @@ impl Analyzer {
                         let expected_type_name = params.get(i).unwrap().clone();
                         let found_type_name = self.analyze_expression(
                             function_call.params.expressions.get(i).unwrap(),
-                            table,
+                            scope,
                         )?;
 
                         if expected_type_name != found_type_name {
@@ -772,11 +779,13 @@ impl Analyzer {
         }
     }
 
-    fn analyze_while_statement(&self, r#while: &While, scope: &mut Scope) -> Result<(), String> {
-        let rc = Rc::new(scope.clone());
-        let mut local_scope = Scope::new(Some(rc), true, None);
-
-        let expression_return_type = self.analyze_expression(&r#while.expression, &local_scope)?;
+    fn analyze_while_statement(
+        &self,
+        r#while: &While,
+        scope: &mut Scope,
+        block_map: &mut HashMap<Uuid, Scope>,
+    ) -> Result<(), String> {
+        let expression_return_type = self.analyze_expression(&r#while.expression, &scope)?;
 
         if expression_return_type != "bool" {
             Err(format!(
@@ -784,7 +793,8 @@ impl Analyzer {
                 expression_return_type
             ))
         } else {
-            self.analyze_statement(&r#while.statement, &mut local_scope)?;
+            let mut block_scope = Scope::block(scope.clone(), true);
+            self.analyze_block(&r#while.block, &mut block_scope, block_map)?;
 
             Ok(())
         }
@@ -794,13 +804,12 @@ impl Analyzer {
         &self,
         do_while: &DoWhile,
         scope: &mut Scope,
+        block_map: &mut HashMap<Uuid, Scope>,
     ) -> Result<(), String> {
-        let rc = Rc::new(scope.clone());
-        let mut local_scope = Scope::new(Some(rc), true, None);
+        let mut block_scope = Scope::block(scope.clone(), true);
+        self.analyze_block(&do_while.block, &mut block_scope, block_map)?;
 
-        self.analyze_statement(&do_while.statement, &mut local_scope)?;
-
-        let expression_return_type = self.analyze_expression(&do_while.expression, &local_scope)?;
+        let expression_return_type = self.analyze_expression(&do_while.expression, &scope)?;
 
         if expression_return_type != "bool" {
             Err(format!(
@@ -812,11 +821,13 @@ impl Analyzer {
         }
     }
 
-    fn analyze_if_statement(&self, r#if: &If, table: &Scope) -> Result<(), String> {
-        let rc = Rc::new(table.clone());
-        let mut local_table = Scope::new(Some(rc), false, None);
-
-        let expression_return_type = self.analyze_expression(&r#if.expression, table)?;
+    fn analyze_if_statement(
+        &self,
+        r#if: &If,
+        scope: &Scope,
+        block_map: &mut HashMap<Uuid, Scope>,
+    ) -> Result<(), String> {
+        let expression_return_type = self.analyze_expression(&r#if.expression, scope)?;
 
         if expression_return_type != "bool" {
             Err(format!(
@@ -824,29 +835,37 @@ impl Analyzer {
                 expression_return_type
             ))
         } else {
+            let mut block_scope = Scope::block(scope.clone(), false);
+            self.analyze_block(&r#if.block, &mut block_scope, block_map)?;
+
             if let Some(r#else) = &r#if.r#else {
-                self.analyze_statement(&r#else.statement, &mut local_table)?;
+                let mut block_scope = Scope::block(scope.clone(), false);
+                self.analyze_block(&r#else.block, &mut block_scope, block_map)?;
             }
 
             Ok(())
         }
     }
 
-    fn analyze_for_statement(&self, r#for: &For, scope: &Scope) -> Result<(), String> {
-        let rc = Rc::new(scope.clone());
-        let mut local_scope = Scope::new(Some(rc), true, None);
+    fn analyze_for_statement(
+        &self,
+        r#for: &For,
+        scope: &Scope,
+        block_map: &mut HashMap<Uuid, Scope>,
+    ) -> Result<(), String> {
+        let mut block_scope = Scope::block(scope.clone(), true);
 
         let identifier_name = r#for.identifier.name.clone();
         let line = r#for.identifier.token.position.line;
         let column = r#for.identifier.token.position.column;
 
-        if local_scope.get_symbol(&identifier_name).is_some() {
+        if block_scope.get_symbol(&identifier_name).is_some() {
             Err(format!(
                 "Duplicated identifier found: {} at Line {} and at Column {}",
                 identifier_name, line, column
             ))
         } else {
-            local_scope.insert_symbol(Symbol::new(
+            block_scope.insert_symbol(Symbol::new(
                 &identifier_name,
                 SymbolKind::Constant,
                 Some("i32"),
@@ -854,8 +873,8 @@ impl Analyzer {
 
             match &r#for.expression {
                 Expression::Range(_) => {
-                    self.analyze_expression(&r#for.expression, &local_scope)?;
-                    self.analyze_statement(&r#for.statement, &mut local_scope)?;
+                    self.analyze_expression(&r#for.expression, &block_scope)?;
+                    self.analyze_block(&r#for.block, &mut block_scope, block_map)?;
 
                     Ok(())
                 }

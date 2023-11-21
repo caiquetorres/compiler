@@ -1,7 +1,7 @@
 use super::token_kind::TokenKind;
 use crate::lang::position::Position;
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct Token {
     pub kind: TokenKind,
     pub position: Position,

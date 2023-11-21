@@ -148,7 +148,7 @@ impl Parser {
         self.use_token(&[TokenKind::RightParenthesis])?;
 
         let identifier_type = self.parse_type()?;
-        let block = self.parse_block_statement()?;
+        let block = self.parse_block()?;
 
         Ok(TopLevelStatement::Function(Function::new(
             Identifier::new(identifier_token),
@@ -217,9 +217,7 @@ impl Parser {
             TokenKind::DoKeyword => self.parse_do_while_statement(),
             TokenKind::WhileKeyword => self.parse_while_statement(),
             TokenKind::IfKeyword => self.parse_if_statement(),
-            TokenKind::LeftBrace => self
-                .parse_block_statement()
-                .map(|block| Statement::Block(block)),
+            TokenKind::LeftBrace => self.parse_block().map(|block| Statement::Block(block)),
             TokenKind::Identifier => {
                 let identifier_token = self.next_token();
                 let current_token = self.get_current_token();
@@ -285,7 +283,7 @@ impl Parser {
     /// # Returns
     /// - `Ok(Block)`: Parsed block of statements.
     /// - `Err(SyntaxError)`: Syntax error if parsing fails.
-    fn parse_block_statement(&mut self) -> Result<Block, SyntaxError> {
+    fn parse_block(&mut self) -> Result<Block, SyntaxError> {
         self.use_token(&[TokenKind::LeftBrace])?;
 
         let mut statements: Vec<Statement> = vec![];
@@ -312,9 +310,9 @@ impl Parser {
         self.use_token(&[TokenKind::WhileKeyword])?;
 
         let expression = self.parse_expression(0)?;
-        let statement = self.parse_statement()?;
+        let block = self.parse_block()?;
 
-        Ok(Statement::While(While::new(expression, statement)))
+        Ok(Statement::While(While::new(expression, block)))
     }
 
     /// Parses a 'while' loop statement in the format: `while condition { statement }`.
@@ -325,7 +323,7 @@ impl Parser {
     fn parse_do_while_statement(&mut self) -> Result<Statement, SyntaxError> {
         self.use_token(&[TokenKind::DoKeyword])?;
 
-        let statement = self.parse_statement()?;
+        let block = self.parse_block()?;
 
         self.use_token(&[TokenKind::WhileKeyword])?;
 
@@ -333,7 +331,7 @@ impl Parser {
 
         self.use_token(&[TokenKind::Semicolon])?;
 
-        Ok(Statement::DoWhile(DoWhile::new(statement, expression)))
+        Ok(Statement::DoWhile(DoWhile::new(block, expression)))
     }
 
     /// Parses a 'for' loop statement in the format: `for condition in expression { statement }`.
@@ -349,7 +347,7 @@ impl Parser {
         self.use_token(&[TokenKind::InKeyword])?;
 
         let expression = self.parse_expression(0)?;
-        let statement = self.parse_statement()?;
+        let statement = self.parse_block()?;
 
         Ok(Statement::For(For::new(
             Identifier::new(identifier_token),
@@ -369,7 +367,7 @@ impl Parser {
         self.use_token(&[TokenKind::IfKeyword])?;
 
         let expression = self.parse_expression(0)?;
-        let statement = self.parse_statement()?;
+        let block = self.parse_block()?;
 
         let current_token = self.get_current_token();
 
@@ -377,15 +375,15 @@ impl Parser {
             TokenKind::ElseKeyword => {
                 self.use_token(&[TokenKind::ElseKeyword])?;
 
-                let else_statement = self.parse_statement()?;
+                let else_statement = self.parse_block()?;
 
                 Ok(Statement::If(If::new(
                     expression,
-                    statement,
+                    block,
                     Some(Else::new(else_statement)),
                 )))
             }
-            _ => Ok(Statement::If(If::new(expression, statement, None))),
+            _ => Ok(Statement::If(If::new(expression, block, None))),
         }
     }
 
@@ -914,7 +912,7 @@ mod tests {
         let code = " { { } } ";
         let mut parser = Parser::from_code(code);
 
-        let result = parser.parse_block_statement();
+        let result = parser.parse_block();
         assert!(result.is_ok());
 
         match result {

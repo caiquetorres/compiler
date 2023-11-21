@@ -1,24 +1,27 @@
-fun greet(): i32 {
-    let a: i32 = 2;
-    return 2.0;
+/**
+  * Fibonnaci function
+  */
+fun fib(n: u32): u64 {
+    let a = 0;
+    let b = 1;
+    let c: u64;
+
+    if n == 0 {
+        return a;
+    }
+
+    for i in 2..=n {
+        c = a + b;
+        a = b;
+        b = c;
+    }
+
+    return b;
 }
 
 fun main() {
-    let counter: u8 = 0;
+    let n = 9;
+    fib(n);
 
-    while counter < 5.0 {
-        counter += 1;
-
-        if counter > 2 {
-            break;
-        }
-
-        continue;
-
-        for i in 0..5 {
-            continue;
-        }
-    }
-
-    greet();
+    // Print result
 }

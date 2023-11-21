@@ -32,11 +32,11 @@ impl Compiler {
         let ast = parser.parse().map_err(|e| format!("{}", e))?;
 
         let mut analyzer = Analyzer::from_ast(ast.clone());
-        analyzer
+        let block_map = analyzer
             .analyze()
             .map_err(|semantic_error| format!("{:?}", semantic_error))?;
 
-        let generator = CCodeGenerator::from_ast(ast);
+        let generator = CCodeGenerator::from_ast(ast, block_map);
         let code = generator.generate();
 
         println!("Compiled successfully!");
