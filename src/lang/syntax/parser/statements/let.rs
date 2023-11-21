@@ -1,7 +1,9 @@
 use crate::lang::syntax::parser::expressions::expression::Expression;
 use crate::lang::syntax::parser::shared::identifier::Identifier;
+
 use crate::lang::syntax::tree_display::TreeDisplay;
 
+#[derive(Clone)]
 pub enum Let {
     WithValue(Identifier, Option<Identifier>, Expression),
     WithoutValue(Identifier, Identifier),

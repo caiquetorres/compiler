@@ -1,5 +1,6 @@
 use crate::lang::syntax::{parser::expressions::expression::Expression, tree_display::TreeDisplay};
 
+#[derive(Clone)]
 pub struct Return {
     pub expression: Option<Expression>,
 }

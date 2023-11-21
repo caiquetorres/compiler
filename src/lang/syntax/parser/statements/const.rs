@@ -3,6 +3,7 @@ use crate::lang::syntax::parser::shared::assignment_operator::AssignmentOperator
 use crate::lang::syntax::parser::shared::identifier::Identifier;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
+#[derive(Clone)]
 pub struct Const {
     pub identifier: Identifier,
     pub type_identifier: Option<Identifier>,

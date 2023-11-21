@@ -2,6 +2,7 @@ use super::statement::Statement;
 
 use crate::lang::syntax::{parser::expressions::expression::Expression, tree_display::TreeDisplay};
 
+#[derive(Clone)]
 pub struct DoWhile {
     pub statement: Box<Statement>,
     pub expression: Expression,

@@ -1,5 +1,6 @@
 use crate::lang::syntax::{parser::statements::statement::Statement, tree_display::TreeDisplay};
 
+#[derive(Clone)]
 pub struct Block {
     pub statements: Vec<Statement>,
 }

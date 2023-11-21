@@ -1,6 +1,7 @@
 use super::statement::Statement;
 use crate::lang::syntax::{parser::expressions::expression::Expression, tree_display::TreeDisplay};
 
+#[derive(Clone)]
 pub struct While {
     pub expression: Expression,
     pub statement: Box<Statement>,

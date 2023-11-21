@@ -1,6 +1,7 @@
 use super::expression::Expression;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
+#[derive(Clone)]
 pub struct Parenthesized {
     pub expression: Box<Expression>,
 }

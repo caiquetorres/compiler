@@ -9,6 +9,7 @@ use crate::lang::syntax::parser::shared::function_call::FunctionCall;
 use crate::lang::syntax::parser::shared::identifier::Identifier;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
+#[derive(Clone)]
 pub enum Expression {
     Identifier(Identifier),
     FunctionCall(FunctionCall),

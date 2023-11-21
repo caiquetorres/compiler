@@ -1,5 +1,6 @@
 use crate::lang::syntax::tree_display::TreeDisplay;
 
+#[derive(Clone)]
 pub struct Continue;
 
 impl TreeDisplay for Continue {

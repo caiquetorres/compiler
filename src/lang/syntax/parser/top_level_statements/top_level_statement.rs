@@ -2,6 +2,7 @@ use super::function::Function;
 
 use crate::lang::syntax::tree_display::TreeDisplay;
 
+#[derive(Clone)]
 pub enum TopLevelStatement {
     Function(Function),
 }

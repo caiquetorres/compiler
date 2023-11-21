@@ -1,5 +1,6 @@
 use crate::lang::syntax::{lexer::token::Token, tree_display::TreeDisplay};
 
+#[derive(Clone)]
 pub struct AssignmentOperator {
     pub name: String,
     pub token: Token,

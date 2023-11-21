@@ -1,6 +1,7 @@
 use super::expression::Expression;
 use crate::lang::syntax::{lexer::token::Token, tree_display::TreeDisplay};
 
+#[derive(Clone)]
 pub struct UnaryOperator {
     pub token: Token,
 }
@@ -18,6 +19,7 @@ impl TreeDisplay for UnaryOperator {
     }
 }
 
+#[derive(Clone)]
 pub struct Unary {
     pub operator: UnaryOperator,
     pub expression: Box<Expression>,

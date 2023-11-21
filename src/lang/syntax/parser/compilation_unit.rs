@@ -2,6 +2,7 @@ use super::top_level_statements::top_level_statement::TopLevelStatement;
 
 use crate::lang::syntax::tree_display::TreeDisplay;
 
+#[derive(Clone)]
 pub struct CompilationUnit {
     pub statements: Vec<TopLevelStatement>,
 }

@@ -1,9 +1,11 @@
-use std::fs;
-
-use super::{
-    sematic::analyzer::Analyzer,
-    syntax::{lexer::lexer::Lexer, parser::parser::Parser},
+use std::{
+    fs::{self, File},
+    io::Write,
 };
+
+use crate::lang::{generators::c_code_generator::CCodeGenerator, sematic::analyzer::Analyzer};
+
+use super::syntax::{lexer::lexer::Lexer, parser::parser::Parser};
 
 pub struct Compiler {
     code: String,
@@ -29,10 +31,19 @@ impl Compiler {
         let mut parser = Parser::from_tokens(tokens);
         let ast = parser.parse().map_err(|e| format!("{}", e))?;
 
-        let mut analyzer = Analyzer::from_ast(ast);
-        analyzer.analyze()?;
+        let mut analyzer = Analyzer::from_ast(ast.clone());
+        analyzer
+            .analyze()
+            .map_err(|semantic_error| format!("{:?}", semantic_error))?;
+
+        let generator = CCodeGenerator::from_ast(ast);
+        let code = generator.generate();
 
         println!("Compiled successfully!");
+        println!("{}", code);
+
+        let mut file = File::create("main.c").unwrap();
+        file.write_all(code.as_bytes()).unwrap();
 
         Ok(())
     }

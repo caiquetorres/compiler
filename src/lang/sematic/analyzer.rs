@@ -615,7 +615,6 @@ impl Analyzer {
                 }
                 Literal::Boolean(_) => Ok("bool".to_string()),
                 Literal::Char(_) => Ok("char".to_string()),
-                Literal::String(_) => Ok("string".to_string()),
             },
             Expression::Parenthesized(parenthesize) => {
                 self.analyze_expression(&parenthesize.expression.as_ref(), table)

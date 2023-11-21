@@ -2,6 +2,7 @@ use super::identifier::Identifier;
 use crate::lang::syntax::parser::expressions::expression::Expression;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
+#[derive(Clone)]
 pub struct Params {
     pub expressions: Vec<Expression>,
 }
@@ -21,6 +22,7 @@ impl TreeDisplay for Params {
     }
 }
 
+#[derive(Clone)]
 pub struct FunctionCall {
     pub identifier: Identifier,
     pub params: Params,

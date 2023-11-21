@@ -1,6 +1,7 @@
 use crate::lang::syntax::lexer::token::Token;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
+#[derive(Clone)]
 pub struct Identifier {
     pub token: Token,
     pub name: String,

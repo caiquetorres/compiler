@@ -704,7 +704,6 @@ impl Parser {
         match token.kind {
             TokenKind::BooleanLiteral => Ok(Expression::Literal(Literal::Boolean(token))),
             TokenKind::CharLiteral => Ok(Expression::Literal(Literal::Char(token))),
-            TokenKind::StringLiteral => Ok(Expression::Literal(Literal::String(token))),
             TokenKind::NumberLiteral => Ok(Expression::Literal(Literal::Number(token))),
             TokenKind::Identifier => match self.get_current_token().kind {
                 TokenKind::LeftParenthesis => self.parse_function_call_expression(token),
