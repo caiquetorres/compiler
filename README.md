@@ -8,6 +8,7 @@ We are actively working on building the foundational components of the compiler,
 
 -   **Semantic Analyses**
     -   **Number implicit conversions**
+-   **Code conversion**
 
 Stay tuned for updates as we make progress on the project!
 
@@ -46,30 +47,60 @@ cargo run -- --compile path/to/file
 
 ## Sneak a Peek at the Compiler 🚀
 
-Here's a snippet that the compiler totally can understand right now:
+Here's a snippet that the compiler totally can compile right now:
 
 ```x
 /**
- * Documentation
- */
-fun greet() {
-    print("Hello world!");
+  * Fibonnaci function
+  */
+fun fib(n: u32): u64 {
+    let a = 0;
+    let b = 1;
+    let c: u64;
+
+    if n == 0 {
+        return a;
+    }
+
+    for i in 2..=n {
+        c = a + b;
+        a = b;
+        b = c;
+    }
+
+    return b;
 }
 
 fun main() {
-    let counter: u8 = 0;
+    let n = 9;
+    fib(n);
 
-    while counter < 5.0 {
-        print("While loop counter");
-        counter += 1;
-    }
+    // Print result
+}
+```
 
-    for i in 0..5 {
-        print("For loop counter");
-    }
+The compiler translates the code into C language. Below is an example demonstrating the converted code.
 
-    // Comment
-    greet();
+```c
+unsigned long long int fib(unsigned int n) {
+  signed int a = 0;
+  signed int b = 1;
+  unsigned long long int c;
+  if (n == 0) {
+    return a;
+  }
+  int i;
+  for (i = 2; i <= n; i++) {
+    c = a + b;
+    a = b;
+    b = c;
+  }
+  return b;
+}
+
+void main() {
+  signed int n = 9;
+  fib(n);
 }
 ```
 
