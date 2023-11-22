@@ -316,101 +316,103 @@ impl Analyzer {
     }
 
     fn analyze_let_statement(&self, r#let: &Let, scope: &mut Scope) -> Result<(), String> {
-        match r#let {
-            Let::WithoutValue(identifier, return_type) => {
-                let variable_name = identifier.name.clone();
+        Ok(())
 
-                let line = identifier.token.position.line;
-                let column = identifier.token.position.column;
+        // match r#let {
+        //     Let::WithoutValue(identifier, return_type) => {
+        //         let variable_name = identifier.name.clone();
 
-                if scope.get_symbol(&variable_name).is_some() {
-                    return Err(format!(
-                        "Duplicated identifier found: {} at Line {} and at Column {}",
-                        variable_name, line, column
-                    ));
-                }
+        //         let line = identifier.token.position.line;
+        //         let column = identifier.token.position.column;
 
-                let return_type_name = return_type.name.clone();
+        //         if scope.get_symbol(&variable_name).is_some() {
+        //             return Err(format!(
+        //                 "Duplicated identifier found: {} at Line {} and at Column {}",
+        //                 variable_name, line, column
+        //             ));
+        //         }
 
-                let line = return_type.token.position.line;
-                let column = return_type.token.position.column;
+        //         let return_type_name = return_type.name.clone();
 
-                if !scope.get_symbol(&return_type_name).is_some() {
-                    return Err(format!(
-                        "Type not found: {} at Line {} and at Column {}",
-                        return_type_name, line, column
-                    ));
-                }
+        //         let line = return_type.token.position.line;
+        //         let column = return_type.token.position.column;
 
-                scope.insert_symbol(Symbol::new(
-                    &variable_name,
-                    SymbolKind::Variable,
-                    Some(&return_type_name),
-                ));
+        //         if !scope.get_symbol(&return_type_name).is_some() {
+        //             return Err(format!(
+        //                 "Type not found: {} at Line {} and at Column {}",
+        //                 return_type_name, line, column
+        //             ));
+        //         }
 
-                Ok(())
-            }
-            Let::WithValue(identifier, return_type, expression) => {
-                let variable_name = identifier.name.clone();
+        //         scope.insert_symbol(Symbol::new(
+        //             &variable_name,
+        //             SymbolKind::Variable,
+        //             Some(&return_type_name),
+        //         ));
 
-                let line = identifier.token.position.line;
-                let column = identifier.token.position.column;
+        //         Ok(())
+        //     }
+        //     Let::WithValue(identifier, return_type, expression) => {
+        //         let variable_name = identifier.name.clone();
 
-                if scope.get_symbol(&variable_name).is_some() {
-                    return Err(format!(
-                        "Duplicated identifier found: {} at Line {} and at Column {}",
-                        variable_name, line, column
-                    ));
-                }
+        //         let line = identifier.token.position.line;
+        //         let column = identifier.token.position.column;
 
-                match return_type {
-                    None => {
-                        let return_type_name = self.analyze_expression(expression, scope)?;
+        //         if scope.get_symbol(&variable_name).is_some() {
+        //             return Err(format!(
+        //                 "Duplicated identifier found: {} at Line {} and at Column {}",
+        //                 variable_name, line, column
+        //             ));
+        //         }
 
-                        scope.insert_symbol(Symbol::new(
-                            &variable_name,
-                            SymbolKind::Variable,
-                            Some(&return_type_name),
-                        ));
+        //         match return_type {
+        //             None => {
+        //                 let return_type_name = self.analyze_expression(expression, scope)?;
 
-                        Ok(())
-                    }
-                    Some(return_type) => {
-                        let return_type_name = return_type.name.clone();
+        //                 scope.insert_symbol(Symbol::new(
+        //                     &variable_name,
+        //                     SymbolKind::Variable,
+        //                     Some(&return_type_name),
+        //                 ));
 
-                        let line = return_type.token.position.line;
-                        let column = return_type.token.position.column;
+        //                 Ok(())
+        //             }
+        //             Some(return_type) => {
+        //                 let return_type_name = return_type.name.clone();
 
-                        if !scope.get_symbol(&return_type_name).is_some() {
-                            return Err(format!(
-                                "Type not found: {} at Line {} and at Column {}",
-                                return_type_name, line, column
-                            ));
-                        }
+        //                 let line = return_type.token.position.line;
+        //                 let column = return_type.token.position.column;
 
-                        let expression_return_type_name =
-                            self.analyze_expression(expression, scope)?;
+        //                 if !scope.get_symbol(&return_type_name).is_some() {
+        //                     return Err(format!(
+        //                         "Type not found: {} at Line {} and at Column {}",
+        //                         return_type_name, line, column
+        //                     ));
+        //                 }
 
-                        if is_number(&expression_return_type_name) && is_number(&return_type_name)
-                            || expression_return_type_name == return_type_name
-                        {
-                            scope.insert_symbol(Symbol::new(
-                                &variable_name,
-                                SymbolKind::Variable,
-                                Some(&return_type_name),
-                            ));
+        //                 let expression_return_type_name =
+        //                     self.analyze_expression(expression, scope)?;
 
-                            Ok(())
-                        } else {
-                            Err(format!(
-                                "Type mismatch, expected: {}, found: {}",
-                                return_type_name, expression_return_type_name
-                            ))
-                        }
-                    }
-                }
-            }
-        }
+        //                 if is_number(&expression_return_type_name) && is_number(&return_type_name)
+        //                     || expression_return_type_name == return_type_name
+        //                 {
+        //                     scope.insert_symbol(Symbol::new(
+        //                         &variable_name,
+        //                         SymbolKind::Variable,
+        //                         Some(&return_type_name),
+        //                     ));
+
+        //                     Ok(())
+        //                 } else {
+        //                     Err(format!(
+        //                         "Type mismatch, expected: {}, found: {}",
+        //                         return_type_name, expression_return_type_name
+        //                     ))
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     fn analyze_const_statement(&self, r#const: &Const, scope: &mut Scope) -> Result<(), String> {

@@ -1,7 +1,7 @@
 use std::fs::{self};
 
 use super::{
-    semantic_new::analyzer::Analyzer,
+    semantic::analyzer::Analyzer,
     syntax::{lexer::lexer::Lexer, parser::parser::Parser},
 };
 

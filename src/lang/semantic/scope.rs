@@ -20,11 +20,11 @@ impl Scope {
         }
     }
 
-    pub fn new(parent: Rc<RefCell<Scope>>, is_loop: bool, return_type: LangType) -> Self {
+    pub fn new(parent: Rc<RefCell<Scope>>, is_loop: bool, return_type: Option<LangType>) -> Self {
         Self {
             parent: Some(parent),
             is_loop,
-            return_type: Some(return_type),
+            return_type,
             symbol_table: HashMap::new(),
         }
     }

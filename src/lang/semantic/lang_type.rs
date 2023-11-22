@@ -15,13 +15,16 @@ pub enum LangType {
     Char,
     String,
     Range,
+    Any,
     // Custom(String),
     //Array(Box<LangType>, usize),
 }
 
 impl LangType {
-    fn number_type_precedence(v: Vec<LangType>) -> LangType {
-        if v.contains(&LangType::F64) {
+    pub fn number_type_precedence(v: Vec<LangType>) -> LangType {
+        if v.contains(&LangType::Any) {
+            LangType::Any
+        } else if v.contains(&LangType::F64) {
             LangType::F64
         } else if v.contains(&LangType::F32) {
             LangType::F32
@@ -44,10 +47,11 @@ impl LangType {
         }
     }
 
-    fn is_integer(&self) -> bool {
+    pub fn is_integer(&self) -> bool {
         matches!(
             &self,
-            Self::U8
+            Self::Any
+                | Self::U8
                 | Self::I8
                 | Self::U16
                 | Self::I16
@@ -58,10 +62,11 @@ impl LangType {
         )
     }
 
-    fn is_number(&self) -> bool {
+    pub fn is_number(&self) -> bool {
         matches!(
             &self,
-            Self::U8
+            Self::Any
+                | Self::U8
                 | Self::I8
                 | Self::U16
                 | Self::I16
@@ -93,6 +98,7 @@ impl ToString for LangType {
             LangType::Char => "char",
             LangType::String => "string",
             LangType::Range => "range",
+            LangType::Any => "any",
             // LangType::Custom(t) => t.as_str(),
             // LangType::Array(inner_type, size) => {
             //     return write!(f, "[{}; {}]", inner_type, size);
@@ -120,7 +126,8 @@ impl From<String> for LangType {
             "char" => LangType::Char,
             "string" => LangType::String,
             "range" => LangType::Range,
-            _ => LangType::Void,
+            "any" => LangType::Any,
+            _ => LangType::Any,
         }
     }
 }
@@ -143,7 +150,8 @@ impl From<&str> for LangType {
             "char" => LangType::Char,
             "string" => LangType::String,
             "range" => LangType::Range,
-            _ => LangType::Void,
+            "any" => LangType::Any,
+            _ => LangType::Any,
         }
     }
 }

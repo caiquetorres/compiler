@@ -1,4 +1,6 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
+
+use uuid::Uuid;
 
 use crate::lang::syntax::parser::{
     compilation_unit::CompilationUnit, top_level_statements::top_level_statement::TopLevelStatement,
@@ -10,6 +12,7 @@ use super::{
 };
 
 pub struct Analyzer {
+    pub scopes: HashMap<Uuid, Rc<RefCell<Scope>>>,
     pub diagnosis: Vec<SemanticError>,
 }
 
@@ -51,6 +54,9 @@ impl Analyzer {
             }
         }
 
-        Self { diagnosis }
+        Self {
+            scopes: HashMap::new(),
+            diagnosis,
+        }
     }
 }

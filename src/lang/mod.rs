@@ -1,6 +1,6 @@
 pub mod compiler;
 pub mod generators;
 pub mod position;
-pub mod semantic_new;
-pub mod sematic;
+pub mod semantic;
+pub mod sematic_old;
 pub mod syntax;

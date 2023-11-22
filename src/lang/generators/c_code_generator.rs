@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::lang::{
-    sematic::{expression_analyzer::ExpressionAnalyzer, scope::Scope},
+    sematic_old::{expression_analyzer::ExpressionAnalyzer, scope::Scope},
     syntax::{
         lexer::token_kind::TokenKind,
         parser::{
@@ -142,38 +142,38 @@ impl CCodeGenerator {
     }
 
     fn generate_let_statement(&self, r#let: &Let, scope: &Scope, code: &mut String) {
-        match r#let {
-            Let::WithValue(identifier, _, expression) => {
-                let identifier_name = identifier.name.clone();
+        // match r#let {
+        //     Let::WithValue(identifier, _, expression) => {
+        //         let identifier_name = identifier.name.clone();
 
-                let type_identifier_name = scope
-                    .get_symbol(&identifier_name)
-                    .unwrap()
-                    .symbol_type
-                    .as_ref()
-                    .unwrap();
+        //         let type_identifier_name = scope
+        //             .get_symbol(&identifier_name)
+        //             .unwrap()
+        //             .symbol_type
+        //             .as_ref()
+        //             .unwrap();
 
-                code.push_str(&format!(
-                    "{} {}=",
-                    convert_to_c_type(&type_identifier_name),
-                    identifier_name
-                ));
+        //         code.push_str(&format!(
+        //             "{} {}=",
+        //             convert_to_c_type(&type_identifier_name),
+        //             identifier_name
+        //         ));
 
-                self.generate_expression(expression, code);
+        //         self.generate_expression(expression, code);
 
-                code.push_str(";")
-            }
-            Let::WithoutValue(identifier, type_identifier) => {
-                let identifier_name = identifier.name.clone();
-                let type_identifier_name = type_identifier.name.clone();
+        //         code.push_str(";")
+        //     }
+        //     Let::WithoutValue(identifier, type_identifier) => {
+        //         let identifier_name = identifier.name.clone();
+        //         let type_identifier_name = type_identifier.name.clone();
 
-                code.push_str(&format!(
-                    "{} {};",
-                    convert_to_c_type(&type_identifier_name),
-                    identifier_name
-                ));
-            }
-        }
+        //         code.push_str(&format!(
+        //             "{} {};",
+        //             convert_to_c_type(&type_identifier_name),
+        //             identifier_name
+        //         ));
+        //     }
+        // }
     }
 
     fn generate_const_statement(&self, r#const: &Const, scope: &Scope, code: &mut String) {

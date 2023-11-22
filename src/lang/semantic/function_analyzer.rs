@@ -69,7 +69,7 @@ impl FunctionAnalyzer {
         });
 
         // Creates the local function scope.
-        let mut function_scope = Scope::new(global_scope, false, function_return_type);
+        let mut function_scope = Scope::new(global_scope, false, Some(function_return_type));
 
         for param_declaration in &function.params_declaration.params {
             let param_name = param_declaration.identifier.name.clone();
@@ -91,7 +91,9 @@ impl FunctionAnalyzer {
             })
         }
 
-        BlockAnalyzer::analyze_within_scope(&function.block, &function_scope);
+        let scope = Rc::new(RefCell::new(function_scope));
+        let analyzer = BlockAnalyzer::analyze_within_scope(&function.block, scope);
+        diagnosis.extend(analyzer.diagnosis);
 
         Self { diagnosis }
     }
