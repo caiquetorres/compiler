@@ -33,7 +33,7 @@ impl ExpressionAnalyzer {
                             return_type = symbol_type.clone();
                         }
                         _ => {
-                            diagnosis.push(SemanticError::IdentifierNotAVariableConstParam);
+                            diagnosis.push(SemanticError::IdentifierNotVariableConstOrParam);
                         }
                     }
                 } else {
@@ -53,7 +53,7 @@ impl ExpressionAnalyzer {
                             return_type = symbol_type.clone();
 
                             if params.len() != function_call.params.expressions.len() {
-                                diagnosis.push(SemanticError::InvalidParamsAmount);
+                                diagnosis.push(SemanticError::InvalidNumberOfParameters);
                             } else {
                                 for i in 0..params.len() {
                                     let expected_param_type = params.get(i).unwrap();
@@ -66,7 +66,7 @@ impl ExpressionAnalyzer {
                                         && (!expected_param_type.is_number()
                                             || !analyzer.return_type.is_number())
                                     {
-                                        diagnosis.push(SemanticError::InvalidParam);
+                                        diagnosis.push(SemanticError::InvalidParameterType);
                                     }
                                 }
                             }
@@ -98,19 +98,19 @@ impl ExpressionAnalyzer {
                     if analyzer.return_type.is_integer() {
                         return_type = analyzer.return_type;
                     } else {
-                        diagnosis.push(SemanticError::NotOnlyInIntegers);
+                        diagnosis.push(SemanticError::UnaryOperatorOnlyApplicableToInteger);
                     }
                 } else if let TokenKind::Plus | TokenKind::Minus = &unary.operator.token.kind {
                     if analyzer.return_type.is_number() {
                         return_type = analyzer.return_type;
                     } else {
-                        diagnosis.push(SemanticError::OperatorOnlyInNumbers);
+                        diagnosis.push(SemanticError::UnaryOperatorOnlyApplicableToNumbers);
                     }
                 } else {
                     if analyzer.return_type == LangType::Bool {
                         return_type = analyzer.return_type;
                     } else {
-                        diagnosis.push(SemanticError::OperatorOnlyInBooleans);
+                        diagnosis.push(SemanticError::UnaryOperatorOnlyApplicableToBooleans);
                     }
                 }
             }
@@ -143,7 +143,7 @@ impl ExpressionAnalyzer {
                         } else if left_return_type == right_return_type {
                             return_type = LangType::Bool;
                         } else {
-                            diagnosis.push(SemanticError::MismatchedEqualityTypes)
+                            diagnosis.push(SemanticError::EqualityTypeMismatch)
                         }
                     }
                     TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash => {

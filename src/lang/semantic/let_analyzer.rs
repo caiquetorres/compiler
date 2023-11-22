@@ -63,12 +63,6 @@ impl LetAnalyzer {
             symbol_type: variable_type.clone(),
         });
 
-        println!(
-            "Variable: {}, Type: {}",
-            variable_name,
-            variable_type.to_string()
-        );
-
         Self { diagnosis }
     }
 }

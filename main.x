@@ -1,14 +1,22 @@
-fun multiply(a: i32, b: i32): i32 {
-    return a * b;
+fun fibonacci(n: i32): i32 {
+    let a = 0;
+    let b = 1;
+    let c: i32;
+
+    if n == 0 {
+        return a;
+    }
+
+    for i in 2..=n {
+        c = a + b;
+        a = b;
+        b = c;
+    }
+
+    return b;
 }
 
 fun main() {
-    // let a;
-    // let b: i32;
-
-    let a = 2;
-    let b = multiply(2, a);
-
-    // const a = +true;
-    // const y: i32 = 2;
+    let n = 9;
+    println "Result: ", fibonacci(n);
 }
