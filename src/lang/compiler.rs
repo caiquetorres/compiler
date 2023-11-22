@@ -1,11 +1,9 @@
-use std::{
-    fs::{self, File},
-    io::Write,
+use std::fs::{self};
+
+use super::{
+    semantic_new::analyzer::Analyzer,
+    syntax::{lexer::lexer::Lexer, parser::parser::Parser},
 };
-
-use crate::lang::{generators::c_code_generator::CCodeGenerator, sematic::analyzer::Analyzer};
-
-use super::syntax::{lexer::lexer::Lexer, parser::parser::Parser};
 
 pub struct Compiler {
     code: String,
@@ -31,19 +29,24 @@ impl Compiler {
         let mut parser = Parser::from_tokens(tokens);
         let ast = parser.parse().map_err(|e| format!("{}", e))?;
 
-        let mut analyzer = Analyzer::from_ast(ast.clone());
-        let block_map = analyzer
-            .analyze()
-            .map_err(|semantic_error| format!("{:?}", semantic_error))?;
+        let analyzer = Analyzer::analyze(&ast);
 
-        let generator = CCodeGenerator::from_ast(ast, block_map);
-        let code = generator.generate();
+        for error in &analyzer.diagnosis {
+            println!("{:?}", error);
+        }
 
-        println!("Compiled successfully!");
-        println!("{}", code);
+        // let block_map = analyzer
+        //     .analyze()
+        //     .map_err(|semantic_error| format!("{:?}", semantic_error))?;
 
-        let mut file = File::create("main.c").unwrap();
-        file.write_all(code.as_bytes()).unwrap();
+        // let generator = CCodeGenerator::from_ast(ast, block_map);
+        // let code = generator.generate();
+
+        // println!("Compiled successfully!");
+        // println!("{}", code);
+
+        // let mut file = File::create("main.c").unwrap();
+        // file.write_all(code.as_bytes()).unwrap();
 
         Ok(())
     }
