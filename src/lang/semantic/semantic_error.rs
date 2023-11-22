@@ -4,7 +4,8 @@ use super::lang_type::LangType;
 pub enum SemanticError {
     DuplicatedIdentifier,
     IdentifierNotFound,
-    MainFunctionWithParameters,            // fun main(a: i32) { ... }
+    MainFunctionWithParameters, // fun main(a: i32) { ... }
+    MainFunctionWithReturn,
     MissingTypeOrExpression,               // let x;
     UnaryOperatorOnlyApplicableToInteger,  // ~(1)
     UnaryOperatorOnlyApplicableToNumbers,  // +(true)

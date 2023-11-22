@@ -3,8 +3,8 @@ use std::{cell::RefCell, rc::Rc};
 use crate::lang::syntax::parser::statements::r#if::If;
 
 use super::{
-    block_analyzer::BlockAnalyzer, expression_analyzer::ExpressionAnalyzer, lang_type::LangType,
-    scope::Scope, semantic_error::SemanticError,
+    analyzer::Scopes, block_analyzer::BlockAnalyzer, expression_analyzer::ExpressionAnalyzer,
+    lang_type::LangType, scope::Scope, semantic_error::SemanticError,
 };
 
 pub struct IfAnalyzer {
@@ -12,7 +12,7 @@ pub struct IfAnalyzer {
 }
 
 impl IfAnalyzer {
-    pub fn analyze(r#if: &If, scope: Rc<RefCell<Scope>>) -> Self {
+    pub fn analyze(r#if: &If, scope: Rc<RefCell<Scope>>, scopes: &mut Scopes) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         let analyzer = ExpressionAnalyzer::analyze(&r#if.expression, Rc::clone(&scope));
@@ -24,7 +24,7 @@ impl IfAnalyzer {
             })
         }
 
-        let analyzer = BlockAnalyzer::analyze_within_scope(&r#if.block, Rc::clone(&scope));
+        let analyzer = BlockAnalyzer::analyze_within_scope(&r#if.block, Rc::clone(&scope), scopes);
 
         diagnosis.extend(analyzer.diagnosis);
 

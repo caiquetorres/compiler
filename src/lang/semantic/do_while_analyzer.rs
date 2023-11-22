@@ -3,8 +3,8 @@ use std::{cell::RefCell, rc::Rc};
 use crate::lang::syntax::parser::statements::do_while::DoWhile;
 
 use super::{
-    block_analyzer::BlockAnalyzer, expression_analyzer::ExpressionAnalyzer, lang_type::LangType,
-    scope::Scope, semantic_error::SemanticError,
+    analyzer::Scopes, block_analyzer::BlockAnalyzer, expression_analyzer::ExpressionAnalyzer,
+    lang_type::LangType, scope::Scope, semantic_error::SemanticError,
 };
 
 pub struct DoWhileAnalyzer {
@@ -12,12 +12,13 @@ pub struct DoWhileAnalyzer {
 }
 
 impl DoWhileAnalyzer {
-    pub fn analyze(do_while: &DoWhile, scope: Rc<RefCell<Scope>>) -> Self {
+    pub fn analyze(do_while: &DoWhile, scope: Rc<RefCell<Scope>>, scopes: &mut Scopes) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         let scope = Rc::new(RefCell::new(Scope::new(Rc::clone(&scope), true, None)));
 
-        let analyzer = BlockAnalyzer::analyze_within_scope(&do_while.block, Rc::clone(&scope));
+        let analyzer =
+            BlockAnalyzer::analyze_within_scope(&do_while.block, Rc::clone(&scope), scopes);
 
         diagnosis.extend(analyzer.diagnosis);
 

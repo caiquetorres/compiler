@@ -1,4 +1,4 @@
-fun fibonacci(n: i32): i32 {
+fun fib(n: i32): i32 {
     let a = 0;
     let b = 1;
     let c: i32;
@@ -18,5 +18,5 @@ fun fibonacci(n: i32): i32 {
 
 fun main() {
     let n = 9;
-    println "Result: ", fibonacci(n);
+    println "Result: ", fib(n);
 }

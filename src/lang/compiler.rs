@@ -1,6 +1,10 @@
-use std::fs::{self};
+use std::{
+    fs::{self, File},
+    io::Write,
+};
 
 use super::{
+    generators::c_code_generator::CCodeGenerator,
     semantic::analyzer::Analyzer,
     syntax::{lexer::lexer::Lexer, parser::parser::Parser},
 };
@@ -31,22 +35,20 @@ impl Compiler {
 
         let analyzer = Analyzer::analyze(&ast);
 
-        for error in &analyzer.diagnosis {
-            println!("{:?}", error);
+        if analyzer.diagnosis.len() > 0 {
+            for error in &analyzer.diagnosis {
+                println!("{:?}", error);
+            }
+        } else {
+            let generator = CCodeGenerator::new(&ast, &analyzer.scopes);
+            let code = generator.generate();
+
+            println!("Compiled successfully!");
+            println!("{}", code);
+
+            let mut file = File::create("main.c").unwrap();
+            file.write_all(code.as_bytes()).unwrap();
         }
-
-        // let block_map = analyzer
-        //     .analyze()
-        //     .map_err(|semantic_error| format!("{:?}", semantic_error))?;
-
-        // let generator = CCodeGenerator::from_ast(ast, block_map);
-        // let code = generator.generate();
-
-        // println!("Compiled successfully!");
-        // println!("{}", code);
-
-        // let mut file = File::create("main.c").unwrap();
-        // file.write_all(code.as_bytes()).unwrap();
 
         Ok(())
     }

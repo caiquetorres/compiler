@@ -11,14 +11,18 @@ use super::{
     semantic_error::SemanticError, symbol::Symbol,
 };
 
+pub type Scopes = HashMap<Uuid, Rc<RefCell<Scope>>>;
+
 pub struct Analyzer {
-    pub scopes: HashMap<Uuid, Rc<RefCell<Scope>>>,
+    pub scopes: Scopes,
     pub diagnosis: Vec<SemanticError>,
 }
 
 impl Analyzer {
     pub fn analyze(ast: &CompilationUnit) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
+        let mut scopes = Scopes::new();
+
         let global_scope = Rc::new(RefCell::new(Scope::global()));
 
         let default_types = [
@@ -47,16 +51,14 @@ impl Analyzer {
         for statement in &ast.statements {
             match statement {
                 TopLevelStatement::Function(function) => {
-                    let analyzer = FunctionAnalyzer::analyze(function, Rc::clone(&global_scope));
+                    let analyzer =
+                        FunctionAnalyzer::analyze(function, Rc::clone(&global_scope), &mut scopes);
 
                     diagnosis.extend(analyzer.diagnosis);
                 }
             }
         }
 
-        Self {
-            scopes: HashMap::new(),
-            diagnosis,
-        }
+        Self { scopes, diagnosis }
     }
 }

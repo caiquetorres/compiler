@@ -3,10 +3,16 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use super::{lang_type::LangType, symbol::Symbol};
 
 #[derive(Clone, Debug)]
+pub struct Func {
+    pub name: String,
+    pub return_type: LangType,
+}
+
+#[derive(Clone, Debug)]
 pub struct Scope {
     is_loop: bool,
     parent: Option<Rc<RefCell<Scope>>>,
-    return_type: Option<LangType>,
+    function: Option<Func>,
     symbol_table: HashMap<String, Symbol>,
 }
 
@@ -15,16 +21,16 @@ impl Scope {
         Self {
             parent: None,
             is_loop: false,
-            return_type: None,
+            function: None,
             symbol_table: HashMap::new(),
         }
     }
 
-    pub fn new(parent: Rc<RefCell<Scope>>, is_loop: bool, return_type: Option<LangType>) -> Self {
+    pub fn new(parent: Rc<RefCell<Scope>>, is_loop: bool, function: Option<Func>) -> Self {
         Self {
             parent: Some(parent),
             is_loop,
-            return_type,
+            function,
             symbol_table: HashMap::new(),
         }
     }
@@ -45,11 +51,22 @@ impl Scope {
         })
     }
 
-    pub fn get_return_type(&self) -> Option<LangType> {
-        self.return_type.clone().or_else(|| {
+    pub fn get_function_name(&self) -> Option<String> {
+        self.function.clone().map(|v| v.name.clone()).or_else(|| {
             self.parent
                 .as_ref()
-                .and_then(|p| p.borrow().get_return_type())
+                .and_then(|p| p.borrow().get_function_name())
         })
+    }
+
+    pub fn get_return_type(&self) -> Option<LangType> {
+        self.function
+            .clone()
+            .map(|v| v.return_type.clone())
+            .or_else(|| {
+                self.parent
+                    .as_ref()
+                    .and_then(|p| p.borrow().get_return_type())
+            })
     }
 }

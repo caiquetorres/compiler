@@ -14,10 +14,10 @@ signed int fib(signed int n) {
   }
   return b;
 }
-void main() {
+signed int main() {
   signed int n = 9;
-  signed int result = fib(n);
-  printf("%s", "Result ");
-  printf("%d", result);
+  printf("%s", "Result: ");
+  printf("%d", fib(n));
   printf("\n");
+  return 0;
 }

@@ -1,9 +1,10 @@
-use std::collections::HashMap;
-
-use uuid::Uuid;
+use std::{cell::RefCell, rc::Rc};
 
 use crate::lang::{
-    sematic_old::{expression_analyzer::ExpressionAnalyzer, scope::Scope},
+    semantic::{
+        analyzer::Scopes, expression_analyzer::ExpressionAnalyzer, lang_type::LangType,
+        scope::Scope, symbol::Symbol,
+    },
     syntax::{
         lexer::token_kind::TokenKind,
         parser::{
@@ -20,35 +21,35 @@ use crate::lang::{
     },
 };
 
-fn convert_to_c_type(lang_type: &str) -> String {
+fn convert_to_c_type(lang_type: LangType) -> String {
     match lang_type {
-        "void" => "void",
-        "char" => "unsigned char",
-        "bool" => "unsigned char",
-        "u8" => "unsigned char",
-        "i8" => "signed char",
-        "u16" => "unsigned short int",
-        "i16" => "signed short int",
-        "u32" => "unsigned int",
-        "i32" => "signed int",
-        "u64" => "unsigned long long int",
-        "i64" => "signed long long int",
-        "f32" => "float",
-        "f64" => "double",
-        "string" => "char*",
+        LangType::Void => "void",
+        LangType::Char => "unsigned char",
+        LangType::Bool => "unsigned char",
+        LangType::U8 => "unsigned char",
+        LangType::I8 => "signed char",
+        LangType::U16 => "unsigned short int",
+        LangType::I16 => "signed short int",
+        LangType::U32 => "unsigned int",
+        LangType::I32 => "signed int",
+        LangType::U64 => "unsigned long long int",
+        LangType::I64 => "signed long long int",
+        LangType::F32 => "float",
+        LangType::F64 => "double",
+        LangType::String => "char*",
         _ => unreachable!(),
     }
     .to_string()
 }
 
-pub struct CCodeGenerator {
-    ast: CompilationUnit,
-    block_map: HashMap<Uuid, Scope>,
+pub struct CCodeGenerator<'s, 'a> {
+    scopes: &'s Scopes,
+    ast: &'a CompilationUnit,
 }
 
-impl CCodeGenerator {
-    pub fn from_ast(ast: CompilationUnit, block_map: HashMap<Uuid, Scope>) -> Self {
-        Self { ast, block_map }
+impl<'s, 'a> CCodeGenerator<'s, 'a> {
+    pub fn new(ast: &'a CompilationUnit, scopes: &'s Scopes) -> Self {
+        Self { ast, scopes }
     }
 
     pub fn generate(&self) -> String {
@@ -58,31 +59,35 @@ impl CCodeGenerator {
             self.generate_top_level_statement(statement, &mut code);
         }
 
-        return code.clone();
+        code
     }
 
     fn generate_top_level_statement(&self, statement: &TopLevelStatement, code: &mut String) {
         match statement {
             TopLevelStatement::Function(function) => {
-                // TODO: Deal with the main function when converting to C.
-
                 let function_name = function.identifier.name.clone();
 
-                let return_type_name = function
-                    .type_identifier
-                    .as_ref()
-                    .map_or("void".to_string(), |id| id.name.clone());
+                let is_main = function_name == "main";
+
+                let function_return_type = if is_main {
+                    LangType::I32
+                } else {
+                    function
+                        .type_identifier
+                        .as_ref()
+                        .map_or(LangType::Void, |id| LangType::from(id.name.clone()))
+                };
 
                 code.push_str(&format!(
                     "{} {}(",
-                    convert_to_c_type(&return_type_name),
+                    convert_to_c_type(function_return_type),
                     function_name
                 ));
 
                 for (index, param) in function.params_declaration.params.iter().enumerate() {
                     code.push_str(&format!(
                         "{} {}",
-                        convert_to_c_type(&param.type_identifier.name),
+                        convert_to_c_type(LangType::from(param.type_identifier.name.clone())),
                         param.identifier.name
                     ));
 
@@ -94,29 +99,39 @@ impl CCodeGenerator {
                 code.push_str(")");
 
                 self.generate_block_statement(&function.block, code);
+
+                if is_main {
+                    code.pop();
+                    code.push_str("return 0;}");
+                }
             }
         }
     }
 
     fn generate_block_statement(&self, block: &Block, code: &mut String) {
-        let scope = self.block_map.get(&block.id).unwrap();
+        let scope = self.scopes.get(&block.id).unwrap().clone();
 
         code.push_str("{");
 
         for statement in &block.statements {
-            self.generate_statement(statement, scope, code);
+            self.generate_statement(statement, Rc::clone(&scope), code);
         }
 
         code.push_str("}");
     }
 
-    fn generate_statement(&self, statement: &Statement, scope: &Scope, code: &mut String) {
+    fn generate_statement(
+        &self,
+        statement: &Statement,
+        scope: Rc<RefCell<Scope>>,
+        code: &mut String,
+    ) {
         match statement {
             Statement::Block(block) => self.generate_block_statement(block, code),
             Statement::Let(r#let) => self.generate_let_statement(r#let, scope, code),
             Statement::Const(r#const) => self.generate_const_statement(r#const, scope, code),
             Statement::FunctionCall(call) => self.generate_function_call_statement(call, code),
-            Statement::Return(r#return) => self.generate_return_statement(r#return, code),
+            Statement::Return(r#return) => self.generate_return_statement(r#return, scope, code),
             Statement::Assignment(assignment) => {
                 self.generate_assignment_statement(assignment, code)
             }
@@ -130,61 +145,61 @@ impl CCodeGenerator {
         }
     }
 
-    fn generate_return_statement(&self, r#return: &Return, code: &mut String) {
-        match &r#return.expression {
-            None => code.push_str("return;"),
-            Some(expression) => {
-                code.push_str("return ");
-                self.generate_expression(expression, code);
-                code.push_str(";");
+    fn generate_return_statement(
+        &self,
+        r#return: &Return,
+        scope: Rc<RefCell<Scope>>,
+        code: &mut String,
+    ) {
+        if scope.borrow().get_function_name().unwrap() == "main" {
+            code.push_str("return 0;");
+        } else {
+            match &r#return.expression {
+                None => code.push_str("return;"),
+                Some(expression) => {
+                    code.push_str("return ");
+                    self.generate_expression(expression, code);
+                    code.push_str(";");
+                }
             }
         }
     }
 
-    fn generate_let_statement(&self, r#let: &Let, scope: &Scope, code: &mut String) {
-        // match r#let {
-        //     Let::WithValue(identifier, _, expression) => {
-        //         let identifier_name = identifier.name.clone();
+    fn generate_let_statement(&self, r#let: &Let, scope: Rc<RefCell<Scope>>, code: &mut String) {
+        let identifier_name = r#let.identifier.name.clone();
+        let type_identifier = scope.borrow().get(&identifier_name).unwrap();
 
-        //         let type_identifier_name = scope
-        //             .get_symbol(&identifier_name)
-        //             .unwrap()
-        //             .symbol_type
-        //             .as_ref()
-        //             .unwrap();
+        match type_identifier {
+            Symbol::Variable { symbol_type, .. } => {
+                code.push_str(&format!(
+                    "{} {}",
+                    convert_to_c_type(symbol_type),
+                    identifier_name
+                ));
+            }
+            _ => unreachable!(),
+        }
 
-        //         code.push_str(&format!(
-        //             "{} {}=",
-        //             convert_to_c_type(&type_identifier_name),
-        //             identifier_name
-        //         ));
+        if let Some(expression) = &r#let.expression {
+            code.push_str("=");
+            self.generate_expression(expression, code);
+        }
 
-        //         self.generate_expression(expression, code);
-
-        //         code.push_str(";")
-        //     }
-        //     Let::WithoutValue(identifier, type_identifier) => {
-        //         let identifier_name = identifier.name.clone();
-        //         let type_identifier_name = type_identifier.name.clone();
-
-        //         code.push_str(&format!(
-        //             "{} {};",
-        //             convert_to_c_type(&type_identifier_name),
-        //             identifier_name
-        //         ));
-        //     }
-        // }
+        code.push_str(";")
     }
 
-    fn generate_const_statement(&self, r#const: &Const, scope: &Scope, code: &mut String) {
+    fn generate_const_statement(
+        &self,
+        r#const: &Const,
+        scope: Rc<RefCell<Scope>>,
+        code: &mut String,
+    ) {
         let identifier_name = r#const.identifier.name.clone();
 
-        let type_identifier_name = scope
-            .get_symbol(&identifier_name)
-            .unwrap()
-            .symbol_type
-            .as_ref()
-            .unwrap();
+        let type_identifier_name = match scope.borrow().get(&identifier_name).unwrap() {
+            Symbol::Const { symbol_type, .. } => symbol_type,
+            _ => unreachable!(),
+        };
 
         code.push_str(&format!(
             "const {} {}=",
@@ -279,14 +294,14 @@ impl CCodeGenerator {
         }
     }
 
-    pub fn generate_while_statement(&self, r#while: &While, code: &mut String) {
+    fn generate_while_statement(&self, r#while: &While, code: &mut String) {
         code.push_str("while(");
         self.generate_expression(&r#while.expression, code);
         code.push_str(")");
         self.generate_block_statement(&r#while.block, code);
     }
 
-    pub fn generate_do_while_statement(&self, do_while: &DoWhile, code: &mut String) {
+    fn generate_do_while_statement(&self, do_while: &DoWhile, code: &mut String) {
         code.push_str("do");
         self.generate_block_statement(&do_while.block, code);
         code.push_str("while (");
@@ -294,7 +309,7 @@ impl CCodeGenerator {
         code.push_str(");");
     }
 
-    pub fn generate_for_statement(&self, r#for: &For, code: &mut String) {
+    fn generate_for_statement(&self, r#for: &For, code: &mut String) {
         if let Expression::Range(range) = &r#for.expression {
             code.push_str("int ");
             code.push_str(&format!("{};", r#for.identifier.name));
@@ -329,15 +344,19 @@ impl CCodeGenerator {
         code.push_str("continue;");
     }
 
-    fn generate_print_statement(&self, print: &Print, scope: &Scope, code: &mut String) {
+    fn generate_print_statement(
+        &self,
+        print: &Print,
+        scope: Rc<RefCell<Scope>>,
+        code: &mut String,
+    ) {
         for expression in &print.expressions {
             code.push_str("printf(\"");
 
-            let mut analyzer = ExpressionAnalyzer::new(expression.clone(), scope.clone());
+            let analyzer = ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
+            let return_type = analyzer.return_type;
 
-            let expression_return_type = &analyzer.analyze().unwrap()[..];
-
-            let c_print_shortcut = match expression_return_type {
+            let c_print_shortcut = match return_type.to_string().as_str() {
                 "string" => "%s",
                 "i32" => "%d",
                 "i64" => "%ld",

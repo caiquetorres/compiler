@@ -3,8 +3,12 @@ use std::{cell::RefCell, rc::Rc};
 use crate::lang::syntax::parser::top_level_statements::function::Function;
 
 use super::{
-    block_analyzer::BlockAnalyzer, lang_type::LangType, scope::Scope,
-    semantic_error::SemanticError, symbol::Symbol,
+    analyzer::Scopes,
+    block_analyzer::BlockAnalyzer,
+    lang_type::LangType,
+    scope::{Func, Scope},
+    semantic_error::SemanticError,
+    symbol::Symbol,
 };
 
 pub struct FunctionAnalyzer {
@@ -12,7 +16,11 @@ pub struct FunctionAnalyzer {
 }
 
 impl FunctionAnalyzer {
-    pub fn analyze(function: &Function, global_scope: Rc<RefCell<Scope>>) -> Self {
+    pub fn analyze(
+        function: &Function,
+        global_scope: Rc<RefCell<Scope>>,
+        scopes: &mut Scopes,
+    ) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         let function_return_type: LangType;
@@ -42,6 +50,10 @@ impl FunctionAnalyzer {
             diagnosis.push(SemanticError::MainFunctionWithParameters);
         }
 
+        if function_name == "main" && function_return_type != LangType::Void {
+            diagnosis.push(SemanticError::MainFunctionWithReturn);
+        }
+
         let mut params_types: Vec<LangType> = vec![];
 
         for param_declaration in &function.params_declaration.params {
@@ -63,13 +75,20 @@ impl FunctionAnalyzer {
 
         // Save the function in the global scope.
         global_scope.borrow_mut().insert(Symbol::Function {
-            name: function_name,
+            name: function_name.clone(),
             symbol_type: function_return_type.clone(),
             params: params_types,
         });
 
         // Creates the local function scope.
-        let mut function_scope = Scope::new(global_scope, false, Some(function_return_type));
+        let mut function_scope = Scope::new(
+            global_scope,
+            false,
+            Some(Func {
+                name: function_name,
+                return_type: function_return_type,
+            }),
+        );
 
         for param_declaration in &function.params_declaration.params {
             let param_name = param_declaration.identifier.name.clone();
@@ -92,7 +111,7 @@ impl FunctionAnalyzer {
         }
 
         let scope = Rc::new(RefCell::new(function_scope));
-        let analyzer = BlockAnalyzer::analyze_within_scope(&function.block, scope);
+        let analyzer = BlockAnalyzer::analyze_within_scope(&function.block, scope, scopes);
         diagnosis.extend(analyzer.diagnosis);
 
         Self { diagnosis }
