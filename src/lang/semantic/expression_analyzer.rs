@@ -94,6 +94,8 @@ impl ExpressionAnalyzer {
             Expression::Unary(unary) => {
                 let analyzer = Self::analyze(&unary.expression, Rc::clone(&scope));
 
+                diagnosis.extend(analyzer.diagnosis);
+
                 if let TokenKind::Tilde = &unary.operator.token.kind {
                     if analyzer.return_type.is_integer() {
                         return_type = analyzer.return_type;
@@ -118,8 +120,12 @@ impl ExpressionAnalyzer {
                 let analyzer = Self::analyze(&range.left, Rc::clone(&scope));
                 let left_return_type = analyzer.return_type;
 
+                diagnosis.extend(analyzer.diagnosis);
+
                 let analyzer = Self::analyze(&range.right, Rc::clone(&scope));
                 let right_return_type = analyzer.return_type;
+
+                diagnosis.extend(analyzer.diagnosis);
 
                 if let TokenKind::DotDot | TokenKind::DotDotEquals = &range.operator.token.kind {
                     if left_return_type.is_number() && right_return_type.is_number() {
@@ -133,8 +139,12 @@ impl ExpressionAnalyzer {
                 let analyzer = Self::analyze(&binary.left, Rc::clone(&scope));
                 let left_return_type = analyzer.return_type;
 
+                diagnosis.extend(analyzer.diagnosis);
+
                 let analyzer = Self::analyze(&binary.right, Rc::clone(&scope));
                 let right_return_type = analyzer.return_type;
+
+                diagnosis.extend(analyzer.diagnosis);
 
                 match &binary.operator.token.kind {
                     TokenKind::EqualsEquals | TokenKind::ExclamationEquals => {

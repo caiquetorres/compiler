@@ -53,57 +53,70 @@ cargo run -- --compile path/to/file
 Here's a snippet that the compiler totally can compile right now:
 
 ```x
-/**
-  * Fibonnaci function
-  */
-fun fib(n: u32): u64 {
-    let a = 0;
-    let b = 1;
-    let c: u64;
-
-    if n == 0 {
-        return a;
+fun pow(base: i32, exponent: i32): i32 {
+    if exponent == 0 {
+        return 1;
     }
 
-    for i in 2..=n {
-        c = a + b;
-        a = b;
-        b = c;
+    if exponent % 2 == 0 {
+        let halfPow = pow(base, exponent / 2);
+        return halfPow * halfPow;
     }
 
-    return b;
+    return base * pow(base, exponent - 1);
+}
+
+fun convertToDecimal(number: u64): u32 {
+    let n = number;
+    let i = 0;
+    let decimal = 0;
+
+    while n > 0 {
+        decimal += (n % 10) * pow(2, i);
+        n /= 10;
+        i += 1;
+    }
+
+    return decimal;
 }
 
 fun main() {
-    let n = 9;
-    fib(n);
-
-    // Print result
+    let bin = 1101001;
+    println "Result: ", convertToDecimal(bin);
 }
 ```
 
 The compiler translates the code into C language. Below is an example demonstrating the converted code.
 
 ```c
-unsigned long long int fib(unsigned int n) {
-  signed int a = 0;
-  signed int b = 1;
-  unsigned long long int c;
-  if (n == 0) {
-    return a;
+#include <stdio.h>
+signed int pow(signed int base, signed int exponent) {
+  if (exponent == 0) {
+    return 1;
   }
-  int i;
-  for (i = 2; i <= n; i++) {
-    c = a + b;
-    a = b;
-    b = c;
+  if (exponent % 2 == 0) {
+    signed int halfPow = pow(base, exponent / 2);
+    return halfPow * halfPow;
   }
-  return b;
+  return base * pow(base, exponent - 1);
 }
-
-void main() {
-  signed int n = 9;
-  fib(n);
+unsigned int convertToDecimal(unsigned long long int number) {
+  unsigned long long int n = number;
+  signed int i = 0;
+  signed int decimal = 0;
+  while (n > 0) {
+    decimal += (n % 10) * pow(2, i);
+    n /= 10;
+    i += 1;
+  }
+  return decimal;
+}
+signed int main() {
+  signed int bin = 1101001;
+  printf("%s", "Result: ");
+  printf("%u", convertToDecimal(bin));
+  printf("\n");
+  return 0;
 }
 ```
 

@@ -20,6 +20,9 @@ impl ReturnAnalyzer {
                 None => LangType::Void,
                 Some(expression) => {
                     let analyzer = ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
+
+                    diagnosis.extend(analyzer.diagnosis);
+
                     analyzer.return_type
                 }
             };

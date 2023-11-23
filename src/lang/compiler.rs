@@ -43,9 +43,6 @@ impl Compiler {
             let generator = CCodeGenerator::new(&ast, &analyzer.scopes);
             let code = generator.generate();
 
-            println!("Compiled successfully!");
-            println!("{}", code);
-
             let mut file = File::create("main.c").unwrap();
             file.write_all(code.as_bytes()).unwrap();
         }

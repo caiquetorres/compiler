@@ -1,23 +1,29 @@
 #include <stdio.h>
-signed int fib(signed int n) {
-  signed int a = 0;
-  signed int b = 1;
-  signed int c;
-  if (n == 0) {
-    return a;
+signed int pow(signed int base, signed int exponent) {
+  if (exponent == 0) {
+    return 1;
   }
-  int i;
-  for (i = 2; i <= n; i++) {
-    c = a + b;
-    a = b;
-    b = c;
+  if (exponent % 2 == 0) {
+    signed int halfPow = pow(base, exponent / 2);
+    return halfPow * halfPow;
   }
-  return b;
+  return base * pow(base, exponent - 1);
+}
+unsigned int convertToDecimal(unsigned long long int number) {
+  unsigned long long int n = number;
+  signed int i = 0;
+  signed int decimal = 0;
+  while (n > 0) {
+    decimal += (n % 10) * pow(2, i);
+    n /= 10;
+    i += 1;
+  }
+  return decimal;
 }
 signed int main() {
-  signed int n = 9;
+  signed int bin = 1101001;
   printf("%s", "Result: ");
-  printf("%d", fib(n));
+  printf("%u", convertToDecimal(bin));
   printf("\n");
   return 0;
 }
