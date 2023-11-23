@@ -24,9 +24,15 @@ impl IfAnalyzer {
             })
         }
 
-        let analyzer = BlockAnalyzer::analyze_within_scope(&r#if.block, Rc::clone(&scope), scopes);
+        let analyzer = BlockAnalyzer::analyze(&r#if.block, Rc::clone(&scope), scopes);
 
         diagnosis.extend(analyzer.diagnosis);
+
+        if let Some(r#else) = &r#if.r#else {
+            let analyzer = BlockAnalyzer::analyze(&r#else.block, Rc::clone(&scope), scopes);
+
+            diagnosis.extend(analyzer.diagnosis);
+        }
 
         Self { diagnosis }
     }

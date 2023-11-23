@@ -10,7 +10,7 @@ use crate::lang::{
         parser::{
             compilation_unit::CompilationUnit,
             expressions::{expression::Expression, literal::Literal},
-            shared::{block::Block, function_call::FunctionCall},
+            shared::{block::Block, function_call::FunctionCall, identifier::IdentifierMeta},
             statements::{
                 assignment::Assignment, do_while::DoWhile, print::Print, r#break::Break,
                 r#const::Const, r#continue::Continue, r#for::For, r#if::If, r#let::Let,
@@ -37,6 +37,7 @@ fn convert_to_c_type(lang_type: LangType) -> String {
         LangType::F32 => "float",
         LangType::F64 => "double",
         LangType::String => "char*",
+        LangType::Any => "void *",
         LangType::Array(lang_type, ..) => {
             let array_type = convert_to_c_type(lang_type.as_ref().clone());
             let s = format!("{}*", array_type);
@@ -281,7 +282,16 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
     ) {
         match expression {
             Expression::Identifier(identifier) => {
-                code.push_str(&identifier.name);
+                match &identifier.meta {
+                    None => code.push_str(&identifier.name),
+                    Some(meta) => match meta {
+                        IdentifierMeta::Index(expression, _) => {
+                            code.push_str(&format!("*({}+", identifier.name));
+                            self.generate_expression(expression, Rc::clone(&scope), code);
+                            code.push_str(")");
+                        }
+                    },
+                };
             }
             Expression::Array(array) => {
                 code.push_str("(");
@@ -294,7 +304,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
 
                     code.push_str(&convert_to_c_type(LangType::from(analyzer.return_type)));
                 } else {
-                    code.push_str(&convert_to_c_type(LangType::Void));
+                    code.push_str(&convert_to_c_type(LangType::Any));
                 }
 
                 code.push_str(&format!("[{}]", array.expressions.len()));
@@ -374,7 +384,18 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         scope: Rc<RefCell<Scope>>,
         code: &mut String,
     ) {
-        code.push_str(&assignment.identifier.name);
+        if let Some(meta) = &assignment.identifier.meta {
+            match &meta {
+                IdentifierMeta::Index(expression, _) => {
+                    code.push_str(&format!("*({}+", assignment.identifier.name));
+                    self.generate_expression(expression, Rc::clone(&scope), code);
+                    code.push_str(")");
+                }
+            }
+        } else {
+            code.push_str(&assignment.identifier.name);
+        }
+
         code.push_str(&assignment.operator.name);
 
         self.generate_expression(&assignment.expression, Rc::clone(&scope), code);

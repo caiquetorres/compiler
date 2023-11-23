@@ -2,10 +2,16 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::lang::syntax::{
     lexer::token_kind::TokenKind,
-    parser::expressions::{expression::Expression, literal::Literal},
+    parser::{
+        expressions::{expression::Expression, literal::Literal},
+        shared::identifier::IdentifierMeta,
+    },
 };
 
-use super::{lang_type::LangType, scope::Scope, semantic_error::SemanticError, symbol::Symbol};
+use super::{
+    expressions::array_analyzer::ArrayAnalyzer, lang_type::LangType, scope::Scope,
+    semantic_error::SemanticError, symbol::Symbol,
+};
 
 pub struct ExpressionAnalyzer {
     pub return_type: LangType,
@@ -19,20 +25,15 @@ impl ExpressionAnalyzer {
 
         match expression {
             Expression::Array(array) => {
-                if array.expressions.len() != 0 {
-                    let first_array_expression = array.expressions.get(0).unwrap();
-                    let analyzer = Self::analyze(first_array_expression, Rc::clone(&scope));
-
-                    diagnosis.extend(analyzer.diagnosis);
-
-                    return_type =
-                        LangType::Array(Box::new(analyzer.return_type), array.expressions.len());
-                } else {
-                    return_type = LangType::Array(Box::new(LangType::Any), 0);
-                }
+                let analyzer = ArrayAnalyzer::analyze(array, Rc::clone(&scope));
+                diagnosis.extend(analyzer.diagnosis);
+                return_type = analyzer.return_type;
             }
             Expression::Parenthesized(parenthesized) => {
                 let analyzer = Self::analyze(&parenthesized.expression, Rc::clone(&scope));
+
+                diagnosis.extend(analyzer.diagnosis);
+
                 return_type = analyzer.return_type;
             }
             Expression::Identifier(identifier) => {
@@ -43,7 +44,32 @@ impl ExpressionAnalyzer {
                         Symbol::Variable { symbol_type, .. }
                         | Symbol::Const { symbol_type, .. }
                         | Symbol::Parameter { symbol_type, .. } => {
-                            return_type = symbol_type.clone();
+                            if let Some(meta) = &identifier.meta {
+                                match meta {
+                                    IdentifierMeta::Index(expression, meta) => {
+                                        match symbol_type {
+                                            LangType::Array(r#type, ..) => {
+                                                let analyzer = Self::analyze(
+                                                    expression.as_ref(),
+                                                    Rc::clone(&scope),
+                                                );
+
+                                                diagnosis.extend(analyzer.diagnosis);
+
+                                                if let None = meta.as_ref() {
+                                                    return_type = r#type.as_ref().clone();
+                                                }
+
+                                                // TODO: Recursion for checking indexes.
+                                            }
+                                            _ => diagnosis
+                                                .push(SemanticError::IdentifierNotIndexable),
+                                        }
+                                    }
+                                }
+                            } else {
+                                return_type = symbol_type.clone();
+                            }
                         }
                         _ => {
                             diagnosis.push(SemanticError::IdentifierNotVariableConstOrParam);

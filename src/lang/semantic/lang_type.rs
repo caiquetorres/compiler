@@ -1,6 +1,8 @@
+use std::fmt;
+
 use crate::lang::syntax::parser::shared::r#type::Type;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LangType {
     U8,
     I8,
@@ -84,7 +86,7 @@ impl LangType {
 
     pub fn from_type(r#type: Type) -> Self {
         match r#type {
-            Type::Simple { identifier } => Self::from(identifier.name),
+            Type::Simple { identifier } => Self::from(identifier.value),
             Type::Array { r#type, size } => {
                 let size = size.value.parse::<usize>().unwrap();
                 Self::Array(Box::new(Self::from_type(r#type.as_ref().clone())), size)
@@ -96,35 +98,34 @@ impl LangType {
     }
 }
 
-impl ToString for LangType {
-    fn to_string(&self) -> String {
-        match self {
-            LangType::Void => "void",
-            LangType::I8 => "i8",
-            LangType::I16 => "i16",
-            LangType::I32 => "i32",
-            LangType::I64 => "i64",
-            LangType::U8 => "u8",
-            LangType::U16 => "u16",
-            LangType::U32 => "u32",
-            LangType::U64 => "u64",
-            LangType::F32 => "f32",
-            LangType::F64 => "f64",
-            LangType::Bool => "bool",
-            LangType::Char => "char",
-            LangType::String => "string",
-            LangType::Range => "range",
-            LangType::Any => "any",
+impl fmt::Display for LangType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value = match self {
+            LangType::Void => "void".to_string(),
+            LangType::I8 => "i8".to_string(),
+            LangType::I16 => "i16".to_string(),
+            LangType::I32 => "i32".to_string(),
+            LangType::I64 => "i64".to_string(),
+            LangType::U8 => "u8".to_string(),
+            LangType::U16 => "u16".to_string(),
+            LangType::U32 => "u32".to_string(),
+            LangType::U64 => "u64".to_string(),
+            LangType::F32 => "f32".to_string(),
+            LangType::F64 => "f64".to_string(),
+            LangType::Bool => "bool".to_string(),
+            LangType::Char => "char".to_string(),
+            LangType::String => "string".to_string(),
+            LangType::Range => "range".to_string(),
+            LangType::Any => "any".to_string(),
             // LangType::Custom(t) => t.as_str(),
             LangType::Ref(r#type) => {
                 let type_name = r#type.to_string();
-                return format!("ref {}", type_name);
+                format!("ref {}", type_name)
             }
-            LangType::Array(inner_type, size) => {
-                return format!("[{}; {}]", inner_type.to_string(), size);
-            }
-        }
-        .to_string()
+            LangType::Array(inner_type, size) => format!("[{}; {}]", inner_type.to_string(), size),
+        };
+
+        write!(f, "{}", value)
     }
 }
 

@@ -33,6 +33,8 @@ impl Compiler {
         let mut parser = Parser::from_tokens(tokens);
         let ast = parser.parse().map_err(|e| format!("{}", e))?;
 
+        // ast.display();
+
         let analyzer = Analyzer::analyze(&ast);
 
         if analyzer.diagnosis.len() > 0 {

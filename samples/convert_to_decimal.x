@@ -1,14 +1,15 @@
-fun pow(base: i32, exponent: i32): i32 {
-    if exponent == 0 {
-        return 1;
-    }
+fun main() {
+    let bins = [
+        100,
+        1001,
+        1101001
+    ];
 
-    if exponent % 2 == 0 {
-        let halfPow = pow(base, exponent / 2);
-        return halfPow * halfPow;
+    for i in 0..3 {
+        let j = i + 0;
+        let result = convertToDecimal(bins[j]);
+        println "Bin (", bins[j], ") to decimal ", result;
     }
-
-    return base * pow(base, exponent - 1);
 }
 
 fun convertToDecimal(number: u64): u32 {
@@ -25,16 +26,15 @@ fun convertToDecimal(number: u64): u32 {
     return decimal;
 }
 
-fun main() {
-    let bin1 = 100;
-    let bin2 = 1001;
-    let bin3 = 1101001;
+fun pow(base: i32, exponent: i32): i32 {
+    if exponent == 0 {
+        return 1;
+    }
 
-    let result1 = convertToDecimal(bin1);
-    let result2 = convertToDecimal(bin2);
-    let result3 = convertToDecimal(bin3);
+    if exponent % 2 == 0 {
+        let halfPow = pow(base, exponent / 2);
+        return halfPow * halfPow;
+    }
 
-    println "Bin 1 to decimal ", result1;
-    println "Bin 2 to decimal ", result2;
-    println "Bin 3 to decimal ", result3;
+    return base * pow(base, exponent - 1);
 }

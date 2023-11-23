@@ -6,6 +6,7 @@ pub mod const_analyzer;
 pub mod continue_analyzer;
 pub mod do_while_analyzer;
 pub mod expression_analyzer;
+pub mod expressions;
 pub mod for_analyzer;
 pub mod function_analyzer;
 pub mod function_call_analyzer;

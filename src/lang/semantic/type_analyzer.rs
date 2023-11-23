@@ -16,7 +16,7 @@ impl TypeAnalyzer {
 
         match r#type {
             Type::Simple { identifier } => {
-                let variable_type_name = identifier.name.clone();
+                let variable_type_name = identifier.value.clone();
 
                 if let None = scope.borrow().get(&variable_type_name) {
                     diagnosis.push(SemanticError::IdentifierNotFound);

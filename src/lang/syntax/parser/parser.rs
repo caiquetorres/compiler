@@ -8,6 +8,7 @@ use super::expressions::{
     range::{Range, RangeOperator},
     unary::{Unary, UnaryOperator},
 };
+use super::shared::identifier::IdentifierMeta;
 use super::shared::r#type::Type;
 use super::shared::{
     assignment_operator::AssignmentOperator,
@@ -144,7 +145,7 @@ impl Parser {
         match &token.kind {
             TokenKind::Identifier => {
                 let type_identifier_token = token;
-                Ok(Type::new_simple(Identifier::new(type_identifier_token)))
+                Ok(Type::new_simple(type_identifier_token))
             }
             TokenKind::LeftBracket => {
                 let r#type = self.parse_type()?;
@@ -184,7 +185,7 @@ impl Parser {
         let block = self.parse_block()?;
 
         Ok(TopLevelStatement::Function(Function::new(
-            Identifier::new(identifier_token),
+            Identifier::new(identifier_token, None),
             ParamsDeclaration::new(params),
             identifier_type,
             block,
@@ -232,7 +233,7 @@ impl Parser {
         let r#type = self.parse_type()?;
 
         Ok(ParamDeclaration::new(
-            Identifier::new(param_name_token),
+            Identifier::new(param_name_token, None),
             r#type,
         ))
     }
@@ -407,7 +408,7 @@ impl Parser {
         let statement = self.parse_block()?;
 
         Ok(Statement::For(For::new(
-            Identifier::new(identifier_token),
+            Identifier::new(identifier_token, None),
             expression,
             statement,
         )))
@@ -464,7 +465,7 @@ impl Parser {
         self.use_token(&[TokenKind::Semicolon])?;
 
         Ok(Statement::FunctionCall(FunctionCall::new(
-            Identifier::new(identifier_token),
+            Identifier::new(identifier_token, None),
             params,
         )))
     }
@@ -488,7 +489,7 @@ impl Parser {
         self.use_token(&[TokenKind::RightParenthesis])?;
 
         Ok(Expression::FunctionCall(FunctionCall::new(
-            Identifier::new(identifier_token),
+            Identifier::new(identifier_token, None),
             params,
         )))
     }
@@ -505,32 +506,74 @@ impl Parser {
         &mut self,
         identifier_token: Token,
     ) -> Result<Statement, SyntaxError> {
-        let operator_token = self.next_token();
+        let current_token = self.get_current_token();
 
-        match operator_token.kind {
-            TokenKind::Equals
-            | TokenKind::AmpersandEquals
-            | TokenKind::PipeEquals
-            | TokenKind::CircumflexEquals
-            | TokenKind::TildeEquals
-            | TokenKind::PlusEquals
-            | TokenKind::MinusEquals
-            | TokenKind::StarEquals
-            | TokenKind::SlashEquals
-            | TokenKind::ModEquals => {
+        if current_token.kind == TokenKind::LeftBracket {
+            let mut meta: Option<IdentifierMeta> = None;
+
+            while self.get_current_token().kind == TokenKind::LeftBracket {
+                self.use_token(&[TokenKind::LeftBracket])?;
                 let expression = self.parse_expression(0)?;
+                self.use_token(&[TokenKind::RightBracket])?;
 
-                self.use_token(&[TokenKind::Semicolon])?;
-
-                Ok(Statement::Assignment(Assignment::new(
-                    Identifier::new(identifier_token),
-                    AssignmentOperator::new(operator_token),
-                    expression,
-                )))
+                meta = Some(IdentifierMeta::Index(Box::new(expression), Box::new(meta)));
             }
-            _ => Err(SyntaxError::AssignmentExpected {
-                position: operator_token.position,
-            }),
+
+            let current_token = self.next_token();
+
+            match current_token.kind {
+                TokenKind::Equals
+                | TokenKind::AmpersandEquals
+                | TokenKind::PipeEquals
+                | TokenKind::CircumflexEquals
+                | TokenKind::TildeEquals
+                | TokenKind::PlusEquals
+                | TokenKind::MinusEquals
+                | TokenKind::StarEquals
+                | TokenKind::SlashEquals
+                | TokenKind::ModEquals => {
+                    let expression = self.parse_expression(0)?;
+
+                    self.use_token(&[TokenKind::Semicolon])?;
+
+                    Ok(Statement::Assignment(Assignment::new(
+                        Identifier::new(identifier_token, meta),
+                        AssignmentOperator::new(current_token),
+                        expression,
+                    )))
+                }
+                _ => Err(SyntaxError::AssignmentExpected {
+                    position: current_token.position,
+                }),
+            }
+        } else {
+            match current_token.kind {
+                TokenKind::Equals
+                | TokenKind::AmpersandEquals
+                | TokenKind::PipeEquals
+                | TokenKind::CircumflexEquals
+                | TokenKind::TildeEquals
+                | TokenKind::PlusEquals
+                | TokenKind::MinusEquals
+                | TokenKind::StarEquals
+                | TokenKind::SlashEquals
+                | TokenKind::ModEquals => {
+                    let current_token = self.next_token();
+
+                    let expression = self.parse_expression(0)?;
+
+                    self.use_token(&[TokenKind::Semicolon])?;
+
+                    Ok(Statement::Assignment(Assignment::new(
+                        Identifier::new(identifier_token, None),
+                        AssignmentOperator::new(current_token),
+                        expression,
+                    )))
+                }
+                _ => Err(SyntaxError::AssignmentExpected {
+                    position: current_token.position,
+                }),
+            }
         }
     }
 
@@ -552,7 +595,7 @@ impl Parser {
             TokenKind::Semicolon => {
                 self.use_token(&[TokenKind::Semicolon])?;
                 Ok(Statement::Let(Let::new(
-                    Identifier::new(identifier_token),
+                    Identifier::new(identifier_token, None),
                     type_identifier,
                     None,
                 )))
@@ -565,7 +608,7 @@ impl Parser {
                 self.use_token(&[TokenKind::Semicolon])?;
 
                 Ok(Statement::Let(Let::new(
-                    Identifier::new(identifier_token),
+                    Identifier::new(identifier_token, None),
                     type_identifier,
                     Some(expression),
                 )))
@@ -596,8 +639,8 @@ impl Parser {
                 self.use_token(&[TokenKind::Semicolon])?;
 
                 Ok(Statement::Const(Const::new(
-                    Identifier::new(identifier_token),
-                    Some(Identifier::new(type_identifier_token)),
+                    Identifier::new(identifier_token, None),
+                    Some(Identifier::new(type_identifier_token, None)),
                     AssignmentOperator::new(assignment_token),
                     expression,
                 )))
@@ -609,7 +652,7 @@ impl Parser {
                 self.use_token(&[TokenKind::Semicolon])?;
 
                 Ok(Statement::Const(Const::new(
-                    Identifier::new(identifier_token),
+                    Identifier::new(identifier_token, None),
                     None,
                     AssignmentOperator::new(assignment_token),
                     expression,
@@ -743,7 +786,26 @@ impl Parser {
             TokenKind::NumberLiteral => Ok(Expression::Literal(Literal::Number(token))),
             TokenKind::Identifier => match self.get_current_token().kind {
                 TokenKind::LeftParenthesis => self.parse_function_call_expression(token),
-                _ => Ok(Expression::Identifier(Identifier::new(token))),
+                _ => {
+                    let identifier = token;
+
+                    if self.get_current_token().kind == TokenKind::LeftBracket {
+                        let mut meta: Option<IdentifierMeta> = None;
+
+                        while self.get_current_token().kind == TokenKind::LeftBracket {
+                            self.use_token(&[TokenKind::LeftBracket])?;
+                            let expression = self.parse_expression(0)?;
+                            self.use_token(&[TokenKind::RightBracket])?;
+
+                            meta =
+                                Some(IdentifierMeta::Index(Box::new(expression), Box::new(meta)));
+                        }
+
+                        Ok(Expression::Identifier(Identifier::new(identifier, meta)))
+                    } else {
+                        Ok(Expression::Identifier(Identifier::new(identifier, None)))
+                    }
+                }
             },
             TokenKind::LeftBracket => {
                 let mut expressions: Vec<Expression> = vec![];

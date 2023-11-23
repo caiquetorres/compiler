@@ -1,7 +1,5 @@
 use crate::lang::syntax::{lexer::token::Token, tree_display::TreeDisplay};
 
-use super::identifier::Identifier;
-
 #[derive(Clone)]
 pub struct ArrayProps {
     // TODO: Improve this struct name
@@ -10,13 +8,13 @@ pub struct ArrayProps {
 
 #[derive(Clone)]
 pub enum Type {
-    Simple { identifier: Identifier },
+    Simple { identifier: Token },
     Array { r#type: Box<Type>, size: Token },
     Reference { inner_type: Box<Type> },
 }
 
 impl Type {
-    pub fn new_simple(identifier: Identifier) -> Self {
+    pub fn new_simple(identifier: Token) -> Self {
         Self::Simple { identifier }
     }
 

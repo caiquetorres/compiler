@@ -24,5 +24,7 @@ pub enum SemanticError {
     InvalidBreak,
     InvalidContinue,
     InvalidReturn,
+    IdentifierNotIndexable,
     ExpectedType { expected: LangType, found: LangType },
+    InvalidArrayElement,
 }

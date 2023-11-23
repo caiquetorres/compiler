@@ -1,7 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::lang::syntax::{
-    lexer::token_kind::TokenKind, parser::statements::assignment::Assignment,
+    lexer::token_kind::TokenKind,
+    parser::{shared::identifier::IdentifierMeta, statements::assignment::Assignment},
 };
 
 use super::{
@@ -22,7 +23,27 @@ impl AssignmentAnalyzer {
 
         if let Some(symbol) = scope.borrow().get(&identifier_name) {
             if let Symbol::Variable { symbol_type, .. } = symbol {
-                identifier_type = symbol_type;
+                if let Some(meta) = &assignment.identifier.meta {
+                    match meta {
+                        IdentifierMeta::Index(expression, meta) => match symbol_type {
+                            LangType::Array(r#type, ..) => {
+                                let analyzer = ExpressionAnalyzer::analyze(
+                                    expression.as_ref(),
+                                    Rc::clone(&scope),
+                                );
+
+                                diagnosis.extend(analyzer.diagnosis);
+
+                                if let None = meta.as_ref() {
+                                    identifier_type = r#type.as_ref().clone();
+                                }
+                            }
+                            _ => diagnosis.push(SemanticError::IdentifierNotIndexable),
+                        },
+                    }
+                } else {
+                    identifier_type = symbol_type;
+                }
             } else {
                 diagnosis.push(SemanticError::ValueCannotBeReassigned);
             }
@@ -48,8 +69,8 @@ impl AssignmentAnalyzer {
             }
         }
 
-        if (!identifier_type.is_number() || !analyzer.return_type.is_number())
-            && identifier_type != analyzer.return_type
+        if identifier_type != analyzer.return_type
+            && (!identifier_type.is_number() || !analyzer.return_type.is_number())
         {
             diagnosis.push(SemanticError::TypeMismatch)
         }

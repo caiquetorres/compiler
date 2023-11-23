@@ -27,8 +27,8 @@ impl ReturnAnalyzer {
                 }
             };
 
-            if (!function_return_type.is_number() || !return_type.is_number())
-                && function_return_type != return_type
+            if function_return_type != return_type
+                && (!function_return_type.is_number() || !return_type.is_number())
             {
                 diagnosis.push(SemanticError::ExpectedType {
                     expected: function_return_type,
