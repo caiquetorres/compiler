@@ -53,17 +53,9 @@ cargo run -- --compile path/to/file
 Here's a snippet that the compiler totally can compile right now:
 
 ```x
-fun pow(base: i32, exponent: i32): i32 {
-    if exponent == 0 {
-        return 1;
-    }
-
-    if exponent % 2 == 0 {
-        let halfPow = pow(base, exponent / 2);
-        return halfPow * halfPow;
-    }
-
-    return base * pow(base, exponent - 1);
+fun main() {
+    let bin = 1101001;
+    println "Result: ", convertToDecimal(bin);
 }
 
 fun convertToDecimal(number: u64): u32 {
@@ -80,9 +72,17 @@ fun convertToDecimal(number: u64): u32 {
     return decimal;
 }
 
-fun main() {
-    let bin = 1101001;
-    println "Result: ", convertToDecimal(bin);
+fun pow(base: i32, exponent: i32): i32 {
+    if exponent == 0 {
+        return 1;
+    }
+
+    if exponent % 2 == 0 {
+        let halfPow = pow(base, exponent / 2);
+        return halfPow * halfPow;
+    }
+
+    return base * pow(base, exponent - 1);
 }
 ```
 
@@ -90,15 +90,14 @@ The compiler translates the code into C language. Below is an example demonstrat
 
 ```c
 #include <stdio.h>
-signed int pow(signed int base, signed int exponent) {
-  if (exponent == 0) {
-    return 1;
-  }
-  if (exponent % 2 == 0) {
-    signed int halfPow = pow(base, exponent / 2);
-    return halfPow * halfPow;
-  }
-  return base * pow(base, exponent - 1);
+unsigned int convertToDecimal(unsigned long long int);
+signed int pow(signed int, signed int);
+signed int main() {
+  signed int bin = 1101001;
+  printf("%s", "Result: ");
+  printf("%u", convertToDecimal(bin));
+  printf("\n");
+  return 0;
 }
 unsigned int convertToDecimal(unsigned long long int number) {
   unsigned long long int n = number;
@@ -111,12 +110,15 @@ unsigned int convertToDecimal(unsigned long long int number) {
   }
   return decimal;
 }
-signed int main() {
-  signed int bin = 1101001;
-  printf("%s", "Result: ");
-  printf("%u", convertToDecimal(bin));
-  printf("\n");
-  return 0;
+signed int pow(signed int base, signed int exponent) {
+  if (exponent == 0) {
+    return 1;
+  }
+  if (exponent % 2 == 0) {
+    signed int halfPow = pow(base, exponent / 2);
+    return halfPow * halfPow;
+  }
+  return base * pow(base, exponent - 1);
 }
 ```
 
