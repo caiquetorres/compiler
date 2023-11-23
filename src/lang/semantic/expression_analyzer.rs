@@ -1,16 +1,20 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::lang::{
-    lexer::token_kind::TokenKind,
-    syntax::parser::{
-        expressions::{expression::Expression, literal::Literal},
-        shared::identifier::IdentifierMeta,
-    },
+use crate::lang::syntax::parser::{
+    expressions::{expression::Expression, literal::Literal},
+    shared::identifier::IdentifierMeta,
 };
 
 use super::{
-    expressions::array_analyzer::ArrayAnalyzer, scope::Scope, semantic_error::SemanticError,
-    semantic_type::SemanticType, symbol::Symbol,
+    expressions::{
+        array_analyzer::ArrayAnalyzer, binary_analyzer::BinaryAnalyzer,
+        parenthesized_analyzer::ParenthesizedAnalyzer, range_analyzer::RangeAnalyzer,
+        unary_analyzer::UnaryAnalyzer,
+    },
+    scope::Scope,
+    semantic_error::SemanticError,
+    semantic_type::SemanticType,
+    symbol::Symbol,
 };
 
 pub struct ExpressionAnalyzer {
@@ -30,10 +34,8 @@ impl ExpressionAnalyzer {
                 return_type = analyzer.return_type;
             }
             Expression::Parenthesized(parenthesized) => {
-                let analyzer = Self::analyze(&parenthesized.expression, Rc::clone(&scope));
-
+                let analyzer = ParenthesizedAnalyzer::analyze(parenthesized, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
-
                 return_type = analyzer.return_type;
             }
             Expression::Identifier(identifier) => {
@@ -131,115 +133,19 @@ impl ExpressionAnalyzer {
                 }
             },
             Expression::Unary(unary) => {
-                let analyzer = Self::analyze(&unary.expression, Rc::clone(&scope));
-
+                let analyzer = UnaryAnalyzer::analyze(unary, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
-
-                if let TokenKind::Tilde = &unary.operator.token.kind {
-                    if analyzer.return_type.is_integer() {
-                        return_type = analyzer.return_type;
-                    } else {
-                        diagnosis.push(SemanticError::UnaryOperatorOnlyApplicableToInteger);
-                    }
-                } else if let TokenKind::Plus | TokenKind::Minus = &unary.operator.token.kind {
-                    if analyzer.return_type.is_number() {
-                        return_type = analyzer.return_type;
-                    } else {
-                        diagnosis.push(SemanticError::UnaryOperatorOnlyApplicableToNumbers);
-                    }
-                } else {
-                    if analyzer.return_type == SemanticType::Bool {
-                        return_type = analyzer.return_type;
-                    } else {
-                        diagnosis.push(SemanticError::UnaryOperatorOnlyApplicableToBooleans);
-                    }
-                }
+                return_type = analyzer.return_type;
             }
             Expression::Range(range) => {
-                let analyzer = Self::analyze(&range.left, Rc::clone(&scope));
-                let left_return_type = analyzer.return_type;
-
+                let analyzer = RangeAnalyzer::analyze(range, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
-
-                let analyzer = Self::analyze(&range.right, Rc::clone(&scope));
-                let right_return_type = analyzer.return_type;
-
-                diagnosis.extend(analyzer.diagnosis);
-
-                if let TokenKind::DotDot | TokenKind::DotDotEquals = &range.operator.token.kind {
-                    if left_return_type.is_number() && right_return_type.is_number() {
-                        return_type = SemanticType::Range;
-                    } else {
-                        diagnosis.push(SemanticError::InvalidRangeOperands)
-                    }
-                }
+                return_type = analyzer.return_type;
             }
             Expression::Binary(binary) => {
-                let analyzer = Self::analyze(&binary.left, Rc::clone(&scope));
-                let left_return_type = analyzer.return_type;
-
+                let analyzer = BinaryAnalyzer::analyze(binary, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
-
-                let analyzer = Self::analyze(&binary.right, Rc::clone(&scope));
-                let right_return_type = analyzer.return_type;
-
-                diagnosis.extend(analyzer.diagnosis);
-
-                match &binary.operator.token.kind {
-                    TokenKind::EqualsEquals | TokenKind::ExclamationEquals => {
-                        if left_return_type.is_number() && right_return_type.is_number() {
-                            return_type = SemanticType::Bool;
-                        } else if left_return_type == right_return_type {
-                            return_type = SemanticType::Bool;
-                        } else {
-                            diagnosis.push(SemanticError::EqualityTypeMismatch)
-                        }
-                    }
-                    TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash => {
-                        if left_return_type.is_number() && right_return_type.is_number() {
-                            return_type = SemanticType::number_type_precedence(vec![
-                                left_return_type,
-                                right_return_type,
-                            ]);
-                        } else {
-                            diagnosis.push(SemanticError::InvalidOperator)
-                        }
-                    }
-                    TokenKind::Mod
-                    | TokenKind::Ampersand
-                    | TokenKind::Pipe
-                    | TokenKind::Tilde
-                    | TokenKind::Circumflex => {
-                        if left_return_type.is_integer() && right_return_type.is_integer() {
-                            return_type = SemanticType::number_type_precedence(vec![
-                                left_return_type,
-                                right_return_type,
-                            ]);
-                        } else {
-                            diagnosis.push(SemanticError::InvalidOperator)
-                        }
-                    }
-                    TokenKind::GreaterThan
-                    | TokenKind::GreaterThanEquals
-                    | TokenKind::LessThan
-                    | TokenKind::LessThanEquals => {
-                        if left_return_type.is_number() && right_return_type.is_number() {
-                            return_type = SemanticType::Bool;
-                        } else {
-                            diagnosis.push(SemanticError::InvalidOperator)
-                        }
-                    }
-                    TokenKind::AmpersandAmpersand | TokenKind::PipePipe => {
-                        if left_return_type == SemanticType::Bool
-                            && right_return_type == SemanticType::Bool
-                        {
-                            return_type = SemanticType::Bool;
-                        } else {
-                            diagnosis.push(SemanticError::InvalidOperator)
-                        }
-                    }
-                    _ => unreachable!(),
-                }
+                return_type = analyzer.return_type;
             }
         }
 
