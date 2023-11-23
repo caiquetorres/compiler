@@ -1,11 +1,10 @@
-use std::{cell::RefCell, rc::Rc};
-
+use crate::lang::semantic::expression_analyzer::ExpressionAnalyzer;
+use crate::lang::semantic::scope::Scope;
+use crate::lang::semantic::semantic_error::SemanticError;
+use crate::lang::semantic::symbol::Symbol;
 use crate::lang::syntax::parser::shared::function_call::FunctionCall;
 
-use super::{
-    expression_analyzer::ExpressionAnalyzer, scope::Scope, semantic_error::SemanticError,
-    symbol::Symbol,
-};
+use std::{cell::RefCell, rc::Rc};
 
 pub struct FunctionCallAnalyzer {
     pub(crate) diagnosis: Vec<SemanticError>,

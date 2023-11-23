@@ -197,7 +197,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
             Statement::DoWhile(do_while) => {
                 self.generate_do_while_statement(do_while, Rc::clone(&scope), code)
             }
-            Statement::For(r#for) => self.generate_for_statement(r#for, Rc::clone(&scope), code),
+            Statement::For(r#for) => self.generate_for_statement(r#for, code),
             Statement::Break(r#break) => self.generate_break_statement(r#break, code),
             Statement::Continue(r#continue) => self.generate_continue_statement(r#continue, code),
             Statement::Print(print) => {
@@ -436,14 +436,24 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
     ) {
         code.push_str("do");
         self.generate_block_statement(&do_while.block, code);
-        code.push_str("while (");
+        code.push_str("while(");
         self.generate_expression(&do_while.expression, Rc::clone(&scope), code);
         code.push_str(");");
     }
 
-    fn generate_for_statement(&self, r#for: &For, scope: Rc<RefCell<Scope>>, code: &mut String) {
+    fn generate_for_statement(&self, r#for: &For, code: &mut String) {
+        let scope = self.scopes.get(&r#for.block.id).unwrap().clone();
+
         if let Expression::Range(range) = &r#for.expression {
-            code.push_str("int ");
+            let symbol = scope.borrow().get(&r#for.identifier.name).unwrap();
+
+            match &symbol {
+                Symbol::Const { symbol_type, .. } => {
+                    code.push_str(&format!("{} ", convert_to_c_type(symbol_type.clone())));
+                }
+                _ => unreachable!(),
+            }
+
             code.push_str(&format!("{};", r#for.identifier.name));
             code.push_str("for(");
             code.push_str(&format!("{}=", r#for.identifier.name));
@@ -496,8 +506,8 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
                 SemanticType::U16 => "%u",
                 SemanticType::I32 => "%d",
                 SemanticType::U32 => "%u",
-                SemanticType::I64 => "%ld",
-                SemanticType::U64 => "%lu",
+                SemanticType::I64 => "%lld",
+                SemanticType::U64 => "%llu",
                 SemanticType::F32 => "%ff",
                 SemanticType::F64 => "%lf",
                 SemanticType::Bool => "%s",

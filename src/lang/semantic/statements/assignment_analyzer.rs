@@ -1,14 +1,13 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::lang::{
-    lexer::token_kind::TokenKind,
-    syntax::parser::{shared::identifier::IdentifierMeta, statements::assignment::Assignment},
-};
-
-use super::{
-    expression_analyzer::ExpressionAnalyzer, scope::Scope, semantic_error::SemanticError,
-    semantic_type::SemanticType, symbol::Symbol,
-};
+use crate::lang::lexer::token_kind::TokenKind;
+use crate::lang::semantic::expression_analyzer::ExpressionAnalyzer;
+use crate::lang::semantic::scope::Scope;
+use crate::lang::semantic::semantic_error::SemanticError;
+use crate::lang::semantic::semantic_type::SemanticType;
+use crate::lang::semantic::symbol::Symbol;
+use crate::lang::syntax::parser::shared::identifier::IdentifierMeta;
+use crate::lang::syntax::parser::statements::assignment::Assignment;
 
 pub struct AssignmentAnalyzer {
     pub(crate) diagnosis: Vec<SemanticError>,
@@ -34,6 +33,7 @@ impl AssignmentAnalyzer {
 
                                 diagnosis.extend(analyzer.diagnosis);
 
+                                // TODO: Recursive validation here
                                 if let None = meta.as_ref() {
                                     identifier_type = r#type.as_ref().clone();
                                 }

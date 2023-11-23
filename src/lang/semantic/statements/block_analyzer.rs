@@ -1,23 +1,23 @@
+use super::assignment_analyzer::AssignmentAnalyzer;
+use super::break_analyzer::BreakAnalyzer;
+use super::const_analyzer::ConstAnalyzer;
+use super::continue_analyzer::ContinueAnalyzer;
+use super::do_while_analyzer::DoWhileAnalyzer;
+use super::for_analyzer::ForAnalyzer;
+use super::function_call_analyzer::FunctionCallAnalyzer;
+use super::if_analyzer::IfAnalyzer;
+use super::let_analyzer::LetAnalyzer;
+use super::print_analyzer::PrintAnalyzer;
+use super::return_analyzer::ReturnAnalyzer;
+use super::while_analyzer::WhileAnalyzer;
+
+use crate::lang::semantic::analyzer::Scopes;
+use crate::lang::semantic::scope::Scope;
+use crate::lang::semantic::semantic_error::SemanticError;
+use crate::lang::syntax::parser::shared::block::Block;
+use crate::lang::syntax::parser::statements::statement::Statement;
+
 use std::{cell::RefCell, rc::Rc};
-
-use crate::lang::syntax::parser::{shared::block::Block, statements::statement::Statement};
-
-use super::{
-    analyzer::Scopes,
-    assignment_analyzer::AssignmentAnalyzer,
-    break_analyzer::BreakAnalyzer,
-    continue_analyzer::ContinueAnalyzer,
-    for_analyzer::ForAnalyzer,
-    function_call_analyzer::FunctionCallAnalyzer,
-    print_analyzer::PrintAnalyzer,
-    return_analyzer::ReturnAnalyzer,
-    scope::Scope,
-    semantic_error::SemanticError,
-    statements::{
-        const_analyzer::ConstAnalyzer, do_while_analyzer::DoWhileAnalyzer, if_analyzer::IfAnalyzer,
-        let_analyzer::LetAnalyzer, while_analyzer::WhileAnalyzer,
-    },
-};
 
 pub struct BlockAnalyzer {
     pub(crate) diagnosis: Vec<SemanticError>,

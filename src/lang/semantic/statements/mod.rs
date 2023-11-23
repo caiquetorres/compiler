@@ -1,5 +1,13 @@
+pub mod assignment_analyzer;
+pub mod block_analyzer;
+pub mod break_analyzer;
 pub mod const_analyzer;
+pub mod continue_analyzer;
 pub mod do_while_analyzer;
+pub mod for_analyzer;
+pub mod function_call_analyzer;
 pub mod if_analyzer;
 pub mod let_analyzer;
+pub mod print_analyzer;
+pub mod return_analyzer;
 pub mod while_analyzer;

@@ -1,15 +1,14 @@
+use super::scope::Scope;
+use super::semantic_error::SemanticError;
+use super::semantic_type::SemanticType;
+use super::symbol::Symbol;
+use super::top_level_statements::function_analyzer::FunctionAnalyzer;
+
+use crate::lang::syntax::parser::compilation_unit::CompilationUnit;
+use crate::lang::syntax::parser::top_level_statements::top_level_statement::TopLevelStatement;
+
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
-
 use uuid::Uuid;
-
-use crate::lang::syntax::parser::{
-    compilation_unit::CompilationUnit, top_level_statements::top_level_statement::TopLevelStatement,
-};
-
-use super::{
-    function_analyzer::FunctionAnalyzer, scope::Scope, semantic_error::SemanticError,
-    semantic_type::SemanticType, symbol::Symbol,
-};
 
 pub type Scopes = HashMap<Uuid, Rc<RefCell<Scope>>>;
 

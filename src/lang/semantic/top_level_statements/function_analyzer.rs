@@ -1,16 +1,13 @@
-use std::{cell::RefCell, rc::Rc};
-
+use crate::lang::semantic::analyzer::Scopes;
+use crate::lang::semantic::scope::Func;
+use crate::lang::semantic::semantic_type::SemanticType;
+use crate::lang::semantic::shared::type_analyzer::TypeAnalyzer;
+use crate::lang::semantic::statements::block_analyzer::BlockAnalyzer;
+use crate::lang::semantic::symbol::Symbol;
+use crate::lang::semantic::{scope::Scope, semantic_error::SemanticError};
 use crate::lang::syntax::parser::top_level_statements::function::Function;
 
-use super::{
-    analyzer::Scopes,
-    block_analyzer::BlockAnalyzer,
-    scope::{Func, Scope},
-    semantic_error::SemanticError,
-    semantic_type::SemanticType,
-    shared::type_analyzer::TypeAnalyzer,
-    symbol::Symbol,
-};
+use std::{cell::RefCell, rc::Rc};
 
 pub struct FunctionAnalyzer {
     pub(crate) diagnosis: Vec<SemanticError>,
