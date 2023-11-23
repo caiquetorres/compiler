@@ -1,23 +1,23 @@
-use super::lang_type::LangType;
+use super::semantic_type::SemanticType;
 
 #[derive(Clone, Debug)]
 pub enum Symbol {
     Variable {
         name: String,
-        symbol_type: LangType,
+        symbol_type: SemanticType,
     },
     Parameter {
         name: String,
-        symbol_type: LangType,
+        symbol_type: SemanticType,
     },
     Const {
         name: String,
-        symbol_type: LangType,
+        symbol_type: SemanticType,
     },
     Function {
         name: String,
-        symbol_type: LangType,
-        params: Vec<LangType>,
+        symbol_type: SemanticType,
+        params: Vec<SemanticType>,
     },
     Type {
         name: String,

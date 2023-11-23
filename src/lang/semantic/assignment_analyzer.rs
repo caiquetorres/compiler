@@ -1,13 +1,13 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::lang::syntax::{
+use crate::lang::{
     lexer::token_kind::TokenKind,
-    parser::{shared::identifier::IdentifierMeta, statements::assignment::Assignment},
+    syntax::parser::{shared::identifier::IdentifierMeta, statements::assignment::Assignment},
 };
 
 use super::{
-    expression_analyzer::ExpressionAnalyzer, lang_type::LangType, scope::Scope,
-    semantic_error::SemanticError, symbol::Symbol,
+    expression_analyzer::ExpressionAnalyzer, scope::Scope, semantic_error::SemanticError,
+    semantic_type::SemanticType, symbol::Symbol,
 };
 
 pub struct AssignmentAnalyzer {
@@ -19,14 +19,14 @@ impl AssignmentAnalyzer {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         let identifier_name = assignment.identifier.name.clone();
-        let mut identifier_type = LangType::Any;
+        let mut identifier_type = SemanticType::Any;
 
         if let Some(symbol) = scope.borrow().get(&identifier_name) {
             if let Symbol::Variable { symbol_type, .. } = symbol {
                 if let Some(meta) = &assignment.identifier.meta {
                     match meta {
                         IdentifierMeta::Index(expression, meta) => match symbol_type {
-                            LangType::Array(r#type, ..) => {
+                            SemanticType::Array(r#type, ..) => {
                                 let analyzer = ExpressionAnalyzer::analyze(
                                     expression.as_ref(),
                                     Rc::clone(&scope),

@@ -1,26 +1,26 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::lang::syntax::{
+use crate::lang::{
     lexer::token_kind::TokenKind,
-    parser::{
+    syntax::parser::{
         expressions::{expression::Expression, literal::Literal},
         shared::identifier::IdentifierMeta,
     },
 };
 
 use super::{
-    expressions::array_analyzer::ArrayAnalyzer, lang_type::LangType, scope::Scope,
-    semantic_error::SemanticError, symbol::Symbol,
+    expressions::array_analyzer::ArrayAnalyzer, scope::Scope, semantic_error::SemanticError,
+    semantic_type::SemanticType, symbol::Symbol,
 };
 
 pub struct ExpressionAnalyzer {
-    pub return_type: LangType,
+    pub return_type: SemanticType,
     pub diagnosis: Vec<SemanticError>,
 }
 
 impl ExpressionAnalyzer {
     pub fn analyze(expression: &Expression, scope: Rc<RefCell<Scope>>) -> Self {
-        let mut return_type = LangType::Any;
+        let mut return_type = SemanticType::Any;
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         match expression {
@@ -48,7 +48,7 @@ impl ExpressionAnalyzer {
                                 match meta {
                                     IdentifierMeta::Index(expression, meta) => {
                                         match symbol_type {
-                                            LangType::Array(r#type, ..) => {
+                                            SemanticType::Array(r#type, ..) => {
                                                 let analyzer = Self::analyze(
                                                     expression.as_ref(),
                                                     Rc::clone(&scope),
@@ -119,14 +119,14 @@ impl ExpressionAnalyzer {
                 }
             }
             Expression::Literal(literal) => match literal {
-                Literal::String(_) => return_type = LangType::String,
-                Literal::Char(_) => return_type = LangType::Char,
-                Literal::Boolean(_) => return_type = LangType::Bool,
+                Literal::String(_) => return_type = SemanticType::String,
+                Literal::Char(_) => return_type = SemanticType::Char,
+                Literal::Boolean(_) => return_type = SemanticType::Bool,
                 Literal::Number(token) => {
                     return_type = if token.value.contains(".") {
-                        LangType::F32
+                        SemanticType::F32
                     } else {
-                        LangType::I32
+                        SemanticType::I32
                     }
                 }
             },
@@ -148,7 +148,7 @@ impl ExpressionAnalyzer {
                         diagnosis.push(SemanticError::UnaryOperatorOnlyApplicableToNumbers);
                     }
                 } else {
-                    if analyzer.return_type == LangType::Bool {
+                    if analyzer.return_type == SemanticType::Bool {
                         return_type = analyzer.return_type;
                     } else {
                         diagnosis.push(SemanticError::UnaryOperatorOnlyApplicableToBooleans);
@@ -168,7 +168,7 @@ impl ExpressionAnalyzer {
 
                 if let TokenKind::DotDot | TokenKind::DotDotEquals = &range.operator.token.kind {
                     if left_return_type.is_number() && right_return_type.is_number() {
-                        return_type = LangType::Range;
+                        return_type = SemanticType::Range;
                     } else {
                         diagnosis.push(SemanticError::InvalidRangeOperands)
                     }
@@ -188,16 +188,16 @@ impl ExpressionAnalyzer {
                 match &binary.operator.token.kind {
                     TokenKind::EqualsEquals | TokenKind::ExclamationEquals => {
                         if left_return_type.is_number() && right_return_type.is_number() {
-                            return_type = LangType::Bool;
+                            return_type = SemanticType::Bool;
                         } else if left_return_type == right_return_type {
-                            return_type = LangType::Bool;
+                            return_type = SemanticType::Bool;
                         } else {
                             diagnosis.push(SemanticError::EqualityTypeMismatch)
                         }
                     }
                     TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash => {
                         if left_return_type.is_number() && right_return_type.is_number() {
-                            return_type = LangType::number_type_precedence(vec![
+                            return_type = SemanticType::number_type_precedence(vec![
                                 left_return_type,
                                 right_return_type,
                             ]);
@@ -211,7 +211,7 @@ impl ExpressionAnalyzer {
                     | TokenKind::Tilde
                     | TokenKind::Circumflex => {
                         if left_return_type.is_integer() && right_return_type.is_integer() {
-                            return_type = LangType::number_type_precedence(vec![
+                            return_type = SemanticType::number_type_precedence(vec![
                                 left_return_type,
                                 right_return_type,
                             ]);
@@ -224,15 +224,16 @@ impl ExpressionAnalyzer {
                     | TokenKind::LessThan
                     | TokenKind::LessThanEquals => {
                         if left_return_type.is_number() && right_return_type.is_number() {
-                            return_type = LangType::Bool;
+                            return_type = SemanticType::Bool;
                         } else {
                             diagnosis.push(SemanticError::InvalidOperator)
                         }
                     }
                     TokenKind::AmpersandAmpersand | TokenKind::PipePipe => {
-                        if left_return_type == LangType::Bool && right_return_type == LangType::Bool
+                        if left_return_type == SemanticType::Bool
+                            && right_return_type == SemanticType::Bool
                         {
-                            return_type = LangType::Bool;
+                            return_type = SemanticType::Bool;
                         } else {
                             diagnosis.push(SemanticError::InvalidOperator)
                         }

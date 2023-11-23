@@ -1,4 +1,4 @@
-use crate::lang::syntax::lexer::token::Token;
+use crate::lang::lexer::token::Token;
 use crate::lang::syntax::parser::expressions::expression::Expression;
 use crate::lang::syntax::tree_display::TreeDisplay;
 

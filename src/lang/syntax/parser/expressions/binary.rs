@@ -1,5 +1,5 @@
 use super::expression::Expression;
-use crate::lang::syntax::{lexer::token::Token, tree_display::TreeDisplay};
+use crate::lang::{lexer::token::Token, syntax::tree_display::TreeDisplay};
 
 #[derive(Clone)]
 pub struct BinaryOperator {

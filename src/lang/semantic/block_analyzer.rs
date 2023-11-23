@@ -3,12 +3,20 @@ use std::{cell::RefCell, rc::Rc};
 use crate::lang::syntax::parser::{shared::block::Block, statements::statement::Statement};
 
 use super::{
-    analyzer::Scopes, assignment_analyzer::AssignmentAnalyzer, break_analyzer::BreakAnalyzer,
-    const_analyzer::ConstAnalyzer, continue_analyzer::ContinueAnalyzer,
-    do_while_analyzer::DoWhileAnalyzer, for_analyzer::ForAnalyzer,
-    function_call_analyzer::FunctionCallAnalyzer, if_analyzer::IfAnalyzer,
-    let_analyzer::LetAnalyzer, print_analyzer::PrintAnalyzer, return_analyzer::ReturnAnalyzer,
-    scope::Scope, semantic_error::SemanticError, while_analyzer::WhileAnalyzer,
+    analyzer::Scopes,
+    assignment_analyzer::AssignmentAnalyzer,
+    break_analyzer::BreakAnalyzer,
+    continue_analyzer::ContinueAnalyzer,
+    for_analyzer::ForAnalyzer,
+    function_call_analyzer::FunctionCallAnalyzer,
+    print_analyzer::PrintAnalyzer,
+    return_analyzer::ReturnAnalyzer,
+    scope::Scope,
+    semantic_error::SemanticError,
+    statements::{
+        const_analyzer::ConstAnalyzer, do_while_analyzer::DoWhileAnalyzer, if_analyzer::IfAnalyzer,
+        let_analyzer::LetAnalyzer, while_analyzer::WhileAnalyzer,
+    },
 };
 
 pub struct BlockAnalyzer {

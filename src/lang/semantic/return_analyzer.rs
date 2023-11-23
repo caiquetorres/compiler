@@ -3,8 +3,8 @@ use std::{cell::RefCell, rc::Rc};
 use crate::lang::syntax::parser::statements::r#return::Return;
 
 use super::{
-    expression_analyzer::ExpressionAnalyzer, lang_type::LangType, scope::Scope,
-    semantic_error::SemanticError,
+    expression_analyzer::ExpressionAnalyzer, scope::Scope, semantic_error::SemanticError,
+    semantic_type::SemanticType,
 };
 
 pub struct ReturnAnalyzer {
@@ -17,7 +17,7 @@ impl ReturnAnalyzer {
 
         if let Some(function_return_type) = scope.borrow().get_return_type() {
             let return_type = match &r#return.expression {
-                None => LangType::Void,
+                None => SemanticType::Void,
                 Some(expression) => {
                     let analyzer = ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
 

@@ -1,6 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 
-use crate::lang::{position::Position, syntax::lexer::token_kind::TokenKind};
+use crate::lang::{lexer::token_kind::TokenKind, position::Position};
 
 #[derive(Debug, Clone)]
 pub enum SyntaxError {

@@ -7,8 +7,8 @@ use crate::lang::syntax::parser::{
 };
 
 use super::{
-    function_analyzer::FunctionAnalyzer, lang_type::LangType, scope::Scope,
-    semantic_error::SemanticError, symbol::Symbol,
+    function_analyzer::FunctionAnalyzer, scope::Scope, semantic_error::SemanticError,
+    semantic_type::SemanticType, symbol::Symbol,
 };
 
 pub type Scopes = HashMap<Uuid, Rc<RefCell<Scope>>>;
@@ -26,20 +26,20 @@ impl Analyzer {
         let global_scope = Rc::new(RefCell::new(Scope::global()));
 
         let default_types = [
-            LangType::U8,
-            LangType::I8,
-            LangType::U16,
-            LangType::I16,
-            LangType::U32,
-            LangType::I32,
-            LangType::U64,
-            LangType::I64,
-            LangType::F32,
-            LangType::F64,
-            LangType::Void,
-            LangType::Bool,
-            LangType::Char,
-            LangType::String,
+            SemanticType::U8,
+            SemanticType::I8,
+            SemanticType::U16,
+            SemanticType::I16,
+            SemanticType::U32,
+            SemanticType::I32,
+            SemanticType::U64,
+            SemanticType::I64,
+            SemanticType::F32,
+            SemanticType::F64,
+            SemanticType::Void,
+            SemanticType::Bool,
+            SemanticType::Char,
+            SemanticType::String,
         ];
 
         for default_type in default_types {

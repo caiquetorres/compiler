@@ -1,12 +1,13 @@
 use crate::lang::syntax::parser::expressions::expression::Expression;
 use crate::lang::syntax::parser::shared::assignment_operator::AssignmentOperator;
 use crate::lang::syntax::parser::shared::identifier::Identifier;
+use crate::lang::syntax::parser::shared::r#type::Type;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
 #[derive(Clone)]
 pub struct Const {
     pub identifier: Identifier,
-    pub type_identifier: Option<Identifier>,
+    pub r#type: Option<Type>,
     pub operator: AssignmentOperator,
     pub expression: Expression,
 }
@@ -14,13 +15,13 @@ pub struct Const {
 impl Const {
     pub fn new(
         identifier: Identifier,
-        type_identifier: Option<Identifier>,
+        r#type: Option<Type>,
         operator: AssignmentOperator,
         expression: Expression,
     ) -> Self {
         Self {
             identifier,
-            type_identifier,
+            r#type,
             operator,
             expression,
         }
@@ -29,12 +30,14 @@ impl Const {
 
 impl TreeDisplay for Const {
     fn display(&self, layer: usize) {
-        let id = self.identifier.name.clone();
+        // TODO: Reimplement the display of the constant
 
-        match &self.type_identifier {
-            None => println!("{}ConstStatement ({})", " ".repeat(layer), id),
-            Some(t) => println!("{}ConstStatement ({}) ({})", " ".repeat(layer), id, t.name),
-        }
+        // let id = self.identifier.name.clone();
+
+        // match &self.r#type {
+        //     None => println!("{}ConstStatement ({})", " ".repeat(layer), id),
+        //     Some(t) => println!("{}ConstStatement ({}) ({})", " ".repeat(layer), id, t.name),
+        // }
 
         self.operator.display(layer + 2);
         self.expression.display(layer + 2);

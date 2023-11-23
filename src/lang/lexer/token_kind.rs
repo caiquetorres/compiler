@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::fmt::Display;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum TokenKind {

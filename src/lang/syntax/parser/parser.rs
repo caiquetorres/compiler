@@ -1,3 +1,6 @@
+use crate::lang::lexer::token::Token;
+use crate::lang::lexer::token_kind::TokenKind;
+
 use super::compilation_unit::CompilationUnit;
 use super::expressions::array::Array;
 use super::expressions::{
@@ -36,8 +39,6 @@ use super::top_level_statements::{
     top_level_statement::TopLevelStatement,
 };
 
-use crate::lang::syntax::lexer::{token::Token, token_kind::TokenKind};
-
 use std::collections::{HashSet, VecDeque};
 use std::u32::MAX;
 
@@ -53,7 +54,7 @@ impl Parser {
 
     #[cfg(test)]
     pub fn from_code(code: &str) -> Self {
-        use crate::lang::syntax::lexer::lexer::Lexer;
+        use crate::lang::lexer::lexer::Lexer;
 
         let mut lexer = Lexer::new(code);
         let tokens = lexer.lex().unwrap();
@@ -626,39 +627,20 @@ impl Parser {
 
         let identifier_token = self.use_token(&[TokenKind::Identifier])?;
 
-        let current_token = self.get_current_token();
+        let r#type = self.parse_type_optional()?;
 
-        match current_token.kind {
-            TokenKind::Colon => {
-                self.use_token(&[TokenKind::Colon])?;
-                let type_identifier_token = self.use_token(&[TokenKind::Identifier])?;
+        let assignment_token = self.use_token(&[TokenKind::Equals])?;
 
-                let assignment_token = self.use_token(&[TokenKind::Equals])?;
-                let expression = self.parse_expression(0)?;
+        let expression = self.parse_expression(0)?;
 
-                self.use_token(&[TokenKind::Semicolon])?;
+        self.use_token(&[TokenKind::Semicolon])?;
 
-                Ok(Statement::Const(Const::new(
-                    Identifier::new(identifier_token, None),
-                    Some(Identifier::new(type_identifier_token, None)),
-                    AssignmentOperator::new(assignment_token),
-                    expression,
-                )))
-            }
-            _ => {
-                let assignment_token = self.use_token(&[TokenKind::Equals])?;
-                let expression = self.parse_expression(0)?;
-
-                self.use_token(&[TokenKind::Semicolon])?;
-
-                Ok(Statement::Const(Const::new(
-                    Identifier::new(identifier_token, None),
-                    None,
-                    AssignmentOperator::new(assignment_token),
-                    expression,
-                )))
-            }
-        }
+        Ok(Statement::Const(Const::new(
+            Identifier::new(identifier_token, None),
+            r#type,
+            AssignmentOperator::new(assignment_token),
+            expression,
+        )))
     }
 
     /// Parses an expression.
@@ -910,14 +892,12 @@ fn get_binary_operator_precedence(kind: TokenKind) -> u32 {
 mod tests {
     use super::Parser;
     use crate::lang::{
+        lexer::{token::Token, token_kind::TokenKind},
         position::Position,
-        syntax::{
-            lexer::{token::Token, token_kind::TokenKind},
-            parser::{
-                expressions::expression::Expression, shared::r#type::Type,
-                statements::statement::Statement,
-                top_level_statements::top_level_statement::TopLevelStatement,
-            },
+        syntax::parser::{
+            expressions::expression::Expression, shared::r#type::Type,
+            statements::statement::Statement,
+            top_level_statements::top_level_statement::TopLevelStatement,
         },
     };
 
@@ -1262,7 +1242,7 @@ mod tests {
                 match statement {
                     Statement::Const(r#const) => {
                         assert_eq!(r#const.identifier.name, "x");
-                        assert!(r#const.type_identifier.is_none());
+                        assert!(r#const.r#type.is_none());
                     }
                     _ => {}
                 }
@@ -1282,7 +1262,7 @@ mod tests {
                 match statement {
                     Statement::Const(r#const) => {
                         assert_eq!(r#const.identifier.name, "x");
-                        assert!(r#const.type_identifier.is_some());
+                        assert!(r#const.r#type.is_some());
                     }
                     _ => {}
                 }

@@ -1,10 +1,4 @@
-use crate::lang::syntax::{lexer::token::Token, tree_display::TreeDisplay};
-
-#[derive(Clone)]
-pub struct ArrayProps {
-    // TODO: Improve this struct name
-    pub size: Token,
-}
+use crate::lang::{lexer::token::Token, syntax::tree_display::TreeDisplay};
 
 #[derive(Clone)]
 pub enum Type {

@@ -473,10 +473,7 @@ impl Lexer {
 
 #[cfg(test)]
 mod tests {
-    use crate::lang::syntax::lexer::{
-        lexer::{Lexer, TokenKind},
-        token::Token,
-    };
+    use crate::lang::lexer::{lexer::Lexer, token::Token, token_kind::TokenKind};
 
     #[test]
     fn test_comment() {

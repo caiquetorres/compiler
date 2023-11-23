@@ -1,7 +1,7 @@
 use crate::lang::semantic::expression_analyzer::ExpressionAnalyzer;
-use crate::lang::semantic::lang_type::LangType;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
+use crate::lang::semantic::semantic_type::SemanticType;
 use crate::lang::syntax::parser::expressions::array::Array;
 
 use std::{cell::RefCell, rc::Rc};
@@ -9,10 +9,10 @@ use std::{cell::RefCell, rc::Rc};
 /// Analyzer that performs the semantic analysis for arrays.
 pub struct ArrayAnalyzer {
     /// The inferred return type after semantic analyses.
-    pub return_type: LangType,
+    pub(crate) return_type: SemanticType,
 
     /// A collection of semantic errors found during analysis.
-    pub diagnosis: Vec<SemanticError>,
+    pub(crate) diagnosis: Vec<SemanticError>,
 }
 
 impl ArrayAnalyzer {
@@ -26,7 +26,7 @@ impl ArrayAnalyzer {
     ///
     /// A `ArrayAnalyzer` instance containing the analysis results.
     pub fn analyze(array: &Array, scope: Rc<RefCell<Scope>>) -> Self {
-        let return_type: LangType;
+        let return_type: SemanticType;
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         // Verifies if the array is not empty
@@ -57,10 +57,11 @@ impl ArrayAnalyzer {
                 diagnosis.push(SemanticError::InvalidArrayElement)
             }
 
-            return_type = LangType::Array(Box::new(first_element_type), array.expressions.len());
+            return_type =
+                SemanticType::Array(Box::new(first_element_type), array.expressions.len());
         } else {
             // If the array is empty then its type is array of any.
-            return_type = LangType::Array(Box::new(LangType::Any), 0);
+            return_type = SemanticType::Array(Box::new(SemanticType::Any), 0);
         }
 
         Self {

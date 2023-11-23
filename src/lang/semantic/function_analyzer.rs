@@ -5,11 +5,11 @@ use crate::lang::syntax::parser::top_level_statements::function::Function;
 use super::{
     analyzer::Scopes,
     block_analyzer::BlockAnalyzer,
-    lang_type::LangType,
     scope::{Func, Scope},
     semantic_error::SemanticError,
+    semantic_type::SemanticType,
+    shared::type_analyzer::TypeAnalyzer,
     symbol::Symbol,
-    type_analyzer::TypeAnalyzer,
 };
 
 pub struct FunctionAnalyzer {
@@ -20,7 +20,7 @@ impl FunctionAnalyzer {
     pub fn analyze_declaration(function: &Function, global_scope: Rc<RefCell<Scope>>) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
-        let function_return_type: LangType;
+        let function_return_type: SemanticType;
         let function_name = function.identifier.name.clone();
 
         // Verify if the function was already declared or if some builtin identifier has the same name.
@@ -34,7 +34,7 @@ impl FunctionAnalyzer {
             diagnosis.extend(analyzer.diagnosis);
             function_return_type = analyzer.result_type;
         } else {
-            function_return_type = LangType::Void;
+            function_return_type = SemanticType::Void;
         }
 
         // Verify is the main function and if it has parameters.
@@ -42,11 +42,11 @@ impl FunctionAnalyzer {
             diagnosis.push(SemanticError::MainFunctionWithParameters);
         }
 
-        if function_name == "main" && function_return_type != LangType::Void {
+        if function_name == "main" && function_return_type != SemanticType::Void {
             diagnosis.push(SemanticError::MainFunctionWithReturn);
         }
 
-        let mut params_types: Vec<LangType> = vec![];
+        let mut params_types: Vec<SemanticType> = vec![];
 
         for param_declaration in &function.params_declaration.params {
             let param_name = param_declaration.identifier.name.clone();
@@ -82,7 +82,7 @@ impl FunctionAnalyzer {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         let function_name = function.identifier.name.clone();
-        let mut function_return_type = LangType::Any;
+        let mut function_return_type = SemanticType::Any;
 
         if let Some(symbol) = global_scope.borrow().get(&function_name) {
             if let Symbol::Function { symbol_type, .. } = &symbol {

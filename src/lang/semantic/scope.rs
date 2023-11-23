@@ -1,11 +1,11 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use super::{lang_type::LangType, symbol::Symbol};
+use super::{semantic_type::SemanticType, symbol::Symbol};
 
 #[derive(Clone, Debug)]
 pub struct Func {
     pub name: String,
-    pub return_type: LangType,
+    pub return_type: SemanticType,
 }
 
 #[derive(Clone, Debug)]
@@ -59,7 +59,7 @@ impl Scope {
         })
     }
 
-    pub fn get_return_type(&self) -> Option<LangType> {
+    pub fn get_return_type(&self) -> Option<SemanticType> {
         self.function
             .clone()
             .map(|v| v.return_type.clone())

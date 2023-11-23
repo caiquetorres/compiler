@@ -1,4 +1,4 @@
-use super::lang_type::LangType;
+use super::semantic_type::SemanticType;
 
 #[derive(Debug)]
 pub enum SemanticError {
@@ -25,6 +25,9 @@ pub enum SemanticError {
     InvalidContinue,
     InvalidReturn,
     IdentifierNotIndexable,
-    ExpectedType { expected: LangType, found: LangType },
+    ExpectedType {
+        expected: SemanticType,
+        found: SemanticType,
+    },
     InvalidArrayElement,
 }

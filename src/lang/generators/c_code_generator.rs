@@ -1,44 +1,42 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::lang::{
+    lexer::token_kind::TokenKind,
     semantic::{
-        analyzer::Scopes, expression_analyzer::ExpressionAnalyzer, lang_type::LangType,
-        scope::Scope, symbol::Symbol,
+        analyzer::Scopes, expression_analyzer::ExpressionAnalyzer, scope::Scope,
+        semantic_type::SemanticType, symbol::Symbol,
     },
-    syntax::{
-        lexer::token_kind::TokenKind,
-        parser::{
-            compilation_unit::CompilationUnit,
-            expressions::{expression::Expression, literal::Literal},
-            shared::{block::Block, function_call::FunctionCall, identifier::IdentifierMeta},
-            statements::{
-                assignment::Assignment, do_while::DoWhile, print::Print, r#break::Break,
-                r#const::Const, r#continue::Continue, r#for::For, r#if::If, r#let::Let,
-                r#return::Return, r#while::While, statement::Statement,
-            },
-            top_level_statements::{function::Function, top_level_statement::TopLevelStatement},
+    syntax::parser::{
+        compilation_unit::CompilationUnit,
+        expressions::{expression::Expression, literal::Literal},
+        shared::{block::Block, function_call::FunctionCall, identifier::IdentifierMeta},
+        statements::{
+            assignment::Assignment, do_while::DoWhile, print::Print, r#break::Break,
+            r#const::Const, r#continue::Continue, r#for::For, r#if::If, r#let::Let,
+            r#return::Return, r#while::While, statement::Statement,
         },
+        top_level_statements::{function::Function, top_level_statement::TopLevelStatement},
     },
 };
 
-fn convert_to_c_type(lang_type: LangType) -> String {
+fn convert_to_c_type(lang_type: SemanticType) -> String {
     match lang_type {
-        LangType::Void => "void",
-        LangType::Char => "unsigned char",
-        LangType::Bool => "unsigned char",
-        LangType::U8 => "unsigned char",
-        LangType::I8 => "signed char",
-        LangType::U16 => "unsigned short int",
-        LangType::I16 => "signed short int",
-        LangType::U32 => "unsigned int",
-        LangType::I32 => "signed int",
-        LangType::U64 => "unsigned long long int",
-        LangType::I64 => "signed long long int",
-        LangType::F32 => "float",
-        LangType::F64 => "double",
-        LangType::String => "char*",
-        LangType::Any => "void *",
-        LangType::Array(lang_type, ..) => {
+        SemanticType::Void => "void",
+        SemanticType::Char => "unsigned char",
+        SemanticType::Bool => "unsigned char",
+        SemanticType::U8 => "unsigned char",
+        SemanticType::I8 => "signed char",
+        SemanticType::U16 => "unsigned short int",
+        SemanticType::I16 => "signed short int",
+        SemanticType::U32 => "unsigned int",
+        SemanticType::I32 => "signed int",
+        SemanticType::U64 => "unsigned long long int",
+        SemanticType::I64 => "signed long long int",
+        SemanticType::F32 => "float",
+        SemanticType::F64 => "double",
+        SemanticType::String => "char*",
+        SemanticType::Any => "void *",
+        SemanticType::Array(lang_type, ..) => {
             let array_type = convert_to_c_type(lang_type.as_ref().clone());
             let s = format!("{}*", array_type);
             return s;
@@ -89,12 +87,12 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         }
 
         let function_return_type = if is_main {
-            LangType::I32
+            SemanticType::I32
         } else {
             function
                 .r#type
                 .as_ref()
-                .map_or(LangType::Void, |id| LangType::from_type(id.clone()))
+                .map_or(SemanticType::Void, |id| SemanticType::from_type(id.clone()))
         };
 
         code.push_str(&format!(
@@ -105,8 +103,8 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
 
         for (index, param) in function.params_declaration.params.iter().enumerate() {
             code.push_str(&format!(
-                "{}",
-                convert_to_c_type(LangType::from_type(param.r#type.clone())),
+                "const {}",
+                convert_to_c_type(SemanticType::from_type(param.r#type.clone())),
             ));
 
             if index != function.params_declaration.params.len() - 1 {
@@ -123,12 +121,12 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         let is_main = function_name == "main";
 
         let function_return_type = if is_main {
-            LangType::I32
+            SemanticType::I32
         } else {
             function
                 .r#type
                 .as_ref()
-                .map_or(LangType::Void, |id| LangType::from_type(id.clone()))
+                .map_or(SemanticType::Void, |id| SemanticType::from_type(id.clone()))
         };
 
         code.push_str(&format!(
@@ -139,8 +137,8 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
 
         for (index, param) in function.params_declaration.params.iter().enumerate() {
             code.push_str(&format!(
-                "{} {}",
-                convert_to_c_type(LangType::from_type(param.r#type.clone())),
+                "const {} {}",
+                convert_to_c_type(SemanticType::from_type(param.r#type.clone())),
                 param.identifier.name
             ));
 
@@ -302,9 +300,9 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
                     let analyzer =
                         ExpressionAnalyzer::analyze(first_array_expression, Rc::clone(&scope));
 
-                    code.push_str(&convert_to_c_type(LangType::from(analyzer.return_type)));
+                    code.push_str(&convert_to_c_type(SemanticType::from(analyzer.return_type)));
                 } else {
-                    code.push_str(&convert_to_c_type(LangType::Any));
+                    code.push_str(&convert_to_c_type(SemanticType::Any));
                 }
 
                 code.push_str(&format!("[{}]", array.expressions.len()));
@@ -490,22 +488,32 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
             let analyzer = ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
             let return_type = analyzer.return_type;
 
-            let c_print_shortcut = match return_type.to_string().as_str() {
-                "string" => "%s",
-                "i32" => "%d",
-                "i64" => "%ld",
-                "u32" => "%u",
-                "u64" => "%lu",
-                "f32" => "%f",
-                "f64" => "%lf",
-                "bool" => "%c",
-                "char" => "%c",
+            let c_print_shortcut = match &return_type {
+                SemanticType::String => "%s",
+                SemanticType::I8 => "%d",
+                SemanticType::U8 => "%u",
+                SemanticType::I16 => "%d",
+                SemanticType::U16 => "%u",
+                SemanticType::I32 => "%d",
+                SemanticType::U32 => "%u",
+                SemanticType::I64 => "%ld",
+                SemanticType::U64 => "%lu",
+                SemanticType::F32 => "%ff",
+                SemanticType::F64 => "%lf",
+                SemanticType::Bool => "%s",
+                SemanticType::Char => "%c",
+                SemanticType::Ref(_) => "%p",
                 _ => "",
             };
 
             code.push_str(&format!("{}", c_print_shortcut));
             code.push_str("\",");
             self.generate_expression(expression, Rc::clone(&scope), code);
+
+            if return_type.is_bool() {
+                code.push_str("?\"true\":\"false\"");
+            }
+
             code.push_str(");");
         }
 

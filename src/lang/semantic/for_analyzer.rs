@@ -4,7 +4,7 @@ use crate::lang::syntax::parser::{expressions::expression::Expression, statement
 
 use super::{
     analyzer::Scopes, block_analyzer::BlockAnalyzer, expression_analyzer::ExpressionAnalyzer,
-    lang_type::LangType, scope::Scope, semantic_error::SemanticError, symbol::Symbol,
+    scope::Scope, semantic_error::SemanticError, semantic_type::SemanticType, symbol::Symbol,
 };
 
 pub struct ForAnalyzer {
@@ -25,7 +25,7 @@ impl ForAnalyzer {
 
         scope.borrow_mut().insert(Symbol::Const {
             name: identifier_name,
-            symbol_type: LangType::I32,
+            symbol_type: SemanticType::I32,
         });
 
         let analyzer = ExpressionAnalyzer::analyze(&r#for.expression, Rc::clone(&scope));
@@ -39,7 +39,7 @@ impl ForAnalyzer {
             diagnosis.extend(analyzer.diagnosis);
         } else {
             diagnosis.push(SemanticError::ExpectedType {
-                expected: LangType::Range,
+                expected: SemanticType::Range,
                 found: analyzer.return_type,
             });
         }

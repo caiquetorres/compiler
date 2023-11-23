@@ -4,9 +4,8 @@ use std::{
 };
 
 use super::{
-    generators::c_code_generator::CCodeGenerator,
-    semantic::analyzer::Analyzer,
-    syntax::{lexer::lexer::Lexer, parser::parser::Parser},
+    generators::c_code_generator::CCodeGenerator, lexer::lexer::Lexer,
+    semantic::analyzer::Analyzer, syntax::parser::parser::Parser,
 };
 
 pub struct Compiler {
