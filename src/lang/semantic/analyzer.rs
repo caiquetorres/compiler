@@ -52,6 +52,17 @@ impl Analyzer {
             match statement {
                 TopLevelStatement::Function(function) => {
                     let analyzer =
+                        FunctionAnalyzer::analyze_declaration(function, Rc::clone(&global_scope));
+
+                    diagnosis.extend(analyzer.diagnosis);
+                }
+            }
+        }
+
+        for statement in &ast.statements {
+            match statement {
+                TopLevelStatement::Function(function) => {
+                    let analyzer =
                         FunctionAnalyzer::analyze(function, Rc::clone(&global_scope), &mut scopes);
 
                     diagnosis.extend(analyzer.diagnosis);

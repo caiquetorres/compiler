@@ -16,7 +16,7 @@ use crate::lang::{
                 r#const::Const, r#continue::Continue, r#for::For, r#if::If, r#let::Let,
                 r#return::Return, r#while::While, statement::Statement,
             },
-            top_level_statements::top_level_statement::TopLevelStatement,
+            top_level_statements::{function::Function, top_level_statement::TopLevelStatement},
         },
     },
 };
@@ -56,55 +56,100 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         let mut code = String::from("#include <stdio.h>\n");
 
         for statement in &self.ast.statements {
-            self.generate_top_level_statement(statement, &mut code);
+            match statement {
+                TopLevelStatement::Function(function) => {
+                    self.generate_prototypes(function, &mut code)
+                }
+            }
+        }
+
+        for statement in &self.ast.statements {
+            match statement {
+                TopLevelStatement::Function(function) => {
+                    self.generate_top_level_statement(function, &mut code)
+                }
+            }
         }
 
         code
     }
 
-    fn generate_top_level_statement(&self, statement: &TopLevelStatement, code: &mut String) {
-        match statement {
-            TopLevelStatement::Function(function) => {
-                let function_name = function.identifier.name.clone();
+    fn generate_prototypes(&self, function: &Function, code: &mut String) {
+        let function_name = function.identifier.name.clone();
+        let is_main = function_name == "main";
 
-                let is_main = function_name == "main";
+        if is_main {
+            return;
+        }
 
-                let function_return_type = if is_main {
-                    LangType::I32
-                } else {
-                    function
-                        .type_identifier
-                        .as_ref()
-                        .map_or(LangType::Void, |id| LangType::from(id.name.clone()))
-                };
+        let function_return_type = if is_main {
+            LangType::I32
+        } else {
+            function
+                .type_identifier
+                .as_ref()
+                .map_or(LangType::Void, |id| LangType::from(id.name.clone()))
+        };
 
-                code.push_str(&format!(
-                    "{} {}(",
-                    convert_to_c_type(function_return_type),
-                    function_name
-                ));
+        code.push_str(&format!(
+            "{} {}(",
+            convert_to_c_type(function_return_type),
+            function_name
+        ));
 
-                for (index, param) in function.params_declaration.params.iter().enumerate() {
-                    code.push_str(&format!(
-                        "{} {}",
-                        convert_to_c_type(LangType::from(param.type_identifier.name.clone())),
-                        param.identifier.name
-                    ));
+        for (index, param) in function.params_declaration.params.iter().enumerate() {
+            code.push_str(&format!(
+                "{}",
+                convert_to_c_type(LangType::from(param.type_identifier.name.clone())),
+            ));
 
-                    if index != function.params_declaration.params.len() - 1 {
-                        code.push_str(",");
-                    }
-                }
-
-                code.push_str(")");
-
-                self.generate_block_statement(&function.block, code);
-
-                if is_main {
-                    code.pop();
-                    code.push_str("return 0;}");
-                }
+            if index != function.params_declaration.params.len() - 1 {
+                code.push_str(",");
             }
+        }
+
+        code.push_str(");");
+    }
+
+    fn generate_top_level_statement(&self, function: &Function, code: &mut String) {
+        let function_name = function.identifier.name.clone();
+
+        let is_main = function_name == "main";
+
+        let function_return_type = if is_main {
+            LangType::I32
+        } else {
+            function
+                .type_identifier
+                .as_ref()
+                .map_or(LangType::Void, |id| LangType::from(id.name.clone()))
+        };
+
+        code.push_str(&format!(
+            "{} {}(",
+            convert_to_c_type(function_return_type),
+            function_name
+        ));
+
+        for (index, param) in function.params_declaration.params.iter().enumerate() {
+            code.push_str(&format!(
+                "{} {}",
+                convert_to_c_type(LangType::from(param.type_identifier.name.clone())),
+                param.identifier.name
+            ));
+
+            if index != function.params_declaration.params.len() - 1 {
+                code.push_str(",");
+            }
+        }
+
+        code.push_str(")");
+
+        self.generate_block_statement(&function.block, code);
+
+        if is_main {
+            code.pop();
+            code.push_str("return 0;}");
         }
     }
 

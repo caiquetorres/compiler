@@ -16,11 +16,7 @@ pub struct FunctionAnalyzer {
 }
 
 impl FunctionAnalyzer {
-    pub fn analyze(
-        function: &Function,
-        global_scope: Rc<RefCell<Scope>>,
-        scopes: &mut Scopes,
-    ) -> Self {
+    pub fn analyze_declaration(function: &Function, global_scope: Rc<RefCell<Scope>>) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         let function_return_type: LangType;
@@ -79,6 +75,25 @@ impl FunctionAnalyzer {
             symbol_type: function_return_type.clone(),
             params: params_types,
         });
+
+        Self { diagnosis }
+    }
+
+    pub fn analyze(
+        function: &Function,
+        global_scope: Rc<RefCell<Scope>>,
+        scopes: &mut Scopes,
+    ) -> Self {
+        let mut diagnosis: Vec<SemanticError> = vec![];
+
+        let function_name = function.identifier.name.clone();
+        let mut function_return_type = LangType::Any;
+
+        if let Some(symbol) = global_scope.borrow().get(&function_name) {
+            if let Symbol::Function { symbol_type, .. } = &symbol {
+                function_return_type = symbol_type.clone();
+            }
+        }
 
         // Creates the local function scope.
         let mut function_scope = Scope::new(
