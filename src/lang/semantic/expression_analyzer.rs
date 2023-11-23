@@ -18,6 +18,19 @@ impl ExpressionAnalyzer {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         match expression {
+            Expression::Array(array) => {
+                if array.expressions.len() != 0 {
+                    let first_array_expression = array.expressions.get(0).unwrap();
+                    let analyzer = Self::analyze(first_array_expression, Rc::clone(&scope));
+
+                    diagnosis.extend(analyzer.diagnosis);
+
+                    return_type =
+                        LangType::Array(Box::new(analyzer.return_type), array.expressions.len());
+                } else {
+                    return_type = LangType::Array(Box::new(LangType::Any), 0);
+                }
+            }
             Expression::Parenthesized(parenthesized) => {
                 let analyzer = Self::analyze(&parenthesized.expression, Rc::clone(&scope));
                 return_type = analyzer.return_type;

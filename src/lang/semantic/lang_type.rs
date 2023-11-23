@@ -1,3 +1,5 @@
+use crate::lang::syntax::parser::shared::r#type::Type;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LangType {
     U8,
@@ -17,7 +19,8 @@ pub enum LangType {
     Range,
     Any,
     // Custom(String),
-    //Array(Box<LangType>, usize),
+    Ref(Box<LangType>),
+    Array(Box<LangType>, usize),
 }
 
 impl LangType {
@@ -78,6 +81,19 @@ impl LangType {
                 | Self::F64
         )
     }
+
+    pub fn from_type(r#type: Type) -> Self {
+        match r#type {
+            Type::Simple { identifier } => Self::from(identifier.name),
+            Type::Array { r#type, size } => {
+                let size = size.value.parse::<usize>().unwrap();
+                Self::Array(Box::new(Self::from_type(r#type.as_ref().clone())), size)
+            }
+            Type::Reference { inner_type } => {
+                Self::Ref(Box::new(Self::from_type(inner_type.as_ref().clone())))
+            }
+        }
+    }
 }
 
 impl ToString for LangType {
@@ -100,9 +116,13 @@ impl ToString for LangType {
             LangType::Range => "range",
             LangType::Any => "any",
             // LangType::Custom(t) => t.as_str(),
-            // LangType::Array(inner_type, size) => {
-            //     return write!(f, "[{}; {}]", inner_type, size);
-            // }
+            LangType::Ref(r#type) => {
+                let type_name = r#type.to_string();
+                return format!("ref {}", type_name);
+            }
+            LangType::Array(inner_type, size) => {
+                return format!("[{}; {}]", inner_type.to_string(), size);
+            }
         }
         .to_string()
     }

@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use super::array::Array;
 use super::binary::Binary;
 use super::literal::Literal;
 use super::parenthesized::Parenthesized;
@@ -18,6 +19,7 @@ pub enum Expression {
     Binary(Binary),
     Parenthesized(Parenthesized),
     Range(Range),
+    Array(Array),
 }
 
 impl Display for Expression {
@@ -30,6 +32,7 @@ impl Display for Expression {
             Self::Unary(_) => write!(f, "unary expression"),
             Self::Parenthesized(_) => write!(f, "parenthesized expression"),
             Self::Range(_) => write!(f, "range expression"),
+            Self::Array(_) => write!(f, "array expression"),
         }
     }
 }
@@ -44,6 +47,7 @@ impl TreeDisplay for Expression {
             Self::Parenthesized(parenthesized) => parenthesized.display(layer),
             Self::FunctionCall(call) => call.display(layer),
             Self::Range(range) => range.display(layer),
+            Self::Array(array) => array.display(layer),
         }
     }
 }

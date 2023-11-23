@@ -66,6 +66,8 @@ pub enum TokenKind {
     DotDotEquals,
     PrintKeyword,
     PrintlnKeyword,
+    Ref,
+    Deref,
 }
 
 impl Display for TokenKind {

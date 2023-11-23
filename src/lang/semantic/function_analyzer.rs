@@ -9,6 +9,7 @@ use super::{
     scope::{Func, Scope},
     semantic_error::SemanticError,
     symbol::Symbol,
+    type_analyzer::TypeAnalyzer,
 };
 
 pub struct FunctionAnalyzer {
@@ -28,15 +29,10 @@ impl FunctionAnalyzer {
         }
 
         // Verify the function return type.
-        if let Some(type_identifier) = &function.type_identifier {
-            let function_return_type_name = type_identifier.name.clone();
-
-            // Verify if the function return type exists.
-            if let None = global_scope.borrow().get(&function_return_type_name) {
-                diagnosis.push(SemanticError::IdentifierNotFound);
-            }
-
-            function_return_type = LangType::from(function_return_type_name);
+        if let Some(r#type) = &function.r#type {
+            let analyzer = TypeAnalyzer::analyze(r#type, Rc::clone(&global_scope));
+            diagnosis.extend(analyzer.diagnosis);
+            function_return_type = analyzer.result_type;
         } else {
             function_return_type = LangType::Void;
         }
@@ -54,19 +50,18 @@ impl FunctionAnalyzer {
 
         for param_declaration in &function.params_declaration.params {
             let param_name = param_declaration.identifier.name.clone();
-            let param_type_name = param_declaration.type_identifier.name.clone();
 
             // Verify if the parameter was already declared or if some builtin identifier has the same name.
             if let Some(_) = global_scope.borrow().get(&param_name) {
                 diagnosis.push(SemanticError::DuplicatedIdentifier);
             }
 
-            // Verify if the parameter type was already declared.
-            if let None = global_scope.borrow().get(&param_type_name) {
-                diagnosis.push(SemanticError::IdentifierNotFound);
-            }
+            let analyzer =
+                TypeAnalyzer::analyze(&param_declaration.r#type, Rc::clone(&global_scope));
+            diagnosis.extend(analyzer.diagnosis);
+            let param_type = analyzer.result_type;
 
-            params_types.push(LangType::from(param_type_name));
+            params_types.push(param_type);
         }
 
         // Save the function in the global scope.
@@ -97,7 +92,7 @@ impl FunctionAnalyzer {
 
         // Creates the local function scope.
         let mut function_scope = Scope::new(
-            global_scope,
+            Rc::clone(&global_scope),
             false,
             Some(Func {
                 name: function_name,
@@ -107,21 +102,20 @@ impl FunctionAnalyzer {
 
         for param_declaration in &function.params_declaration.params {
             let param_name = param_declaration.identifier.name.clone();
-            let param_type_name = param_declaration.type_identifier.name.clone();
 
             // Verify if the parameter was already declared or if some builtin identifier has the same name.
             if let Some(_) = function_scope.get(&param_name) {
                 diagnosis.push(SemanticError::DuplicatedIdentifier);
             }
 
-            // Verify if the parameter type was already declared.
-            if let None = function_scope.get(&param_type_name) {
-                diagnosis.push(SemanticError::IdentifierNotFound);
-            }
+            let analyzer =
+                TypeAnalyzer::analyze(&param_declaration.r#type, Rc::clone(&global_scope));
+            diagnosis.extend(analyzer.diagnosis);
+            let param_type = analyzer.result_type;
 
             function_scope.insert(Symbol::Parameter {
                 name: param_name,
-                symbol_type: LangType::from(param_type_name),
+                symbol_type: param_type,
             })
         }
 

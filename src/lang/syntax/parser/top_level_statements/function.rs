@@ -1,31 +1,28 @@
 use crate::lang::syntax::{
-    parser::shared::{block::Block, identifier::Identifier},
+    parser::shared::{block::Block, identifier::Identifier, r#type::Type},
     tree_display::TreeDisplay,
 };
 
 #[derive(Clone)]
 pub struct ParamDeclaration {
     pub identifier: Identifier,
-    pub type_identifier: Identifier,
+    pub r#type: Type,
 }
 
 impl ParamDeclaration {
-    pub fn new(identifier: Identifier, type_identifier: Identifier) -> Self {
-        Self {
-            identifier,
-            type_identifier,
-        }
+    pub fn new(identifier: Identifier, r#type: Type) -> Self {
+        Self { identifier, r#type }
     }
 }
 
 impl TreeDisplay for ParamDeclaration {
     fn display(&self, layer: usize) {
-        println!(
-            "{}ParamDeclaration ({}) ({})",
-            " ".repeat(layer),
-            self.identifier.name,
-            self.type_identifier.name,
-        );
+        // println!(
+        //     "{}ParamDeclaration ({}) ({})",
+        //     " ".repeat(layer),
+        //     self.identifier.name,
+        //     self.r#type.name,
+        // );
     }
 }
 
@@ -52,7 +49,7 @@ impl TreeDisplay for ParamsDeclaration {
 pub struct Function {
     pub identifier: Identifier,
     pub params_declaration: ParamsDeclaration,
-    pub type_identifier: Option<Identifier>,
+    pub r#type: Option<Type>,
     pub block: Block,
 }
 
@@ -60,13 +57,13 @@ impl Function {
     pub fn new(
         identifier: Identifier,
         params_declaration: ParamsDeclaration,
-        type_identifier: Option<Identifier>,
+        r#type: Option<Type>,
         block: Block,
     ) -> Self {
         Self {
             identifier,
             params_declaration,
-            type_identifier,
+            r#type,
             block,
         }
     }
@@ -76,14 +73,10 @@ impl TreeDisplay for Function {
     fn display(&self, layer: usize) {
         let id = self.identifier.name.clone();
 
-        match self.type_identifier.as_ref() {
-            Some(type_id) => {
-                println!(
-                    "{}FunctionDeclaration ({}) ({})",
-                    " ".repeat(layer),
-                    id,
-                    type_id.name
-                );
+        match self.r#type.as_ref() {
+            Some(r#type) => {
+                print!("{}FunctionDeclaration ({}) ", " ".repeat(layer), id,);
+                r#type.display(0);
             }
             None => {
                 println!("{}FunctionDeclaration ({})", " ".repeat(layer), id,);

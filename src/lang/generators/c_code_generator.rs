@@ -37,6 +37,11 @@ fn convert_to_c_type(lang_type: LangType) -> String {
         LangType::F32 => "float",
         LangType::F64 => "double",
         LangType::String => "char*",
+        LangType::Array(lang_type, ..) => {
+            let array_type = convert_to_c_type(lang_type.as_ref().clone());
+            let s = format!("{}*", array_type);
+            return s;
+        }
         _ => unreachable!(),
     }
     .to_string()
@@ -86,9 +91,9 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
             LangType::I32
         } else {
             function
-                .type_identifier
+                .r#type
                 .as_ref()
-                .map_or(LangType::Void, |id| LangType::from(id.name.clone()))
+                .map_or(LangType::Void, |id| LangType::from_type(id.clone()))
         };
 
         code.push_str(&format!(
@@ -100,7 +105,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         for (index, param) in function.params_declaration.params.iter().enumerate() {
             code.push_str(&format!(
                 "{}",
-                convert_to_c_type(LangType::from(param.type_identifier.name.clone())),
+                convert_to_c_type(LangType::from_type(param.r#type.clone())),
             ));
 
             if index != function.params_declaration.params.len() - 1 {
@@ -120,9 +125,9 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
             LangType::I32
         } else {
             function
-                .type_identifier
+                .r#type
                 .as_ref()
-                .map_or(LangType::Void, |id| LangType::from(id.name.clone()))
+                .map_or(LangType::Void, |id| LangType::from_type(id.clone()))
         };
 
         code.push_str(&format!(
@@ -134,7 +139,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         for (index, param) in function.params_declaration.params.iter().enumerate() {
             code.push_str(&format!(
                 "{} {}",
-                convert_to_c_type(LangType::from(param.type_identifier.name.clone())),
+                convert_to_c_type(LangType::from_type(param.r#type.clone())),
                 param.identifier.name
             ));
 
@@ -173,20 +178,32 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
     ) {
         match statement {
             Statement::Block(block) => self.generate_block_statement(block, code),
-            Statement::Let(r#let) => self.generate_let_statement(r#let, scope, code),
-            Statement::Const(r#const) => self.generate_const_statement(r#const, scope, code),
-            Statement::FunctionCall(call) => self.generate_function_call_statement(call, code),
-            Statement::Return(r#return) => self.generate_return_statement(r#return, scope, code),
-            Statement::Assignment(assignment) => {
-                self.generate_assignment_statement(assignment, code)
+            Statement::Let(r#let) => self.generate_let_statement(r#let, Rc::clone(&scope), code),
+            Statement::Const(r#const) => {
+                self.generate_const_statement(r#const, Rc::clone(&scope), code)
             }
-            Statement::If(r#if) => self.generate_if_statement(r#if, code),
-            Statement::While(r#while) => self.generate_while_statement(r#while, code),
-            Statement::DoWhile(do_while) => self.generate_do_while_statement(do_while, code),
-            Statement::For(r#for) => self.generate_for_statement(r#for, code),
+            Statement::FunctionCall(call) => {
+                self.generate_function_call_statement(call, Rc::clone(&scope), code)
+            }
+            Statement::Return(r#return) => {
+                self.generate_return_statement(r#return, Rc::clone(&scope), code)
+            }
+            Statement::Assignment(assignment) => {
+                self.generate_assignment_statement(assignment, Rc::clone(&scope), code)
+            }
+            Statement::If(r#if) => self.generate_if_statement(r#if, Rc::clone(&scope), code),
+            Statement::While(r#while) => {
+                self.generate_while_statement(r#while, Rc::clone(&scope), code)
+            }
+            Statement::DoWhile(do_while) => {
+                self.generate_do_while_statement(do_while, Rc::clone(&scope), code)
+            }
+            Statement::For(r#for) => self.generate_for_statement(r#for, Rc::clone(&scope), code),
             Statement::Break(r#break) => self.generate_break_statement(r#break, code),
             Statement::Continue(r#continue) => self.generate_continue_statement(r#continue, code),
-            Statement::Print(print) => self.generate_print_statement(print, scope, code),
+            Statement::Print(print) => {
+                self.generate_print_statement(print, Rc::clone(&scope), code)
+            }
         }
     }
 
@@ -203,7 +220,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
                 None => code.push_str("return;"),
                 Some(expression) => {
                     code.push_str("return ");
-                    self.generate_expression(expression, code);
+                    self.generate_expression(expression, Rc::clone(&scope), code);
                     code.push_str(";");
                 }
             }
@@ -227,7 +244,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
 
         if let Some(expression) = &r#let.expression {
             code.push_str("=");
-            self.generate_expression(expression, code);
+            self.generate_expression(expression, Rc::clone(&scope), code);
         }
 
         code.push_str(";")
@@ -252,21 +269,52 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
             identifier_name
         ));
 
-        self.generate_expression(&r#const.expression, code);
+        self.generate_expression(&r#const.expression, Rc::clone(&scope), code);
         code.push_str(";");
     }
 
-    fn generate_expression(&self, expression: &Expression, code: &mut String) {
+    fn generate_expression(
+        &self,
+        expression: &Expression,
+        scope: Rc<RefCell<Scope>>,
+        code: &mut String,
+    ) {
         match expression {
             Expression::Identifier(identifier) => {
                 code.push_str(&identifier.name);
+            }
+            Expression::Array(array) => {
+                code.push_str("(");
+
+                if array.expressions.len() != 0 {
+                    let first_array_expression = array.expressions.get(0).unwrap();
+
+                    let analyzer =
+                        ExpressionAnalyzer::analyze(first_array_expression, Rc::clone(&scope));
+
+                    code.push_str(&convert_to_c_type(LangType::from(analyzer.return_type)));
+                } else {
+                    code.push_str(&convert_to_c_type(LangType::Void));
+                }
+
+                code.push_str(&format!("[{}]", array.expressions.len()));
+                code.push_str(")");
+
+                code.push_str("{");
+
+                for expression in &array.expressions {
+                    self.generate_expression(expression, Rc::clone(&scope), code);
+                    code.push_str(",");
+                }
+
+                code.push_str("}");
             }
             Expression::FunctionCall(call) => {
                 code.push_str(&call.identifier.name);
                 code.push_str("(");
 
                 for (index, expression) in call.params.expressions.iter().enumerate() {
-                    self.generate_expression(expression, code);
+                    self.generate_expression(expression, Rc::clone(&scope), code);
                     if index != call.params.expressions.len() - 1 {
                         code.push_str(",");
                     }
@@ -276,7 +324,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
             }
             Expression::Unary(unary) => {
                 code.push_str(&unary.operator.token.value);
-                self.generate_expression(&unary.expression, code);
+                self.generate_expression(&unary.expression, Rc::clone(&scope), code);
             }
             Expression::Literal(literal) => match literal {
                 Literal::Number(token) => code.push_str(&token.value),
@@ -288,25 +336,30 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
                 },
             },
             Expression::Binary(binary) => {
-                self.generate_expression(&binary.left, code);
+                self.generate_expression(&binary.left, Rc::clone(&scope), code);
                 code.push_str(&binary.operator.token.value);
-                self.generate_expression(&binary.right, code);
+                self.generate_expression(&binary.right, Rc::clone(&scope), code);
             }
             Expression::Parenthesized(parenthesized) => {
                 code.push_str("(");
-                self.generate_expression(&parenthesized.expression, code);
+                self.generate_expression(&parenthesized.expression, Rc::clone(&scope), code);
                 code.push_str(")");
             }
             _ => {}
         }
     }
 
-    pub fn generate_function_call_statement(&self, call: &FunctionCall, code: &mut String) {
+    pub fn generate_function_call_statement(
+        &self,
+        call: &FunctionCall,
+        scope: Rc<RefCell<Scope>>,
+        code: &mut String,
+    ) {
         code.push_str(&call.identifier.name);
         code.push_str("(");
 
         for (index, expression) in call.params.expressions.iter().enumerate() {
-            self.generate_expression(expression, code);
+            self.generate_expression(expression, Rc::clone(&scope), code);
             if index != call.params.expressions.len() - 1 {
                 code.push_str(",");
             }
@@ -315,18 +368,23 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         code.push_str(");");
     }
 
-    pub fn generate_assignment_statement(&self, assignment: &Assignment, code: &mut String) {
+    pub fn generate_assignment_statement(
+        &self,
+        assignment: &Assignment,
+        scope: Rc<RefCell<Scope>>,
+        code: &mut String,
+    ) {
         code.push_str(&assignment.identifier.name);
         code.push_str(&assignment.operator.name);
 
-        self.generate_expression(&assignment.expression, code);
+        self.generate_expression(&assignment.expression, Rc::clone(&scope), code);
 
         code.push_str(";");
     }
 
-    pub fn generate_if_statement(&self, r#if: &If, code: &mut String) {
+    pub fn generate_if_statement(&self, r#if: &If, scope: Rc<RefCell<Scope>>, code: &mut String) {
         code.push_str("if(");
-        self.generate_expression(&r#if.expression, code);
+        self.generate_expression(&r#if.expression, Rc::clone(&scope), code);
         code.push_str(")");
         self.generate_block_statement(&r#if.block, code);
 
@@ -339,38 +397,48 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         }
     }
 
-    fn generate_while_statement(&self, r#while: &While, code: &mut String) {
+    fn generate_while_statement(
+        &self,
+        r#while: &While,
+        scope: Rc<RefCell<Scope>>,
+        code: &mut String,
+    ) {
         code.push_str("while(");
-        self.generate_expression(&r#while.expression, code);
+        self.generate_expression(&r#while.expression, Rc::clone(&scope), code);
         code.push_str(")");
         self.generate_block_statement(&r#while.block, code);
     }
 
-    fn generate_do_while_statement(&self, do_while: &DoWhile, code: &mut String) {
+    fn generate_do_while_statement(
+        &self,
+        do_while: &DoWhile,
+        scope: Rc<RefCell<Scope>>,
+        code: &mut String,
+    ) {
         code.push_str("do");
         self.generate_block_statement(&do_while.block, code);
         code.push_str("while (");
-        self.generate_expression(&do_while.expression, code);
+        self.generate_expression(&do_while.expression, Rc::clone(&scope), code);
         code.push_str(");");
     }
 
-    fn generate_for_statement(&self, r#for: &For, code: &mut String) {
+    fn generate_for_statement(&self, r#for: &For, scope: Rc<RefCell<Scope>>, code: &mut String) {
         if let Expression::Range(range) = &r#for.expression {
             code.push_str("int ");
             code.push_str(&format!("{};", r#for.identifier.name));
             code.push_str("for(");
             code.push_str(&format!("{}=", r#for.identifier.name));
-            self.generate_expression(&range.left, code);
+            self.generate_expression(&range.left, Rc::clone(&scope), code);
             code.push_str(";");
 
             match range.operator.token.kind {
                 TokenKind::DotDot => {
                     code.push_str(&format!("{}<", r#for.identifier.name));
-                    self.generate_expression(&range.right, code);
+                    self.generate_expression(&range.right, Rc::clone(&scope), code);
                 }
                 TokenKind::DotDotEquals => {
                     code.push_str(&format!("{}<=", r#for.identifier.name));
-                    self.generate_expression(&range.right, code);
+                    self.generate_expression(&range.right, Rc::clone(&scope), code);
                 }
                 _ => unreachable!(),
             }
@@ -416,7 +484,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
 
             code.push_str(&format!("{}", c_print_shortcut));
             code.push_str("\",");
-            self.generate_expression(expression, code);
+            self.generate_expression(expression, Rc::clone(&scope), code);
             code.push_str(");");
         }
 

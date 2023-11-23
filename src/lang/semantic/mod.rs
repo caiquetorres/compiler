@@ -17,4 +17,5 @@ pub mod return_analyzer;
 pub mod scope;
 pub mod semantic_error;
 pub mod symbol;
+pub mod type_analyzer;
 pub mod while_analyzer;

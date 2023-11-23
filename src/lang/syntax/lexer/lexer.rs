@@ -454,6 +454,8 @@ impl Lexer {
             "continue" => Token::new(TokenKind::ContinueKeyword, position, "continue"),
             "print" => Token::new(TokenKind::PrintKeyword, position, "print"),
             "println" => Token::new(TokenKind::PrintlnKeyword, position, "println"),
+            "ref" => Token::new(TokenKind::Ref, position, "ref"),
+            "deref" => Token::new(TokenKind::Deref, position, "deref"),
             _ => Token::new(TokenKind::Identifier, position, id),
         }
     }

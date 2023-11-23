@@ -1,24 +1,25 @@
 use crate::lang::syntax::parser::expressions::expression::Expression;
 use crate::lang::syntax::parser::shared::identifier::Identifier;
 
+use crate::lang::syntax::parser::shared::r#type::Type;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
 #[derive(Clone)]
 pub struct Let {
     pub identifier: Identifier,
-    pub type_identifier: Option<Identifier>,
+    pub r#type: Option<Type>,
     pub expression: Option<Expression>,
 }
 
 impl Let {
     pub fn new(
         identifier: Identifier,
-        type_identifier: Option<Identifier>,
+        r#type: Option<Type>,
         expression: Option<Expression>,
     ) -> Self {
         Self {
             identifier,
-            type_identifier,
+            r#type,
             expression,
         }
     }
@@ -30,9 +31,8 @@ impl TreeDisplay for Let {
 
         print!("{}LetStatement ({})", " ".repeat(layer), identifier_name);
 
-        if let Some(type_identifier) = &self.type_identifier {
-            let type_identifier_name = type_identifier.name.clone();
-            print!(" ({})", type_identifier_name);
+        if let Some(r#type) = &self.r#type {
+            r#type.display(0);
         }
 
         if let Some(expression) = &self.expression {

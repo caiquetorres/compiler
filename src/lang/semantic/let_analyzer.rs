@@ -4,7 +4,7 @@ use crate::lang::syntax::parser::statements::r#let::Let;
 
 use super::{
     expression_analyzer::ExpressionAnalyzer, lang_type::LangType, scope::Scope,
-    semantic_error::SemanticError, symbol::Symbol,
+    semantic_error::SemanticError, symbol::Symbol, type_analyzer::TypeAnalyzer,
 };
 
 pub struct LetAnalyzer {
@@ -34,19 +34,16 @@ impl LetAnalyzer {
             variable_type = expression_type.clone();
         }
 
-        if let Some(type_identifier) = &r#let.type_identifier {
-            let variable_type_name = type_identifier.name.clone();
-
-            // Verify if the function return type exists.
-            if let None = scope.borrow().get(&variable_type_name) {
-                diagnosis.push(SemanticError::IdentifierNotFound);
-            }
-
-            variable_type = LangType::from(variable_type_name);
+        if let Some(r#type) = &r#let.r#type {
+            let analyzer = TypeAnalyzer::analyze(r#type, Rc::clone(&scope));
+            diagnosis.extend(analyzer.diagnosis);
+            variable_type = analyzer.result_type;
         }
 
-        if r#let.type_identifier.is_some() && r#let.expression.is_some() {
-            if !variable_type.is_number() && variable_type != expression_type {
+        if r#let.r#type.is_some() && r#let.expression.is_some() {
+            if (!variable_type.is_number() || !expression_type.is_number())
+                && variable_type != expression_type
+            {
                 diagnosis.push(SemanticError::ExpectedType {
                     expected: variable_type.clone(),
                     found: expression_type.clone(),
@@ -54,7 +51,7 @@ impl LetAnalyzer {
             }
         }
 
-        if r#let.type_identifier.is_none() && r#let.expression.is_none() {
+        if r#let.r#type.is_none() && r#let.expression.is_none() {
             diagnosis.push(SemanticError::MissingTypeOrExpression);
         }
 
@@ -62,6 +59,8 @@ impl LetAnalyzer {
             name: variable_name.clone(),
             symbol_type: variable_type.clone(),
         });
+
+        println!("{:?}", variable_type);
 
         Self { diagnosis }
     }
