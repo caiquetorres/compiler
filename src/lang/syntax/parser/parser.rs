@@ -722,6 +722,7 @@ fn is_binary_operator(kind: TokenKind) -> bool {
             | TokenKind::LessThan
             | TokenKind::LessThanEquals
             | TokenKind::EqualsEquals
+            | TokenKind::ExclamationEquals
             | TokenKind::Ampersand
             | TokenKind::Circumflex
             | TokenKind::Pipe
@@ -743,7 +744,7 @@ fn get_binary_operator_precedence(kind: TokenKind) -> u32 {
         hashset! {TokenKind::Slash, TokenKind::Star, TokenKind::Mod},
         hashset! {TokenKind::Plus, TokenKind::Minus},
         hashset! {TokenKind::GreaterThan, TokenKind::GreaterThanEquals, TokenKind::LessThan, TokenKind::LessThanEquals},
-        hashset! {TokenKind::Equals, TokenKind::EqualsEquals},
+        hashset! {TokenKind::EqualsEquals, TokenKind::ExclamationEquals},
         hashset! {TokenKind::Ampersand},
         hashset! {TokenKind::Circumflex},
         hashset! {TokenKind::Pipe},

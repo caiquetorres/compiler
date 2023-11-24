@@ -1,7 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::lang::{
-    self,
     lexer::token_kind::TokenKind,
     semantic::{
         analyzer::Scopes, expressions::expression_analyzer::ExpressionAnalyzer, scope::Scope,
@@ -422,6 +421,8 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         if let Expression::Range(range) = &r#for.expression {
             let symbol = scope.borrow().get(&r#for.identifier.name).unwrap();
 
+            code.push_str("for(");
+
             match &symbol {
                 Symbol::Variable { symbol_type, .. } => {
                     code.push_str(&format!("{} ", convert_to_c_type(symbol_type.clone())));
@@ -429,8 +430,6 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
                 _ => unreachable!(),
             }
 
-            code.push_str(&format!("{};", r#for.identifier.name));
-            code.push_str("for(");
             code.push_str(&format!("{}=", r#for.identifier.name));
             self.generate_expression(&range.left, Rc::clone(&scope), code);
             code.push_str(";");
