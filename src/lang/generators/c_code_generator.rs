@@ -314,12 +314,11 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
     ) {
         match expression {
             Expression::Identifier(identifier, meta) => {
-                match &meta {
-                    None => code.push_str(&identifier.name),
-                    Some(meta) => {
-                        self.generate_meta(meta, Rc::clone(&scope), code);
-                    }
-                };
+                code.push_str(&identifier.name);
+
+                if let Some(meta) = &meta {
+                    self.generate_meta(meta, Rc::clone(&scope), code);
+                }
             }
             Expression::Array(array, meta) => {
                 code.push_str("(");
@@ -346,6 +345,10 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
                 }
 
                 code.push_str("}");
+
+                if let Some(meta) = &meta {
+                    self.generate_meta(meta, Rc::clone(&scope), code);
+                }
             }
             Expression::Unary(unary) => {
                 code.push_str(&unary.operator.token.value);

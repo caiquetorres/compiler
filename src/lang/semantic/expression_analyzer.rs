@@ -130,7 +130,18 @@ impl ExpressionAnalyzer {
             Expression::Array(array, meta) => {
                 let analyzer = ArrayAnalyzer::analyze(array, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
-                return_type = analyzer.return_type;
+
+                if let Some(meta) = &meta {
+                    let analyzer = ExpressionMetaAnalyzer::analyze_meta(
+                        &analyzer.return_type,
+                        &meta,
+                        Rc::clone(&scope),
+                    );
+                    diagnosis.extend(analyzer.diagnosis);
+                    return_type = analyzer.return_type;
+                } else {
+                    return_type = analyzer.return_type;
+                }
             }
             Expression::Parenthesized(parenthesized, meta) => {
                 let analyzer = ParenthesizedAnalyzer::analyze(parenthesized, Rc::clone(&scope));
