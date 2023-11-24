@@ -3,7 +3,7 @@ use crate::lang::lexer::token_kind::TokenKind;
 use crate::lang::semantic::{
     scope::Scope, semantic_error::SemanticError, semantic_type::SemanticType,
 };
-use crate::lang::syntax::parser::shared::r#type::Type;
+use crate::lang::syntax::parser::shared::syntax_type::SyntaxType;
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -27,13 +27,15 @@ impl TypeAnalyzer {
     /// # Returns
     ///
     /// A `TypeAnalyzer` instance containing the analysis results.
-    pub fn analyze(r#type: &Type, scope: Rc<RefCell<Scope>>) -> Self {
+    pub fn analyze(r#type: &SyntaxType, scope: Rc<RefCell<Scope>>) -> Self {
         match r#type {
-            Type::Simple { identifier } => Self::analyze_simple_type(identifier, Rc::clone(&scope)),
-            Type::Array { r#type, size } => {
+            SyntaxType::Simple { identifier } => {
+                Self::analyze_simple_type(identifier, Rc::clone(&scope))
+            }
+            SyntaxType::Array { r#type, size } => {
                 Self::analyze_array_type(r#type, size, Rc::clone(&scope))
             }
-            Type::Reference { inner_type } => {
+            SyntaxType::Reference { inner_type } => {
                 Self::analyze_reference_type(inner_type, Rc::clone(&scope))
             }
         }
@@ -78,7 +80,11 @@ impl TypeAnalyzer {
     /// # Returns
     ///
     /// A `TypeAnalyzer` instance containing the analysis results.
-    fn analyze_array_type(r#type: &Box<Type>, size: &Token, scope: Rc<RefCell<Scope>>) -> Self {
+    fn analyze_array_type(
+        r#type: &Box<SyntaxType>,
+        size: &Token,
+        scope: Rc<RefCell<Scope>>,
+    ) -> Self {
         let mut result_type = SemanticType::Any;
         let mut diagnosis: Vec<SemanticError> = vec![];
 
@@ -113,7 +119,7 @@ impl TypeAnalyzer {
     /// # Returns
     ///
     /// A `TypeAnalyzer` instance containing the analysis results.
-    fn analyze_reference_type(inner_type: &Box<Type>, scope: Rc<RefCell<Scope>>) -> Self {
+    fn analyze_reference_type(inner_type: &Box<SyntaxType>, scope: Rc<RefCell<Scope>>) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
         let analyzer = Self::analyze(inner_type, Rc::clone(&scope));
 

@@ -1,16 +1,16 @@
 use crate::lang::syntax::{
-    parser::shared::{block::Block, identifier::Identifier, r#type::Type},
+    parser::shared::{block::Block, identifier::Identifier, syntax_type::SyntaxType},
     tree_display::TreeDisplay,
 };
 
 #[derive(Clone, Debug)]
 pub struct ParamDeclaration {
     pub identifier: Identifier,
-    pub r#type: Type,
+    pub r#type: SyntaxType,
 }
 
 impl ParamDeclaration {
-    pub fn new(identifier: Identifier, r#type: Type) -> Self {
+    pub fn new(identifier: Identifier, r#type: SyntaxType) -> Self {
         Self { identifier, r#type }
     }
 }
@@ -55,7 +55,7 @@ impl TreeDisplay for ParamsDeclaration {
 pub struct Function {
     pub identifier: Identifier,
     pub params_declaration: ParamsDeclaration,
-    pub r#type: Option<Type>,
+    pub r#type: Option<SyntaxType>,
     pub block: Block,
 }
 
@@ -63,7 +63,7 @@ impl Function {
     pub fn new(
         identifier: Identifier,
         params_declaration: ParamsDeclaration,
-        r#type: Option<Type>,
+        r#type: Option<SyntaxType>,
         block: Block,
     ) -> Self {
         Self {

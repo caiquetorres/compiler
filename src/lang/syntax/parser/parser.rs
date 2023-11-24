@@ -13,7 +13,7 @@ use super::expressions::{
     unary::{Unary, UnaryOperator},
 };
 
-use super::shared::r#type::Type;
+use super::shared::syntax_type::SyntaxType;
 use super::shared::{
     assignment_operator::AssignmentOperator, block::Block, identifier::Identifier,
 };
@@ -114,7 +114,7 @@ impl Parser {
         }
     }
 
-    fn parse_type_optional(&mut self) -> Result<Option<Type>, SyntaxError> {
+    fn parse_type_optional(&mut self) -> Result<Option<SyntaxType>, SyntaxError> {
         let current_token = self.get_current_token();
 
         if let TokenKind::Colon = current_token.kind {
@@ -125,7 +125,7 @@ impl Parser {
         }
     }
 
-    fn parse_type(&mut self) -> Result<Type, SyntaxError> {
+    fn parse_type(&mut self) -> Result<SyntaxType, SyntaxError> {
         let token = self.use_token(&[
             TokenKind::Identifier,
             TokenKind::LeftBracket,
@@ -140,7 +140,7 @@ impl Parser {
         match &token.kind {
             TokenKind::Identifier => {
                 let type_identifier_token = token;
-                Ok(Type::new_simple(type_identifier_token))
+                Ok(SyntaxType::new_simple(type_identifier_token))
             }
             TokenKind::LeftBracket => {
                 let r#type = self.parse_type()?;
@@ -150,11 +150,11 @@ impl Parser {
 
                 self.use_token(&[TokenKind::RightBracket])?;
 
-                Ok(Type::new_array(r#type, array_size_token))
+                Ok(SyntaxType::new_array(r#type, array_size_token))
             }
             TokenKind::Ref => {
                 let r#type = self.parse_type()?;
-                Ok(Type::new_reference(r#type))
+                Ok(SyntaxType::new_reference(r#type))
             }
             _ => unreachable!(),
         }
@@ -753,7 +753,7 @@ fn get_binary_operator_precedence(kind: TokenKind) -> u32 {
 mod tests {
     use super::Parser;
     use crate::lang::syntax::parser::{
-        expressions::expression::Expression, shared::r#type::Type,
+        expressions::expression::Expression, shared::syntax_type::SyntaxType,
         statements::statement::Statement,
         top_level_statements::top_level_statement::TopLevelStatement,
     };
@@ -767,11 +767,8 @@ mod tests {
 
         assert!(result.is_ok());
 
-        match result {
-            Ok(statement) => {
-                assert!(matches!(statement, TopLevelStatement::Function(_)));
-            }
-            Err(_) => {}
+        if let Ok(statement) = result {
+            assert!(matches!(statement, TopLevelStatement::Function(_)));
         }
     }
 
@@ -784,33 +781,31 @@ mod tests {
 
         assert!(result.is_ok());
 
-        match result {
-            Ok(statement) => match statement {
+        if let Ok(statement) = result {
+            match statement {
                 TopLevelStatement::Function(fun) => {
                     assert_eq!(fun.identifier.name, "main");
                     assert_eq!(fun.params_declaration.params.len(), 0);
                     assert!(fun.r#type.is_none());
                 }
-            },
-            Err(_) => {}
+            }
         }
 
-        let code = " fun main(): string { } ";
+        let code = " fun say(): string { } ";
         let mut parser = Parser::from_code(code);
 
         let result = parser.parse_function_declaration();
 
         assert!(result.is_ok());
 
-        match result {
-            Ok(statement) => match statement {
+        if let Ok(statement) = result {
+            match statement {
                 TopLevelStatement::Function(fun) => {
-                    assert_eq!(fun.identifier.name, "main");
+                    assert_eq!(fun.identifier.name, "say");
                     assert_eq!(fun.params_declaration.params.len(), 0);
                     assert!(fun.r#type.is_some());
                 }
-            },
-            Err(_) => {}
+            }
         }
     }
 
@@ -823,9 +818,8 @@ mod tests {
 
         assert!(result.is_ok());
 
-        match result {
-            Ok(params) => assert_eq!(params.len(), 3),
-            Err(_) => {}
+        if let Ok(params) = result {
+            assert_eq!(params.len(), 3);
         }
     }
 
@@ -838,13 +832,9 @@ mod tests {
 
         assert!(result.is_ok());
 
-        // match result {
-        //     Ok(param) => {
-        //         assert_eq!(param.identifier.name, "a");
-        //         assert_eq!(param.r#type.name, "i32")
-        //     }
-        //     Err(_) => {}
-        // }
+        if let Ok(param) = result {
+            assert_eq!(param.identifier.name, "a");
+        }
     }
 
     #[test]
@@ -856,15 +846,12 @@ mod tests {
 
         assert!(result.is_ok());
 
-        match result {
-            Ok(param) => {
-                assert!(param.is_some());
-                match param {
-                    Some(r#type) => assert!(matches!(r#type, Type::Simple { .. })),
-                    None => {}
-                }
+        if let Ok(param) = result {
+            assert!(param.is_some());
+            match param {
+                Some(r#type) => assert!(matches!(r#type, SyntaxType::Simple { .. })),
+                None => {}
             }
-            Err(_) => {}
         }
     }
 
@@ -876,9 +863,8 @@ mod tests {
         let result = parser.parse_block();
         assert!(result.is_ok());
 
-        match result {
-            Ok(block) => assert_eq!(block.statements.len(), 1),
-            Err(_) => {}
+        if let Ok(block) = result {
+            assert_eq!(block.statements.len(), 1);
         }
     }
 
@@ -890,9 +876,8 @@ mod tests {
         let result = parser.parse_statement();
         assert!(result.is_ok());
 
-        match result {
-            Ok(statement) => assert!(matches!(statement, Statement::Let(_))),
-            Err(_) => {}
+        if let Ok(statement) = result {
+            assert!(matches!(statement, Statement::Let(_)));
         }
 
         let code = " x += 3; ";
@@ -901,9 +886,8 @@ mod tests {
         let result = parser.parse_statement();
         assert!(result.is_ok());
 
-        match result {
-            Ok(statement) => assert!(matches!(statement, Statement::Assignment(_))),
-            Err(_) => {}
+        if let Ok(statement) = result {
+            assert!(matches!(statement, Statement::Assignment(_)));
         }
     }
 
@@ -916,19 +900,16 @@ mod tests {
 
         assert!(result.is_ok());
 
-        match result {
-            Ok(statement) => {
-                assert!(matches!(statement, Statement::For(_)));
+        if let Ok(statement) = result {
+            assert!(matches!(statement, Statement::For(_)));
 
-                match statement {
-                    Statement::For(r#for) => {
-                        assert_eq!(r#for.identifier.name, "i");
-                        assert!(matches!(r#for.expression, Expression::Range(_)))
-                    }
-                    _ => {}
-                };
-            }
-            Err(_) => {}
+            match statement {
+                Statement::For(r#for) => {
+                    assert_eq!(r#for.identifier.name, "i");
+                    assert!(matches!(r#for.expression, Expression::Range(_)))
+                }
+                _ => {}
+            };
         }
     }
 
@@ -940,9 +921,8 @@ mod tests {
         let result = parser.parse_do_while_statement();
         assert!(result.is_ok());
 
-        match result {
-            Ok(statement) => assert!(matches!(statement, Statement::DoWhile(_))),
-            Err(_) => {}
+        if let Ok(statement) = result {
+            assert!(matches!(statement, Statement::DoWhile(_)));
         }
     }
 
@@ -954,9 +934,8 @@ mod tests {
         let result = parser.parse_while_statement();
         assert!(result.is_ok());
 
-        match result {
-            Ok(statement) => assert!(matches!(statement, Statement::While(_))),
-            Err(_) => {}
+        if let Ok(statement) = result {
+            assert!(matches!(statement, Statement::While(_)));
         }
     }
 
@@ -968,122 +947,63 @@ mod tests {
         let result = parser.parse_if_statement();
         assert!(result.is_ok());
 
-        match result {
-            Ok(statement) => {
-                assert!(matches!(statement, Statement::If(_)));
-                match statement {
-                    Statement::If(r#if) => assert!(r#if.r#else.is_none()),
-                    _ => {}
-                }
+        if let Ok(statement) = result {
+            assert!(matches!(statement, Statement::If(_)));
+
+            if let Statement::If(r#if) = statement {
+                assert!(r#if.r#else.is_none());
             }
-            Err(_) => {}
         }
     }
 
     #[test]
-    fn test_function_call_statement() {
-        // let code = " (a, b); ";
-        // let mut parser = Parser::from_code(code);
+    fn test_assignment_statement() {
+        let code = " a += 2; ";
+        let mut parser = Parser::from_code(code);
 
-        // let identifier = Token::new(TokenKind::Identifier, Position::new(0, 0), "fun");
+        let result = parser.parse_statement();
+        assert!(result.is_ok());
 
-        // let result = parser.parse_function_call_statement(identifier);
-        // assert!(result.is_ok());
-
-        // match result {
-        //     Ok(statement) => {
-        //         assert!(matches!(statement, Statement::FunctionCall(_)));
-        //         match statement {
-        //             Statement::FunctionCall(fun) => {
-        //                 assert_eq!(fun.identifier.name, "fun");
-        //                 assert_eq!(fun.params.expressions.len(), 2);
-        //             }
-        //             _ => {}
-        //         }
-        //     }
-        //     Err(_) => {}
-        // }
+        if let Ok(statement) = result {
+            assert!(matches!(statement, Statement::Assignment(_)));
+            if let Statement::Assignment(assignment) = statement {
+                assert_eq!(assignment.operator.name, "+=");
+            }
+        }
     }
 
     #[test]
-    fn test_assignment_statement() {
-        // let code = " += 2; ";
-        // let mut parser = Parser::from_code(code);
+    fn test_variable_declaration_statement() {
+        let code = " let x = 2; ";
+        let mut parser = Parser::from_code(code);
 
-        // let identifier = Token::new(TokenKind::Identifier, Position::new(0, 0), "a");
+        let result = parser.parse_variable_declaration_statement();
+        assert!(result.is_ok());
 
-        // let result = parser.parse_assignment_statement(identifier);
-        // assert!(result.is_ok());
+        if let Ok(statement) = result {
+            assert!(matches!(statement, Statement::Let(_)));
 
-        // match result {
-        //     Ok(statement) => {
-        //         assert!(matches!(statement, Statement::Assignment(_)));
-        //         match statement {
-        //             Statement::Assignment(assignment) => {
-        //                 assert_eq!(assignment.left.name, "a");
-        //                 assert_eq!(assignment.operator.name, "+=");
-        //             }
-        //             _ => {}
-        //         }
-        //     }
-        //     Err(_) => {}
-        // }
+            if let Statement::Let(r#let) = statement {
+                assert_eq!(r#let.identifier.name, "x");
+                assert!(r#let.r#type.is_none());
+            }
+        }
+
+        let code = " let x: i32 = 2; ";
+        let mut parser = Parser::from_code(code);
+
+        let result = parser.parse_variable_declaration_statement();
+        assert!(result.is_ok());
+
+        if let Ok(statement) = result {
+            assert!(matches!(statement, Statement::Let(_)));
+
+            if let Statement::Let(r#let) = statement {
+                assert_eq!(r#let.identifier.name, "x");
+                assert!(r#let.r#type.is_some());
+            }
+        }
     }
-
-    // #[test]
-    // fn test_variable_declaration_statement() {
-    //     let code = " let x = 2; ";
-    //     let mut parser = Parser::from_code(code);
-
-    //     let result = parser.parse_variable_declaration_statement();
-    //     assert!(result.is_ok());
-
-    //     match result {
-    //         Ok(statement) => {
-    //             assert!(matches!(statement, Statement::Let(_)));
-    //             match statement {
-    //                 Statement::Let(r#let) => {
-    //                     assert!(matches!(r#let, Let::WithValue(_, _, _)));
-    //                     match r#let {
-    //                         Let::WithValue(identifier, type_identifier, _) => {
-    //                             assert_eq!(identifier.name, "x");
-    //                             assert!(type_identifier.is_none());
-    //                         }
-    //                         _ => {}
-    //                     }
-    //                 }
-    //                 _ => {}
-    //             }
-    //         }
-    //         Err(_) => {}
-    //     }
-
-    //     let code = " let x:i32 = 2; ";
-    //     let mut parser = Parser::from_code(code);
-
-    //     let result = parser.parse_variable_declaration_statement();
-    //     assert!(result.is_ok());
-
-    //     match result {
-    //         Ok(statement) => {
-    //             assert!(matches!(statement, Statement::Let(_)));
-    //             match statement {
-    //                 Statement::Let(r#let) => {
-    //                     assert!(matches!(r#let, Let::WithValue(_, _, _)));
-    //                     match r#let {
-    //                         Let::WithValue(identifier, type_identifier, _) => {
-    //                             assert_eq!(identifier.name, "x");
-    //                             assert!(type_identifier.is_some());
-    //                         }
-    //                         _ => {}
-    //                     }
-    //                 }
-    //                 _ => {}
-    //             }
-    //         }
-    //         Err(_) => {}
-    //     }
-    // }
 
     #[test]
     fn test_return_statement() {
@@ -1093,17 +1013,11 @@ mod tests {
         let result = parser.parse_return_statement();
         assert!(result.is_ok());
 
-        match result {
-            Ok(statement) => {
-                assert!(matches!(statement, Statement::Return(_)));
-                match statement {
-                    Statement::Return(r#return) => {
-                        assert!(r#return.expression.is_none());
-                    }
-                    _ => {}
-                }
+        if let Ok(statement) = result {
+            assert!(matches!(statement, Statement::Return(_)));
+            if let Statement::Return(r#return) = statement {
+                assert!(r#return.expression.is_none());
             }
-            Err(_) => {}
         }
 
         let code = " return 2; ";
@@ -1112,17 +1026,11 @@ mod tests {
         let result = parser.parse_return_statement();
         assert!(result.is_ok());
 
-        match result {
-            Ok(statement) => {
-                assert!(matches!(statement, Statement::Return(_)));
-                match statement {
-                    Statement::Return(r#return) => {
-                        assert!(r#return.expression.is_some());
-                    }
-                    _ => {}
-                }
+        if let Ok(statement) = result {
+            assert!(matches!(statement, Statement::Return(_)));
+            if let Statement::Return(r#return) = statement {
+                assert!(r#return.expression.is_some());
             }
-            Err(_) => {}
         }
     }
 
@@ -1134,9 +1042,8 @@ mod tests {
         let result = parser.parse_expression(0);
         assert!(result.is_ok());
 
-        match result {
-            Ok(expression) => assert!(matches!(expression, Expression::Binary(_))),
-            _ => {}
+        if let Ok(expression) = result {
+            assert!(matches!(expression, Expression::Binary(_)));
         }
 
         let code = " a ";
@@ -1145,10 +1052,9 @@ mod tests {
         let result = parser.parse_expression(0);
         assert!(result.is_ok());
 
-        // match result {
-        //     Ok(expression) => assert!(matches!(expression, Expression::Identifier(_))),
-        //     _ => {}
-        // }
+        if let Ok(expression) = result {
+            assert!(matches!(expression, Expression::Identifier(_, _)));
+        }
 
         let code = " 0..=3 ";
         let mut parser = Parser::from_code(code);
@@ -1156,9 +1062,8 @@ mod tests {
         let result = parser.parse_expression(0);
         assert!(result.is_ok());
 
-        match result {
-            Ok(expression) => assert!(matches!(expression, Expression::Range(_))),
-            _ => {}
+        if let Ok(expression) = result {
+            assert!(matches!(expression, Expression::Range(_)));
         }
     }
 }

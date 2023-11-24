@@ -101,10 +101,9 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         let function_return_type = if is_main {
             SemanticType::I32
         } else {
-            function
-                .r#type
-                .as_ref()
-                .map_or(SemanticType::Void, |id| SemanticType::from_type(id.clone()))
+            function.r#type.as_ref().map_or(SemanticType::Void, |id| {
+                SemanticType::from_syntax(id.clone())
+            })
         };
 
         code.push_str(&format!(
@@ -114,7 +113,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         ));
 
         for (index, param) in function.params_declaration.params.iter().enumerate() {
-            let r#type = SemanticType::from_type(param.r#type.clone());
+            let r#type = SemanticType::from_syntax(param.r#type.clone());
             code.push_str(&format!(
                 "{} {}",
                 convert_to_c_type(r#type.clone()),
@@ -139,10 +138,9 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         let function_return_type = if is_main {
             SemanticType::I32
         } else {
-            function
-                .r#type
-                .as_ref()
-                .map_or(SemanticType::Void, |id| SemanticType::from_type(id.clone()))
+            function.r#type.as_ref().map_or(SemanticType::Void, |id| {
+                SemanticType::from_syntax(id.clone())
+            })
         };
 
         code.push_str(&format!(
@@ -152,7 +150,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         ));
 
         for (index, param) in function.params_declaration.params.iter().enumerate() {
-            let r#type = SemanticType::from_type(param.r#type.clone());
+            let r#type = SemanticType::from_syntax(param.r#type.clone());
             code.push_str(&format!(
                 "{} {}",
                 convert_to_c_type(r#type.clone()),

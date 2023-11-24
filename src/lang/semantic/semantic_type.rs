@@ -1,6 +1,4 @@
-use std::fmt;
-
-use crate::lang::syntax::parser::shared::r#type::Type;
+use crate::lang::syntax::parser::shared::syntax_type::SyntaxType;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SemanticType {
@@ -20,7 +18,6 @@ pub enum SemanticType {
     String,
     Range,
     Any,
-    // Custom(String),
     Ref(Box<SemanticType>),
     Array(Box<SemanticType>, usize),
     Function(Vec<SemanticType>, Box<SemanticType>),
@@ -89,23 +86,23 @@ impl SemanticType {
         )
     }
 
-    pub fn from_type(r#type: Type) -> Self {
+    pub fn from_syntax(r#type: SyntaxType) -> Self {
         match r#type {
-            Type::Simple { identifier } => Self::from(identifier.value),
-            Type::Array { r#type, size } => {
+            SyntaxType::Simple { identifier } => Self::from(identifier.value),
+            SyntaxType::Array { r#type, size } => {
                 let size = size.value.parse::<usize>().unwrap();
-                Self::Array(Box::new(Self::from_type(r#type.as_ref().clone())), size)
+                Self::Array(Box::new(Self::from_syntax(r#type.as_ref().clone())), size)
             }
-            Type::Reference { inner_type } => {
-                Self::Ref(Box::new(Self::from_type(inner_type.as_ref().clone())))
+            SyntaxType::Reference { inner_type } => {
+                Self::Ref(Box::new(Self::from_syntax(inner_type.as_ref().clone())))
             }
         }
     }
 }
 
-impl fmt::Display for SemanticType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let value = match self {
+impl ToString for SemanticType {
+    fn to_string(&self) -> String {
+        match self {
             SemanticType::Void => "void".to_string(),
             SemanticType::I8 => "i8".to_string(),
             SemanticType::I16 => "i16".to_string(),
@@ -122,7 +119,6 @@ impl fmt::Display for SemanticType {
             SemanticType::String => "string".to_string(),
             SemanticType::Range => "range".to_string(),
             SemanticType::Any => "any".to_string(),
-            // LangType::Custom(t) => t.as_str(),
             SemanticType::Ref(r#type) => {
                 let type_name = r#type.to_string();
                 format!("ref {}", type_name)
@@ -133,9 +129,7 @@ impl fmt::Display for SemanticType {
             SemanticType::Function(_, _) => {
                 format!("")
             }
-        };
-
-        write!(f, "{}", value)
+        }
     }
 }
 

@@ -1,20 +1,20 @@
 use crate::lang::syntax::parser::expressions::expression::Expression;
 use crate::lang::syntax::parser::shared::identifier::Identifier;
 
-use crate::lang::syntax::parser::shared::r#type::Type;
+use crate::lang::syntax::parser::shared::syntax_type::SyntaxType;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
 #[derive(Clone, Debug)]
 pub struct Let {
     pub identifier: Identifier,
-    pub r#type: Option<Type>,
+    pub r#type: Option<SyntaxType>,
     pub expression: Option<Expression>,
 }
 
 impl Let {
     pub fn new(
         identifier: Identifier,
-        r#type: Option<Type>,
+        r#type: Option<SyntaxType>,
         expression: Option<Expression>,
     ) -> Self {
         Self {
