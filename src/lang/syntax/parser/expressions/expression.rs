@@ -23,7 +23,7 @@ pub enum Expression {
     Binary(Binary),
     Parenthesized(Parenthesized, Option<ExpressionMeta>),
     Range(Range),
-    Array(Array, Option<ExpressionMeta>),
+    Array(Array),
 }
 
 impl Display for Expression {
@@ -35,7 +35,7 @@ impl Display for Expression {
             Self::Unary(_) => write!(f, "unary expression"),
             Self::Parenthesized(_, _) => write!(f, "parenthesized expression"),
             Self::Range(_) => write!(f, "range expression"),
-            Self::Array(_, _) => write!(f, "array expression"),
+            Self::Array(_) => write!(f, "array expression"),
         }
     }
 }
@@ -49,7 +49,7 @@ impl TreeDisplay for Expression {
             Self::Binary(binary) => binary.display(layer),
             Self::Parenthesized(parenthesized, _) => parenthesized.display(layer),
             Self::Range(range) => range.display(layer),
-            Self::Array(array, _) => array.display(layer),
+            Self::Array(array) => array.display(layer),
         }
     }
 }

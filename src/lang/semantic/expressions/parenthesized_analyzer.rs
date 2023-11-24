@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
-use crate::lang::syntax::parser::expressions::expression::ExpressionMeta;
+use crate::lang::syntax::parser::expressions::expression::{Expression, ExpressionMeta};
 use crate::lang::syntax::parser::expressions::parenthesized::Parenthesized;
 
 use super::expression_analyzer::ExpressionAnalyzer;
@@ -30,16 +30,25 @@ impl ParenthesizedAnalyzer {
 
         diagnosis.extend(analyzer.diagnosis);
 
-        if let Some(meta) = &meta {
-            let analyzer =
-                ExpressionMetaAnalyzer::analyze(&analyzer.return_type, &meta, Rc::clone(&scope));
-            diagnosis.extend(analyzer.diagnosis);
-
+        if let Expression::Array(_) = parenthesized.expression.as_ref() {
+            diagnosis.push(SemanticError::ImmediateArrayUsageWithoutAssignment);
+            return_type = SemanticType::Any;
             changeable = analyzer.changeable;
-            return_type = analyzer.return_type;
         } else {
-            changeable = analyzer.changeable;
-            return_type = analyzer.return_type;
+            if let Some(meta) = &meta {
+                let analyzer = ExpressionMetaAnalyzer::analyze(
+                    &analyzer.return_type,
+                    &meta,
+                    Rc::clone(&scope),
+                );
+                diagnosis.extend(analyzer.diagnosis);
+
+                changeable = analyzer.changeable;
+                return_type = analyzer.return_type;
+            } else {
+                changeable = analyzer.changeable;
+                return_type = analyzer.return_type;
+            }
         }
 
         Self {

@@ -24,11 +24,11 @@ impl ExpressionAnalyzer {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         match expression {
-            Expression::Array(array, meta) => {
-                let analyzer = ArrayAnalyzer::analyze(array, meta, Rc::clone(&scope));
+            Expression::Array(array) => {
+                let analyzer = ArrayAnalyzer::analyze(array, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
 
-                changeable = analyzer.changeable;
+                changeable = true;
                 return_type = analyzer.return_type;
             }
             Expression::Parenthesized(parenthesized, meta) => {

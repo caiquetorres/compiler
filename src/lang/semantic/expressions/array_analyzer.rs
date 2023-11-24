@@ -1,19 +1,13 @@
-use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
+use crate::lang::semantic::{scope::Scope, semantic_error::SemanticError};
 use crate::lang::syntax::parser::expressions::array::Array;
-use crate::lang::{
-    semantic::scope::Scope, syntax::parser::expressions::expression::ExpressionMeta,
-};
 
 use std::{cell::RefCell, rc::Rc};
 
 use super::expression_analyzer::ExpressionAnalyzer;
-use super::expression_meta_analyzer::ExpressionMetaAnalyzer;
 
 /// Analyzer that performs the semantic analysis for arrays.
 pub struct ArrayAnalyzer {
-    pub changeable: bool,
-
     /// The inferred return type after semantic analyses.
     pub(crate) return_type: SemanticType,
 
@@ -31,13 +25,8 @@ impl ArrayAnalyzer {
     /// # Returns
     ///
     /// A `ArrayAnalyzer` instance containing the analysis results.
-    pub fn analyze(
-        array: &Array,
-        meta: &Option<ExpressionMeta>,
-        scope: Rc<RefCell<Scope>>,
-    ) -> Self {
-        let changeable: bool;
-        let mut return_type: SemanticType;
+    pub fn analyze(array: &Array, scope: Rc<RefCell<Scope>>) -> Self {
+        let return_type: SemanticType;
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         // Verifies if the array is not empty
@@ -53,8 +42,8 @@ impl ArrayAnalyzer {
             // REVIEW: Improve the following logic
 
             let mut all_same = true;
-            for (_, element) in array.expressions.iter().enumerate() {
-                let analyzer = ExpressionAnalyzer::analyze(element, Rc::clone(&scope));
+            for (_, expression) in array.expressions.iter().enumerate() {
+                let analyzer = ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
 
                 diagnosis.extend(analyzer.diagnosis);
 
@@ -75,18 +64,7 @@ impl ArrayAnalyzer {
             return_type = SemanticType::Array(Box::new(SemanticType::Any), 0);
         }
 
-        if let Some(meta) = &meta {
-            let analyzer = ExpressionMetaAnalyzer::analyze(&return_type, &meta, Rc::clone(&scope));
-            diagnosis.extend(analyzer.diagnosis);
-
-            changeable = analyzer.changeable;
-            return_type = analyzer.return_type;
-        } else {
-            changeable = true;
-        }
-
         Self {
-            changeable,
             return_type,
             diagnosis,
         }

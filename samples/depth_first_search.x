@@ -24,7 +24,7 @@ fun dfs(node: i32, nodesAmount: i32, visited: [bool; 100], graph: [[i32; 100]; 1
     println node;
 
     for i in 0..nodesAmount {
-        if graph[node][i] && !visited[i] {
+        if graph[node][i] == 1 && !visited[i] {
             dfs(i, nodesAmount, visited, graph);
         }
     }

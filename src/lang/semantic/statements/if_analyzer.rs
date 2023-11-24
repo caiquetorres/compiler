@@ -32,6 +32,8 @@ impl IfAnalyzer {
 
         let analyzer = ExpressionAnalyzer::analyze(&r#if.expression, Rc::clone(&scope));
 
+        diagnosis.extend(analyzer.diagnosis);
+
         if !analyzer.return_type.is_bool() {
             diagnosis.push(SemanticError::ExpectedType {
                 expected: SemanticType::Bool,

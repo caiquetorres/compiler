@@ -39,6 +39,8 @@ impl DoWhileAnalyzer {
 
         let analyzer = ExpressionAnalyzer::analyze(&do_while.expression, Rc::clone(&scope));
 
+        diagnosis.extend(analyzer.diagnosis);
+
         if analyzer.return_type != SemanticType::Bool {
             diagnosis.push(SemanticError::ExpectedType {
                 expected: SemanticType::Bool,

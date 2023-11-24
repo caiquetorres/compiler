@@ -317,7 +317,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
                     self.generate_meta(meta, Rc::clone(&scope), code);
                 }
             }
-            Expression::Array(array, meta) => {
+            Expression::Array(array) => {
                 code.push_str("{");
 
                 for expression in &array.expressions {
@@ -326,10 +326,6 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
                 }
 
                 code.push_str("}");
-
-                if let Some(meta) = &meta {
-                    self.generate_meta(meta, Rc::clone(&scope), code);
-                }
             }
             Expression::Unary(unary) => {
                 code.push_str(&unary.operator.token.value);

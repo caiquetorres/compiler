@@ -26,6 +26,7 @@ pub enum SemanticError {
     InvalidReturn,
     IdentifierNotIndexable,
     CannotReturnArray,
+    ImmediateArrayUsageWithoutAssignment,
     ExpectedType {
         expected: SemanticType,
         found: SemanticType,

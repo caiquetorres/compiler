@@ -658,14 +658,6 @@ impl Parser {
             TokenKind::LeftBracket => {
                 let mut expressions: Vec<Expression> = vec![];
 
-                let current_token = self.get_current_token();
-
-                if current_token.kind == TokenKind::RightBracket {
-                    self.next_token();
-                    let meta = self.parse_expression_meta()?;
-                    return Ok(Expression::Array(Array::new(expressions), meta));
-                }
-
                 loop {
                     let expression = self.parse_expression(0)?;
                     expressions.push(expression);
@@ -680,9 +672,7 @@ impl Parser {
                     self.use_token(&[TokenKind::Comma])?;
                 }
 
-                let meta = self.parse_expression_meta()?;
-
-                Ok(Expression::Array(Array::new(expressions), meta))
+                Ok(Expression::Array(Array::new(expressions)))
             }
             TokenKind::LeftParenthesis => {
                 let expression = self.parse_expression(0)?;
