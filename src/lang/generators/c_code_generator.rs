@@ -12,7 +12,7 @@ use crate::lang::{
             expression::{Expression, ExpressionMeta},
             literal::Literal,
         },
-        shared::{block::Block, function_call::FunctionCall},
+        shared::block::Block,
         statements::{
             assignment::Assignment, do_while::DoWhile, print::Print, r#break::Break,
             r#const::Const, r#continue::Continue, r#for::For, r#if::If, r#let::Let,
@@ -106,7 +106,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
 
         for (index, param) in function.params_declaration.params.iter().enumerate() {
             code.push_str(&format!(
-                "const {}",
+                "{}",
                 convert_to_c_type(SemanticType::from_type(param.r#type.clone())),
             ));
 
@@ -140,7 +140,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
 
         for (index, param) in function.params_declaration.params.iter().enumerate() {
             code.push_str(&format!(
-                "const {} {}",
+                "{} {}",
                 convert_to_c_type(SemanticType::from_type(param.r#type.clone())),
                 param.identifier.name
             ));
@@ -179,13 +179,14 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         code: &mut String,
     ) {
         match statement {
+            Statement::Expression(expression) => {
+                self.generate_expression(expression, Rc::clone(&scope), code);
+                code.push_str(";");
+            }
             Statement::Block(block) => self.generate_block_statement(block, code),
             Statement::Let(r#let) => self.generate_let_statement(r#let, Rc::clone(&scope), code),
             Statement::Const(r#const) => {
                 self.generate_const_statement(r#const, Rc::clone(&scope), code)
-            }
-            Statement::FunctionCall(call) => {
-                self.generate_function_call_statement(call, Rc::clone(&scope), code)
             }
             Statement::Return(r#return) => {
                 self.generate_return_statement(r#return, Rc::clone(&scope), code)
@@ -233,20 +234,27 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         let identifier_name = r#let.identifier.name.clone();
         let type_identifier = scope.borrow().get(&identifier_name).unwrap();
 
-        match type_identifier {
-            Symbol::Variable { symbol_type, .. } => {
-                code.push_str(&format!(
-                    "{} {}",
-                    convert_to_c_type(symbol_type),
-                    identifier_name
-                ));
-            }
-            _ => unreachable!(),
-        }
+        if let Symbol::Variable { symbol_type, .. } = type_identifier {
+            code.push_str(&format!(
+                "{} {}",
+                convert_to_c_type(symbol_type.clone()),
+                identifier_name
+            ));
 
-        if let Some(expression) = &r#let.expression {
-            code.push_str("=");
-            self.generate_expression(expression, Rc::clone(&scope), code);
+            if let Some(expression) = &r#let.expression {
+                code.push_str("=");
+                self.generate_expression(expression, Rc::clone(&scope), code);
+            } else {
+                code.push_str("=");
+
+                if let SemanticType::Array(r#type, size) = symbol_type {
+                    code.push_str(&format!(
+                        "({}[{}]){{}}",
+                        convert_to_c_type(r#type.as_ref().clone()),
+                        size
+                    ));
+                }
+            }
         }
 
         code.push_str(";")
@@ -381,48 +389,17 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         }
     }
 
-    pub fn generate_function_call_statement(
-        &self,
-        call: &FunctionCall,
-        scope: Rc<RefCell<Scope>>,
-        code: &mut String,
-    ) {
-        code.push_str(&call.identifier.name);
-        code.push_str("(");
-
-        for (index, expression) in call.params.expressions.iter().enumerate() {
-            self.generate_expression(expression, Rc::clone(&scope), code);
-            if index != call.params.expressions.len() - 1 {
-                code.push_str(",");
-            }
-        }
-
-        code.push_str(");");
-    }
-
     pub fn generate_assignment_statement(
         &self,
         assignment: &Assignment,
         scope: Rc<RefCell<Scope>>,
         code: &mut String,
     ) {
-        // if let Some(meta) = &assignment.identifier.meta {
-        //     match &meta {
-        //         ExpressionMeta::Index(expression, _) => {
-        //             code.push_str(&format!("*({}+", assignment.identifier.name));
-        //             self.generate_expression(expression, Rc::clone(&scope), code);
-        //             code.push_str(")");
-        //         }
-        //     }
-        // } else {
-        //     code.push_str(&assignment.identifier.name);
-        // }
+        self.generate_expression(&assignment.left, Rc::clone(&scope), code);
+        code.push_str(&assignment.operator.name);
+        self.generate_expression(&assignment.right, Rc::clone(&scope), code);
 
-        // code.push_str(&assignment.operator.name);
-
-        // self.generate_expression(&assignment.expression, Rc::clone(&scope), code);
-
-        // code.push_str(";");
+        code.push_str(";");
     }
 
     pub fn generate_if_statement(&self, r#if: &If, scope: Rc<RefCell<Scope>>, code: &mut String) {

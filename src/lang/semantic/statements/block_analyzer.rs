@@ -4,16 +4,17 @@ use super::const_analyzer::ConstAnalyzer;
 use super::continue_analyzer::ContinueAnalyzer;
 use super::do_while_analyzer::DoWhileAnalyzer;
 use super::for_analyzer::ForAnalyzer;
-use super::function_call_analyzer::FunctionCallAnalyzer;
 use super::if_analyzer::IfAnalyzer;
 use super::let_analyzer::LetAnalyzer;
 use super::print_analyzer::PrintAnalyzer;
 use super::return_analyzer::ReturnAnalyzer;
 use super::while_analyzer::WhileAnalyzer;
 
-use crate::lang::semantic::analyzer::Scopes;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
+use crate::lang::semantic::{
+    analyzer::Scopes, expressions::expression_analyzer::ExpressionAnalyzer,
+};
 use crate::lang::syntax::parser::shared::block::Block;
 use crate::lang::syntax::parser::statements::statement::Statement;
 
@@ -84,12 +85,12 @@ impl BlockAnalyzer {
                     let analyzer = ReturnAnalyzer::analyze(r#return, scope);
                     diagnosis.extend(analyzer.diagnosis);
                 }
-                Statement::FunctionCall(function_call) => {
-                    let analyzer = FunctionCallAnalyzer::analyze(function_call, scope);
-                    diagnosis.extend(analyzer.diagnosis);
-                }
                 Statement::Print(print) => {
                     let analyzer = PrintAnalyzer::analyze(print, scope);
+                    diagnosis.extend(analyzer.diagnosis);
+                }
+                Statement::Expression(expression) => {
+                    let analyzer = ExpressionAnalyzer::analyze(expression, scope);
                     diagnosis.extend(analyzer.diagnosis);
                 }
             }

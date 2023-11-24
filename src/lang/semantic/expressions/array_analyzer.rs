@@ -7,10 +7,13 @@ use crate::lang::{
 
 use std::{cell::RefCell, rc::Rc};
 
-use super::expression_analyzer::{ExpressionAnalyzer, ExpressionMetaAnalyzer};
+use super::expression_analyzer::ExpressionAnalyzer;
+use super::expression_meta_analyzer::ExpressionMetaAnalyzer;
 
 /// Analyzer that performs the semantic analysis for arrays.
 pub struct ArrayAnalyzer {
+    pub changeable: bool,
+
     /// The inferred return type after semantic analyses.
     pub(crate) return_type: SemanticType,
 
@@ -33,6 +36,7 @@ impl ArrayAnalyzer {
         meta: &Option<ExpressionMeta>,
         scope: Rc<RefCell<Scope>>,
     ) -> Self {
+        let changeable: bool;
         let mut return_type: SemanticType;
         let mut diagnosis: Vec<SemanticError> = vec![];
 
@@ -74,10 +78,15 @@ impl ArrayAnalyzer {
         if let Some(meta) = &meta {
             let analyzer = ExpressionMetaAnalyzer::analyze(&return_type, &meta, Rc::clone(&scope));
             diagnosis.extend(analyzer.diagnosis);
+
+            changeable = analyzer.changeable;
             return_type = analyzer.return_type;
+        } else {
+            changeable = true;
         }
 
         Self {
+            changeable,
             return_type,
             diagnosis,
         }

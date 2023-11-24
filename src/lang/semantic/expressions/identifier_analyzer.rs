@@ -8,9 +8,10 @@ use crate::lang::semantic::symbol::Symbol;
 use crate::lang::syntax::parser::expressions::expression::ExpressionMeta;
 use crate::lang::syntax::parser::shared::identifier::Identifier;
 
-use super::expression_analyzer::ExpressionMetaAnalyzer;
+use super::expression_meta_analyzer::ExpressionMetaAnalyzer;
 
 pub struct IdentifierAnalyzer {
+    pub changeable: bool,
     pub return_type: SemanticType,
     pub diagnosis: Vec<SemanticError>,
 }
@@ -21,6 +22,7 @@ impl IdentifierAnalyzer {
         meta: &Option<ExpressionMeta>,
         scope: Rc<RefCell<Scope>>,
     ) -> Self {
+        let changeable: bool;
         let mut return_type = SemanticType::Any;
         let mut diagnosis: Vec<SemanticError> = vec![];
 
@@ -36,21 +38,28 @@ impl IdentifierAnalyzer {
                         let analyzer =
                             ExpressionMetaAnalyzer::analyze(&symbol_type, &meta, Rc::clone(&scope));
                         diagnosis.extend(analyzer.diagnosis);
+
+                        changeable = analyzer.changeable;
                         return_type = analyzer.return_type;
                     } else {
+                        changeable = true;
                         return_type = symbol_type.clone();
                     }
                 }
                 _ => {
+                    changeable = true;
                     diagnosis.push(SemanticError::IdentifierNotVariableConstOrParam);
                 }
             }
         } else {
             // The variable/constant/param/function is not registered on the symbol table
+
+            changeable = true;
             diagnosis.push(SemanticError::IdentifierNotFound);
         }
 
         Self {
+            changeable,
             return_type,
             diagnosis,
         }

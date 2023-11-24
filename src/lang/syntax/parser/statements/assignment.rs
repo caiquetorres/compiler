@@ -1,35 +1,30 @@
 use crate::lang::syntax::parser::expressions::expression::Expression;
 use crate::lang::syntax::parser::shared::assignment_operator::AssignmentOperator;
-use crate::lang::syntax::parser::shared::identifier::Identifier;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
 #[derive(Clone, Debug)]
 pub struct Assignment {
-    pub identifier: Identifier,
+    pub left: Expression,
     pub operator: AssignmentOperator,
-    pub expression: Expression,
+    pub right: Expression,
 }
 
 impl Assignment {
-    pub fn new(
-        identifier: Identifier,
-        operator: AssignmentOperator,
-        expression: Expression,
-    ) -> Self {
+    pub fn new(left: Expression, operator: AssignmentOperator, right: Expression) -> Self {
         Self {
-            identifier,
+            left,
             operator,
-            expression,
+            right,
         }
     }
 }
 
 impl TreeDisplay for Assignment {
     fn display(&self, layer: usize) {
-        let id = self.identifier.name.clone();
-        println!("{}AssignmentStatement ({})", " ".repeat(layer), id);
+        // let id = self.left.name.clone();
+        // println!("{}AssignmentStatement ({})", " ".repeat(layer), id);
 
-        self.operator.display(layer + 2);
-        self.expression.display(layer + 2);
+        // self.operator.display(layer + 2);
+        // self.expression.display(layer + 2);
     }
 }
