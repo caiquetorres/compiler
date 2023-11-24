@@ -1,9 +1,10 @@
-use crate::lang::semantic::analyzer::Scopes;
-use crate::lang::semantic::expression_analyzer::ExpressionAnalyzer;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
 use crate::lang::semantic::symbol::Symbol;
+use crate::lang::semantic::{
+    analyzer::Scopes, expressions::expression_analyzer::ExpressionAnalyzer,
+};
 use crate::lang::syntax::parser::expressions::expression::Expression;
 use crate::lang::syntax::parser::statements::r#for::For;
 

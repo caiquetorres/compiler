@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use crate::lang::{
     lexer::token_kind::TokenKind,
     semantic::{
-        analyzer::Scopes, expression_analyzer::ExpressionAnalyzer, scope::Scope,
+        analyzer::Scopes, expressions::expression_analyzer::ExpressionAnalyzer, scope::Scope,
         semantic_type::SemanticType, symbol::Symbol,
     },
     syntax::parser::{

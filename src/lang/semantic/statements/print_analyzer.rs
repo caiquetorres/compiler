@@ -1,6 +1,5 @@
-use crate::lang::semantic::expression_analyzer::ExpressionAnalyzer;
-use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
+use crate::lang::semantic::{expressions::expression_analyzer::ExpressionAnalyzer, scope::Scope};
 use crate::lang::syntax::parser::statements::print::Print;
 
 use std::{cell::RefCell, rc::Rc};

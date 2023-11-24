@@ -1,11 +1,12 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::lang::lexer::token_kind::TokenKind;
-use crate::lang::semantic::expression_analyzer::ExpressionAnalyzer;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
 use crate::lang::syntax::parser::expressions::range::Range;
+
+use super::expression_analyzer::ExpressionAnalyzer;
 
 pub struct RangeAnalyzer {
     pub return_type: SemanticType,

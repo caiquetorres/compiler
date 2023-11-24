@@ -1,10 +1,13 @@
-use crate::lang::semantic::expression_analyzer::ExpressionAnalyzer;
-use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
 use crate::lang::syntax::parser::expressions::array::Array;
+use crate::lang::{
+    semantic::scope::Scope, syntax::parser::expressions::expression::ExpressionMeta,
+};
 
 use std::{cell::RefCell, rc::Rc};
+
+use super::expression_analyzer::{ExpressionAnalyzer, ExpressionMetaAnalyzer};
 
 /// Analyzer that performs the semantic analysis for arrays.
 pub struct ArrayAnalyzer {
@@ -25,8 +28,12 @@ impl ArrayAnalyzer {
     /// # Returns
     ///
     /// A `ArrayAnalyzer` instance containing the analysis results.
-    pub fn analyze(array: &Array, scope: Rc<RefCell<Scope>>) -> Self {
-        let return_type: SemanticType;
+    pub fn analyze(
+        array: &Array,
+        meta: &Option<ExpressionMeta>,
+        scope: Rc<RefCell<Scope>>,
+    ) -> Self {
+        let mut return_type: SemanticType;
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         // Verifies if the array is not empty
@@ -62,6 +69,12 @@ impl ArrayAnalyzer {
         } else {
             // If the array is empty then its type is array of any.
             return_type = SemanticType::Array(Box::new(SemanticType::Any), 0);
+        }
+
+        if let Some(meta) = &meta {
+            let analyzer = ExpressionMetaAnalyzer::analyze(&return_type, &meta, Rc::clone(&scope));
+            diagnosis.extend(analyzer.diagnosis);
+            return_type = analyzer.return_type;
         }
 
         Self {

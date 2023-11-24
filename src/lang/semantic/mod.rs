@@ -1,5 +1,4 @@
 pub mod analyzer;
-pub mod expression_analyzer;
 pub mod expressions;
 pub mod scope;
 pub mod semantic_error;

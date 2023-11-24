@@ -1,20 +1,17 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::lang::syntax::parser::expressions::{
-    expression::{Expression, ExpressionMeta},
-    literal::Literal,
+use crate::lang::{
+    semantic::{scope::Scope, semantic_error::SemanticError, semantic_type::SemanticType},
+    syntax::parser::expressions::{
+        expression::{Expression, ExpressionMeta},
+        literal::Literal,
+    },
 };
 
 use super::{
-    expressions::{
-        array_analyzer::ArrayAnalyzer, binary_analyzer::BinaryAnalyzer,
-        parenthesized_analyzer::ParenthesizedAnalyzer, range_analyzer::RangeAnalyzer,
-        unary_analyzer::UnaryAnalyzer,
-    },
-    scope::Scope,
-    semantic_error::SemanticError,
-    semantic_type::SemanticType,
-    symbol::Symbol,
+    array_analyzer::ArrayAnalyzer, binary_analyzer::BinaryAnalyzer,
+    identifier_analyzer::IdentifierAnalyzer, parenthesized_analyzer::ParenthesizedAnalyzer,
+    range_analyzer::RangeAnalyzer, unary_analyzer::UnaryAnalyzer,
 };
 
 pub struct ExpressionMetaAnalyzer {
@@ -23,7 +20,7 @@ pub struct ExpressionMetaAnalyzer {
 }
 
 impl ExpressionMetaAnalyzer {
-    fn analyze_meta(
+    pub fn analyze(
         r#type: &SemanticType,
         meta: &ExpressionMeta,
         scope: Rc<RefCell<Scope>>,
@@ -44,11 +41,8 @@ impl ExpressionMetaAnalyzer {
                     // Safe
 
                     if let Some(meta) = &meta.as_ref() {
-                        let analyzer = ExpressionMetaAnalyzer::analyze_meta(
-                            &array_type,
-                            &meta,
-                            Rc::clone(&scope),
-                        );
+                        let analyzer =
+                            ExpressionMetaAnalyzer::analyze(&array_type, &meta, Rc::clone(&scope));
 
                         diagnosis.extend(analyzer.diagnosis);
                         return_type = analyzer.return_type;
@@ -71,7 +65,7 @@ impl ExpressionMetaAnalyzer {
                     // Safe
 
                     if let Some(meta) = &meta.as_ref() {
-                        let analyzer = ExpressionMetaAnalyzer::analyze_meta(
+                        let analyzer = ExpressionMetaAnalyzer::analyze(
                             &function_return_type,
                             &meta,
                             Rc::clone(&scope),
@@ -123,70 +117,25 @@ pub struct ExpressionAnalyzer {
 
 impl ExpressionAnalyzer {
     pub fn analyze(expression: &Expression, scope: Rc<RefCell<Scope>>) -> Self {
-        let mut return_type = SemanticType::Any;
+        let return_type: SemanticType;
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         match expression {
             Expression::Array(array, meta) => {
-                let analyzer = ArrayAnalyzer::analyze(array, Rc::clone(&scope));
+                let analyzer = ArrayAnalyzer::analyze(array, meta, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
-
-                if let Some(meta) = &meta {
-                    let analyzer = ExpressionMetaAnalyzer::analyze_meta(
-                        &analyzer.return_type,
-                        &meta,
-                        Rc::clone(&scope),
-                    );
-                    diagnosis.extend(analyzer.diagnosis);
-                    return_type = analyzer.return_type;
-                } else {
-                    return_type = analyzer.return_type;
-                }
+                return_type = analyzer.return_type;
             }
             Expression::Parenthesized(parenthesized, meta) => {
-                let analyzer = ParenthesizedAnalyzer::analyze(parenthesized, Rc::clone(&scope));
+                let analyzer =
+                    ParenthesizedAnalyzer::analyze(parenthesized, meta, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
-
-                if let Some(meta) = &meta {
-                    let analyzer = ExpressionMetaAnalyzer::analyze_meta(
-                        &analyzer.return_type,
-                        &meta,
-                        Rc::clone(&scope),
-                    );
-                    diagnosis.extend(analyzer.diagnosis);
-                    return_type = analyzer.return_type;
-                } else {
-                    return_type = analyzer.return_type;
-                }
+                return_type = analyzer.return_type;
             }
             Expression::Identifier(identifier, meta) => {
-                let identifier_name = identifier.name.clone();
-
-                if let Some(symbol) = scope.borrow().get(&identifier_name) {
-                    match symbol {
-                        Symbol::Variable { symbol_type, .. }
-                        | Symbol::Const { symbol_type, .. }
-                        | Symbol::Parameter { symbol_type, .. }
-                        | Symbol::Function { symbol_type, .. } => {
-                            if let Some(meta) = &meta {
-                                let analyzer = ExpressionMetaAnalyzer::analyze_meta(
-                                    &symbol_type,
-                                    &meta,
-                                    Rc::clone(&scope),
-                                );
-                                diagnosis.extend(analyzer.diagnosis);
-                                return_type = analyzer.return_type;
-                            } else {
-                                return_type = symbol_type.clone();
-                            }
-                        }
-                        _ => {
-                            diagnosis.push(SemanticError::IdentifierNotVariableConstOrParam);
-                        }
-                    }
-                } else {
-                    diagnosis.push(SemanticError::IdentifierNotFound);
-                }
+                let analyzer = IdentifierAnalyzer::analyze(identifier, meta, Rc::clone(&scope));
+                diagnosis.extend(analyzer.diagnosis);
+                return_type = analyzer.return_type;
             }
             Expression::Literal(literal) => match literal {
                 Literal::String(_) => return_type = SemanticType::String,
