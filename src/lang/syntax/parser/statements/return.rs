@@ -13,9 +13,9 @@ impl Return {
 
 impl TreeDisplay for Return {
     fn display(&self, layer: usize) {
-        println!("{}ReturnStatement", " ".repeat(layer));
+        println!("{}ReturnStatement", "  ".repeat(layer));
         if let Some(ex) = &self.expression {
-            ex.display(layer + 2)
+            ex.display(layer + 1)
         }
     }
 }

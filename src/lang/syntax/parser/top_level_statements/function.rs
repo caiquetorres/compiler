@@ -16,13 +16,13 @@ impl ParamDeclaration {
 }
 
 impl TreeDisplay for ParamDeclaration {
-    fn display(&self, _: usize) {
-        // println!(
-        //     "{}ParamDeclaration ({}) ({})",
-        //     " ".repeat(layer),
-        //     self.identifier.name,
-        //     self.r#type.name,
-        // );
+    fn display(&self, layer: usize) {
+        println!(
+            "{}ParamDeclaration ({}: {})",
+            "  ".repeat(layer),
+            self.identifier.name,
+            self.r#type.to_string()
+        );
     }
 }
 
@@ -39,8 +39,14 @@ impl ParamsDeclaration {
 
 impl TreeDisplay for ParamsDeclaration {
     fn display(&self, layer: usize) {
+        if self.params.len() == 0 {
+            return;
+        }
+
+        println!("{}ParamsDeclaration", "  ".repeat(layer));
+
         for param in &self.params {
-            param.display(layer);
+            param.display(layer + 1);
         }
     }
 }
@@ -75,15 +81,24 @@ impl TreeDisplay for Function {
 
         match self.r#type.as_ref() {
             Some(r#type) => {
-                print!("{}FunctionDeclaration ({}) ", " ".repeat(layer), id,);
-                r#type.display(0);
+                println!(
+                    "{}FunctionDeclaration ({}: {})",
+                    "  ".repeat(layer),
+                    id,
+                    r#type.to_string()
+                );
             }
             None => {
-                println!("{}FunctionDeclaration ({})", " ".repeat(layer), id,);
+                println!("{}FunctionDeclaration ({})", "  ".repeat(layer), id,);
             }
         };
 
-        self.params_declaration.display(layer + 2);
-        self.block.display(layer + 2);
+        self.params_declaration.display(layer + 1);
+        self.block.display(layer + 1);
     }
 }
+
+// ├
+// ─
+// │
+// └

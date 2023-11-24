@@ -32,7 +32,7 @@ impl Compiler {
         let mut parser = Parser::from_tokens(tokens);
         let ast = parser.parse().map_err(|e| format!("{}", e))?;
 
-        // ast.display();
+        ast.display();
 
         let analyzer = Analyzer::analyze(&ast);
 

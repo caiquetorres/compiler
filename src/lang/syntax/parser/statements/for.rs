@@ -27,11 +27,11 @@ impl TreeDisplay for For {
     fn display(&self, layer: usize) {
         println!(
             "{}ForStatement ({})",
-            " ".repeat(layer),
+            "  ".repeat(layer),
             self.identifier.name
         );
 
-        self.expression.display(layer + 2);
-        self.block.display(layer + 2);
+        self.expression.display(layer + 1);
+        self.block.display(layer + 1);
     }
 }

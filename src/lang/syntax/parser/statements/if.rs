@@ -16,8 +16,8 @@ impl Else {
 
 impl TreeDisplay for Else {
     fn display(&self, layer: usize) {
-        println!("{}ElseStatement", " ".repeat(layer));
-        self.block.display(layer + 2)
+        println!("{}ElseStatement", "  ".repeat(layer));
+        self.block.display(layer + 1)
     }
 }
 
@@ -40,13 +40,13 @@ impl If {
 
 impl TreeDisplay for If {
     fn display(&self, layer: usize) {
-        println!("{}IfStatement", " ".repeat(layer));
-        self.block.display(layer + 2);
-        self.expression.display(layer + 2);
+        println!("{}IfStatement", "  ".repeat(layer));
+        self.expression.display(layer + 1);
+        self.block.display(layer + 1);
 
         if let Some(r#else) = &self.r#else {
-            println!("{}ElseStatement", " ".repeat(layer));
-            r#else.block.display(layer + 2)
+            println!("{}ElseStatement", "  ".repeat(layer));
+            r#else.block.display(layer + 1)
         }
     }
 }

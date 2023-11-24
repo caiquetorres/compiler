@@ -15,6 +15,32 @@ pub enum ExpressionMeta {
     Call(Vec<Expression>, Box<Option<ExpressionMeta>>),
 }
 
+impl TreeDisplay for ExpressionMeta {
+    fn display(&self, layer: usize) {
+        match &self {
+            Self::Index(expression, meta) => {
+                println!("{}Index", "  ".repeat(layer));
+                expression.display(layer + 1);
+
+                if let Some(meta) = meta.as_ref() {
+                    meta.display(layer + 1);
+                }
+            }
+            Self::Call(expressions, meta) => {
+                println!("{}Call", "  ".repeat(layer));
+
+                for expression in expressions {
+                    expression.display(layer + 1);
+                }
+
+                if let Some(meta) = meta.as_ref() {
+                    meta.display(layer + 1);
+                }
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Expression {
     Identifier(Identifier, Option<ExpressionMeta>),
@@ -43,11 +69,23 @@ impl Display for Expression {
 impl TreeDisplay for Expression {
     fn display(&self, layer: usize) {
         match self {
-            Self::Identifier(id, _) => id.display(layer),
+            Self::Identifier(identifier, meta) => {
+                identifier.display(layer);
+
+                if let Some(meta) = meta {
+                    meta.display(layer + 1);
+                }
+            }
             Self::Literal(literal) => literal.display(layer),
             Self::Unary(unary) => unary.display(layer),
             Self::Binary(binary) => binary.display(layer),
-            Self::Parenthesized(parenthesized, _) => parenthesized.display(layer),
+            Self::Parenthesized(parenthesized, meta) => {
+                parenthesized.display(layer);
+
+                if let Some(meta) = meta {
+                    meta.display(layer + 1);
+                }
+            }
             Self::Range(range) => range.display(layer),
             Self::Array(array) => array.display(layer),
         }

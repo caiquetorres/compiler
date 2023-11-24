@@ -4,21 +4,14 @@ use crate::lang::{lexer::token_kind::TokenKind, position::Position};
 
 #[derive(Debug, Clone)]
 pub enum SyntaxError {
-    TopLevelStatementExpected {
-        position: Position,
-    },
     UnexpectedToken {
-        expected: Vec<TokenKind>,
         found: TokenKind,
         position: Position,
     },
+    TopLevelStatementExpected {
+        position: Position,
+    },
     ExpressionExpected {
-        position: Position,
-    },
-    StatementExpected {
-        position: Position,
-    },
-    AssignmentExpected {
         position: Position,
     },
 }
@@ -33,41 +26,17 @@ impl Display for SyntaxError {
                     position.line, position.column
                 )
             }
-            SyntaxError::UnexpectedToken {
-                expected,
-                found,
-                position,
-            } => {
-                let expected_str: String = expected
-                    .iter()
-                    .map(|&kind| format!("{}", kind))
-                    .collect::<Vec<String>>()
-                    .join(", ");
-
+            SyntaxError::UnexpectedToken { found, position } => {
                 write!(
                     f,
-                    "Expected {} but found {} at Line {} and Column {}",
-                    expected_str, found, position.line, position.column
+                    "Unexpected {} at Line {} and Column {}",
+                    found, position.line, position.column
                 )
             }
             SyntaxError::ExpressionExpected { position } => {
                 write!(
                     f,
                     "Expression expected at Line {} and Column {}",
-                    position.line, position.column
-                )
-            }
-            SyntaxError::AssignmentExpected { position } => {
-                write!(
-                    f,
-                    "Assignment expected at Line {} and Column {}",
-                    position.line, position.column
-                )
-            }
-            SyntaxError::StatementExpected { position } => {
-                write!(
-                    f,
-                    "Statement expected at Line {} and Column {}",
                     position.line, position.column
                 )
             }

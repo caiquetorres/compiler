@@ -17,8 +17,8 @@ impl While {
 
 impl TreeDisplay for While {
     fn display(&self, layer: usize) {
-        println!("{}WhileStatement", " ".repeat(layer));
-        self.expression.display(layer + 2);
-        self.block.display(layer + 2);
+        println!("{}WhileStatement", "  ".repeat(layer));
+        self.expression.display(layer + 1);
+        self.block.display(layer + 1);
     }
 }

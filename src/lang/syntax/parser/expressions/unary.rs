@@ -15,7 +15,7 @@ impl UnaryOperator {
 impl TreeDisplay for UnaryOperator {
     fn display(&self, layer: usize) {
         let value = self.token.value.clone();
-        println!("{}UnaryOperator ({})", " ".repeat(layer), value);
+        println!("{}UnaryOperator ({})", "  ".repeat(layer), value);
     }
 }
 
@@ -36,7 +36,7 @@ impl Unary {
 
 impl TreeDisplay for Unary {
     fn display(&self, layer: usize) {
-        println!("{}UnaryExpression", " ".repeat(layer));
+        println!("{}UnaryExpression", "  ".repeat(layer));
         self.operator.display(layer + 1);
         self.expression.display(layer + 1);
     }

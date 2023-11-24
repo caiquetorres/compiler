@@ -5,6 +5,6 @@ pub struct Continue;
 
 impl TreeDisplay for Continue {
     fn display(&self, layer: usize) {
-        println!("{}ContinueStatement", " ".repeat(layer));
+        println!("{}ContinueStatement", "  ".repeat(layer));
     }
 }

@@ -29,17 +29,23 @@ impl TreeDisplay for Let {
     fn display(&self, layer: usize) {
         let identifier_name = self.identifier.name.clone();
 
-        print!("{}LetStatement ({})", " ".repeat(layer), identifier_name);
+        if let Some(r#type) = &self.r#type {
+            println!(
+                "{}LetStatement ({}: {})",
+                "  ".repeat(layer),
+                identifier_name,
+                r#type.to_string()
+            );
+        } else {
+            println!("{}LetStatement ({})", "  ".repeat(layer), identifier_name);
+        }
 
         if let Some(r#type) = &self.r#type {
             r#type.display(0);
         }
 
         if let Some(expression) = &self.expression {
-            println!("");
-            expression.display(layer + 2);
+            expression.display(layer + 1);
         }
-
-        println!("");
     }
 }

@@ -17,6 +17,6 @@ impl Identifier {
 impl TreeDisplay for Identifier {
     fn display(&self, layer: usize) {
         let value = self.name.clone();
-        println!("{}Identifier ({})", " ".repeat(layer), value);
+        println!("{}Identifier ({})", "  ".repeat(layer), value);
     }
 }

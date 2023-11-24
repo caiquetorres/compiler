@@ -5,6 +5,6 @@ pub struct Break;
 
 impl TreeDisplay for Break {
     fn display(&self, layer: usize) {
-        println!("{}BreakStatement", " ".repeat(layer));
+        println!("{}BreakStatement", "  ".repeat(layer));
     }
 }

@@ -21,10 +21,10 @@ impl Assignment {
 
 impl TreeDisplay for Assignment {
     fn display(&self, layer: usize) {
-        // let id = self.left.name.clone();
-        // println!("{}AssignmentStatement ({})", " ".repeat(layer), id);
+        println!("{}AssignmentStatement", "  ".repeat(layer));
 
-        // self.operator.display(layer + 2);
-        // self.expression.display(layer + 2);
+        self.left.display(layer + 1);
+        self.operator.display(layer + 1);
+        self.right.display(layer + 1);
     }
 }

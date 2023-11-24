@@ -16,7 +16,7 @@ impl Parenthesized {
 
 impl TreeDisplay for Parenthesized {
     fn display(&self, layer: usize) {
-        println!("{}ParenthesizedExpression", " ".repeat(layer));
+        println!("{}ParenthesizedExpression", "  ".repeat(layer));
         self.expression.display(layer + 1);
     }
 }

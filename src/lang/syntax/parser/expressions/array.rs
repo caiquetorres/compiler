@@ -15,10 +15,10 @@ impl Array {
 
 impl TreeDisplay for Array {
     fn display(&self, layer: usize) {
-        println!("{}ArrayExpression", " ".repeat(layer));
+        println!("{}ArrayExpression", "  ".repeat(layer));
 
         for expression in &self.expressions {
-            expression.display(layer + 2);
+            expression.display(layer + 1);
         }
     }
 }

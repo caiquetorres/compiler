@@ -16,6 +16,6 @@ impl AssignmentOperator {
 impl TreeDisplay for AssignmentOperator {
     fn display(&self, layer: usize) {
         let value = self.token.value.clone();
-        println!("{}AssignmentOperator ({})", " ".repeat(layer), value);
+        println!("{}AssignmentOperator ({})", "  ".repeat(layer), value);
     }
 }

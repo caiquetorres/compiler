@@ -66,8 +66,6 @@ impl Parser {
     }
 
     fn use_token(&mut self, kinds: &[TokenKind]) -> Result<Token, SyntaxError> {
-        // REVIEW: Should we rethink this method?
-
         let current_token = self.get_current_token();
         let position = current_token.position;
         let token = self.next_token();
@@ -76,7 +74,6 @@ impl Parser {
             Ok(token)
         } else {
             Err(SyntaxError::UnexpectedToken {
-                expected: kinds.to_vec(),
                 found: token.kind,
                 position,
             })
@@ -309,7 +306,7 @@ impl Parser {
         let new_line = token.kind == TokenKind::PrintlnKeyword;
         let mut expressions: Vec<Expression> = vec![];
 
-        loop {
+        while self.get_current_token().kind != TokenKind::Semicolon {
             let expression = self.parse_expression(0)?;
 
             expressions.push(expression);

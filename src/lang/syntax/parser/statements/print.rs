@@ -17,10 +17,10 @@ impl Print {
 
 impl TreeDisplay for Print {
     fn display(&self, layer: usize) {
-        println!("{}PrintStatement", " ".repeat(layer));
+        println!("{}PrintStatement", "  ".repeat(layer));
 
         for expression in &self.expressions {
-            expression.display(layer + 2)
+            expression.display(layer + 1)
         }
     }
 }

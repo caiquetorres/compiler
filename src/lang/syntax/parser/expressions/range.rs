@@ -16,7 +16,7 @@ impl RangeOperator {
 impl TreeDisplay for RangeOperator {
     fn display(&self, layer: usize) {
         let value = self.token.value.clone();
-        println!("{}RangeOperator ({})", " ".repeat(layer), value);
+        println!("{}RangeOperator ({})", "  ".repeat(layer), value);
     }
 }
 
@@ -39,9 +39,9 @@ impl Range {
 
 impl TreeDisplay for Range {
     fn display(&self, layer: usize) {
-        println!("{}RangeExpression", " ".repeat(layer));
-        self.left.display(layer + 2);
-        self.operator.display(layer + 2);
-        self.right.display(layer + 2);
+        println!("{}RangeExpression", "  ".repeat(layer));
+        self.left.display(layer + 1);
+        self.operator.display(layer + 1);
+        self.right.display(layer + 1);
     }
 }

@@ -17,8 +17,8 @@ impl DoWhile {
 
 impl TreeDisplay for DoWhile {
     fn display(&self, layer: usize) {
-        println!("{}DoWhileStatement", " ".repeat(layer));
-        self.block.display(layer + 2);
-        self.expression.display(layer + 2);
+        println!("{}DoWhileStatement", "  ".repeat(layer));
+        self.block.display(layer + 1);
+        self.expression.display(layer + 1);
     }
 }

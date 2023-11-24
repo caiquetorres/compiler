@@ -26,6 +26,18 @@ impl Type {
     }
 }
 
+impl ToString for Type {
+    fn to_string(&self) -> String {
+        match &self {
+            Self::Simple { identifier } => identifier.value.clone(),
+            Self::Reference { inner_type } => format!("ref {}", inner_type.to_string()),
+            Self::Array { r#type, size } => {
+                format!("[{}; {}]", r#type.to_string(), size.value.clone())
+            }
+        }
+    }
+}
+
 impl TreeDisplay for Type {
     fn display(&self, layer: usize) {
         print!("{}", " ".repeat(layer));
