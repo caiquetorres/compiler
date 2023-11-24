@@ -1,7 +1,6 @@
 pub mod assignment_analyzer;
 pub mod block_analyzer;
 pub mod break_analyzer;
-pub mod const_analyzer;
 pub mod continue_analyzer;
 pub mod do_while_analyzer;
 pub mod for_analyzer;

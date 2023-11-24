@@ -440,7 +440,6 @@ impl Lexer {
         match id {
             "fun" => Token::new(TokenKind::FunKeyword, position, "fun"),
             "let" => Token::new(TokenKind::LetKeyword, position, "let"),
-            "const" => Token::new(TokenKind::ConstKeyword, position, "const"),
             "return" => Token::new(TokenKind::ReturnKeyword, position, "return"),
             "while" => Token::new(TokenKind::WhileKeyword, position, "while"),
             "do" => Token::new(TokenKind::DoKeyword, position, "do"),

@@ -23,7 +23,6 @@ use super::statements::r#continue::Continue;
 use super::statements::{
     assignment::Assignment,
     do_while::DoWhile,
-    r#const::Const,
     r#for::For,
     r#if::{Else, If},
     r#let::Let,
@@ -252,7 +251,6 @@ impl Parser {
             TokenKind::IfKeyword => self.parse_if_statement(),
             TokenKind::LeftBrace => self.parse_block().map(|block| Statement::Block(block)),
             TokenKind::LetKeyword => Ok(self.parse_variable_declaration_statement()?),
-            TokenKind::ConstKeyword => Ok(self.parse_constant_declaration_statement()?),
             TokenKind::ReturnKeyword => self.parse_return_statement(),
             TokenKind::BreakKeyword => self.parse_break_statement(),
             TokenKind::ContinueKeyword => self.parse_continue_statement(),
@@ -506,32 +504,6 @@ impl Parser {
                 )))
             }
         }
-    }
-
-    /// Parses a constant declaration statement.
-    ///
-    /// # Returns
-    /// - `Ok(Statement)`: Parsed constant declaration statement.
-    /// - `Err(SyntaxError)`: Syntax error if parsing fails.
-    fn parse_constant_declaration_statement(&mut self) -> Result<Statement, SyntaxError> {
-        self.use_token(&[TokenKind::ConstKeyword])?;
-
-        let identifier_token = self.use_token(&[TokenKind::Identifier])?;
-
-        let r#type = self.parse_type_optional()?;
-
-        let assignment_token = self.use_token(&[TokenKind::Equals])?;
-
-        let expression = self.parse_expression(0)?;
-
-        self.use_token(&[TokenKind::Semicolon])?;
-
-        Ok(Statement::Const(Const::new(
-            Identifier::new(identifier_token),
-            r#type,
-            AssignmentOperator::new(assignment_token),
-            expression,
-        )))
     }
 
     /// Parses an expression.
@@ -1124,49 +1096,6 @@ mod tests {
     //         Err(_) => {}
     //     }
     // }
-
-    #[test]
-    fn test_const_declaration_statement() {
-        let code = " const x = 2; ";
-        let mut parser = Parser::from_code(code);
-
-        let result = parser.parse_constant_declaration_statement();
-        assert!(result.is_ok());
-
-        match result {
-            Ok(statement) => {
-                assert!(matches!(statement, Statement::Const(_)));
-                match statement {
-                    Statement::Const(r#const) => {
-                        assert_eq!(r#const.identifier.name, "x");
-                        assert!(r#const.r#type.is_none());
-                    }
-                    _ => {}
-                }
-            }
-            Err(_) => {}
-        }
-
-        let code = " const x: i32 = 2; ";
-        let mut parser = Parser::from_code(code);
-
-        let result = parser.parse_constant_declaration_statement();
-        assert!(result.is_ok());
-
-        match result {
-            Ok(statement) => {
-                assert!(matches!(statement, Statement::Const(_)));
-                match statement {
-                    Statement::Const(r#const) => {
-                        assert_eq!(r#const.identifier.name, "x");
-                        assert!(r#const.r#type.is_some());
-                    }
-                    _ => {}
-                }
-            }
-            Err(_) => {}
-        }
-    }
 
     #[test]
     fn test_return_statement() {

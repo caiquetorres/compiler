@@ -10,10 +10,6 @@ pub enum Symbol {
         name: String,
         symbol_type: SemanticType,
     },
-    Const {
-        name: String,
-        symbol_type: SemanticType,
-    },
     Function {
         name: String,
         symbol_type: SemanticType,
@@ -27,7 +23,6 @@ impl Symbol {
     pub fn get_name(&self) -> String {
         match &self {
             Self::Variable { name, .. } => name.clone(),
-            Self::Const { name, .. } => name.clone(),
             Self::Function { name, .. } => name.clone(),
             Self::Parameter { name, .. } => name.clone(),
             Self::Type { name } => name.clone(),

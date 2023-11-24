@@ -31,7 +31,6 @@ impl IdentifierAnalyzer {
         if let Some(symbol) = scope.borrow().get(&identifier_name) {
             match symbol {
                 Symbol::Variable { symbol_type, .. }
-                | Symbol::Const { symbol_type, .. }
                 | Symbol::Parameter { symbol_type, .. }
                 | Symbol::Function { symbol_type, .. } => {
                     if let Some(meta) = &meta {
@@ -42,6 +41,7 @@ impl IdentifierAnalyzer {
                         changeable = analyzer.changeable;
                         return_type = analyzer.return_type;
                     } else {
+                        // REVIEW: Even for Symbol::Function?
                         changeable = true;
                         return_type = symbol_type.clone();
                     }

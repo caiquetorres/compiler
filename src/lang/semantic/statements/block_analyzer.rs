@@ -1,6 +1,5 @@
 use super::assignment_analyzer::AssignmentAnalyzer;
 use super::break_analyzer::BreakAnalyzer;
-use super::const_analyzer::ConstAnalyzer;
 use super::continue_analyzer::ContinueAnalyzer;
 use super::do_while_analyzer::DoWhileAnalyzer;
 use super::for_analyzer::ForAnalyzer;
@@ -47,10 +46,6 @@ impl BlockAnalyzer {
                 }
                 Statement::Let(r#let) => {
                     let analyzer = LetAnalyzer::analyze(r#let, scope);
-                    diagnosis.extend(analyzer.diagnosis);
-                }
-                Statement::Const(r#const) => {
-                    let analyzer = ConstAnalyzer::analyze(r#const, scope);
                     diagnosis.extend(analyzer.diagnosis);
                 }
                 Statement::Assignment(assignment) => {

@@ -29,7 +29,6 @@ pub enum TokenKind {
     Colon,
     Comma,
     LetKeyword,
-    ConstKeyword,
     FunKeyword,
     IfKeyword,
     ElseKeyword,

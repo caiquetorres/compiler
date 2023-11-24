@@ -2,7 +2,6 @@ use super::assignment::Assignment;
 use super::do_while::DoWhile;
 use super::print::Print;
 use super::r#break::Break;
-use super::r#const::Const;
 use super::r#continue::Continue;
 use super::r#for::For;
 use super::r#if::If;
@@ -17,7 +16,6 @@ use crate::lang::syntax::tree_display::TreeDisplay;
 #[derive(Clone, Debug)]
 pub enum Statement {
     Let(Let),
-    Const(Const),
     Block(Block),
     Return(Return),
     If(If),
@@ -36,7 +34,6 @@ impl TreeDisplay for Statement {
         match &self {
             Self::Expression(expression) => expression.display(layer),
             Self::Let(r#let) => r#let.display(layer),
-            Self::Const(r#const) => r#const.display(layer),
             Self::Block(block) => block.display(layer),
             Self::Assignment(assignment) => assignment.display(layer),
             Self::Return(r#return) => r#return.display(layer),

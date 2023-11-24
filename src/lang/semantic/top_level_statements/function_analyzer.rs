@@ -52,6 +52,12 @@ impl FunctionAnalyzer {
             function_type = SemanticType::Function(params_types, Box::new(SemanticType::Void));
         }
 
+        if let SemanticType::Function(_, function_return_type) = &function_type {
+            if matches!(function_return_type.as_ref(), SemanticType::Array(_, _)) {
+                diagnosis.push(SemanticError::CannotReturnArray)
+            }
+        }
+
         // Verify is the main function and if it has parameters.
         if function_name == "main" && function.params_declaration.params.len() != 0 {
             diagnosis.push(SemanticError::MainFunctionWithParameters);

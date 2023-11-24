@@ -57,7 +57,7 @@ impl ForAnalyzer {
 
             // REVIEW: Should web check the type? In order to ensure that the types are both integers?
 
-            scope.borrow_mut().insert(Symbol::Const {
+            scope.borrow_mut().insert(Symbol::Variable {
                 name: identifier_name,
                 symbol_type: SemanticType::number_type_precedence(vec![
                     left_analyzer.return_type,
@@ -75,7 +75,7 @@ impl ForAnalyzer {
                 found: analyzer.return_type,
             });
 
-            scope.borrow_mut().insert(Symbol::Const {
+            scope.borrow_mut().insert(Symbol::Variable {
                 name: identifier_name,
                 symbol_type: identifier_type,
             });
