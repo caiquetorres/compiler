@@ -59,14 +59,14 @@ impl Scope {
         })
     }
 
-    pub fn get_return_type(&self) -> Option<SemanticType> {
+    pub fn get_function_type(&self) -> Option<SemanticType> {
         self.function
             .clone()
             .map(|v| v.return_type.clone())
             .or_else(|| {
                 self.parent
                     .as_ref()
-                    .and_then(|p| p.borrow().get_return_type())
+                    .and_then(|p| p.borrow().get_function_type())
             })
     }
 }

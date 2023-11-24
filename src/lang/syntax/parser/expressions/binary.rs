@@ -1,7 +1,7 @@
 use super::expression::Expression;
 use crate::lang::{lexer::token::Token, syntax::tree_display::TreeDisplay};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BinaryOperator {
     pub token: Token,
 }
@@ -19,7 +19,7 @@ impl TreeDisplay for BinaryOperator {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Binary {
     pub left: Box<Expression>,
     pub operator: BinaryOperator,

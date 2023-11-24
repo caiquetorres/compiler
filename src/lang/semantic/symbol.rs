@@ -17,7 +17,6 @@ pub enum Symbol {
     Function {
         name: String,
         symbol_type: SemanticType,
-        params: Vec<SemanticType>,
     },
     Type {
         name: String,

@@ -3,7 +3,7 @@ use crate::lang::syntax::{
     tree_display::TreeDisplay,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ParamDeclaration {
     pub identifier: Identifier,
     pub r#type: Type,
@@ -16,7 +16,7 @@ impl ParamDeclaration {
 }
 
 impl TreeDisplay for ParamDeclaration {
-    fn display(&self, layer: usize) {
+    fn display(&self, _: usize) {
         // println!(
         //     "{}ParamDeclaration ({}) ({})",
         //     " ".repeat(layer),
@@ -26,7 +26,7 @@ impl TreeDisplay for ParamDeclaration {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ParamsDeclaration {
     pub params: Vec<ParamDeclaration>,
 }
@@ -45,7 +45,7 @@ impl TreeDisplay for ParamsDeclaration {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Function {
     pub identifier: Identifier,
     pub params_declaration: ParamsDeclaration,

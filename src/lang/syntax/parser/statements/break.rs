@@ -1,6 +1,6 @@
 use crate::lang::syntax::tree_display::TreeDisplay;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Break;
 
 impl TreeDisplay for Break {

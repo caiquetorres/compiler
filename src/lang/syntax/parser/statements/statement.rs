@@ -14,7 +14,7 @@ use crate::lang::syntax::parser::shared::block::Block;
 use crate::lang::syntax::parser::shared::function_call::FunctionCall;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Statement {
     Let(Let),
     Const(Const),

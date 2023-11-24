@@ -3,7 +3,7 @@ use crate::lang::syntax::{
     tree_display::TreeDisplay,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct While {
     pub expression: Expression,
     pub block: Block,

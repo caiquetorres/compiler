@@ -3,7 +3,7 @@ use crate::lang::syntax::{
     tree_display::TreeDisplay,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DoWhile {
     pub block: Block,
     pub expression: Expression,

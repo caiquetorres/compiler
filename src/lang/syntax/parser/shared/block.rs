@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use crate::lang::syntax::{parser::statements::statement::Statement, tree_display::TreeDisplay};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Block {
     pub id: Uuid,
     pub statements: Vec<Statement>,

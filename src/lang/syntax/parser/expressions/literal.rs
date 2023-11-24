@@ -1,6 +1,6 @@
 use crate::lang::{lexer::token::Token, syntax::tree_display::TreeDisplay};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Literal {
     Boolean(Token),
     Char(Token),

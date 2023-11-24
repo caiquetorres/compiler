@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::lang::syntax::parser::{
-    expressions::{expression::Expression, literal::Literal},
-    shared::identifier::IdentifierMeta,
+use crate::lang::syntax::parser::expressions::{
+    expression::{Expression, ExpressionMeta},
+    literal::Literal,
 };
 
 use super::{
@@ -17,6 +17,105 @@ use super::{
     symbol::Symbol,
 };
 
+pub struct ExpressionMetaAnalyzer {
+    pub return_type: SemanticType,
+    pub diagnosis: Vec<SemanticError>,
+}
+
+impl ExpressionMetaAnalyzer {
+    fn analyze_meta(
+        r#type: &SemanticType,
+        meta: &ExpressionMeta,
+        scope: Rc<RefCell<Scope>>,
+    ) -> Self {
+        let mut return_type = SemanticType::Any;
+        let mut diagnosis: Vec<SemanticError> = vec![];
+
+        match meta {
+            ExpressionMeta::Index(expression, meta) => {
+                // check if symbol_type is a function, then it can be called
+
+                let analyzer = ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
+                diagnosis.extend(analyzer.diagnosis);
+
+                // TODO: Verify if expression is a number
+
+                if let SemanticType::Array(array_type, _) = r#type {
+                    // Safe
+
+                    if let Some(meta) = &meta.as_ref() {
+                        let analyzer = ExpressionMetaAnalyzer::analyze_meta(
+                            &array_type,
+                            &meta,
+                            Rc::clone(&scope),
+                        );
+
+                        diagnosis.extend(analyzer.diagnosis);
+                        return_type = analyzer.return_type;
+                    } else {
+                        return_type = array_type.as_ref().clone();
+                    }
+                } else {
+                    // Não é um array
+                }
+            }
+            ExpressionMeta::Call(expressions, meta) => {
+                // check if symbol is a function, then it can be called
+
+                for expression in expressions {
+                    let analyzer = ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
+                    diagnosis.extend(analyzer.diagnosis);
+                }
+
+                if let SemanticType::Function(params, function_return_type) = r#type {
+                    // Safe
+
+                    if let Some(meta) = &meta.as_ref() {
+                        let analyzer = ExpressionMetaAnalyzer::analyze_meta(
+                            &function_return_type,
+                            &meta,
+                            Rc::clone(&scope),
+                        );
+
+                        diagnosis.extend(analyzer.diagnosis);
+                        return_type = analyzer.return_type;
+                    } else {
+                        // TODO: Check the expressions position and value (params).
+
+                        if params.len() != expressions.len() {
+                            diagnosis.push(SemanticError::InvalidNumberOfParameters);
+                        } else {
+                            for i in 0..params.len() {
+                                let expected_param_type = params.get(i).unwrap();
+                                let expression = expressions.get(i).unwrap();
+
+                                let analyzer =
+                                    ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
+
+                                if expected_param_type.clone() != analyzer.return_type
+                                    && (!expected_param_type.is_number()
+                                        || !analyzer.return_type.is_number())
+                                {
+                                    diagnosis.push(SemanticError::InvalidParameterType);
+                                }
+                            }
+                        }
+
+                        return_type = function_return_type.as_ref().clone();
+                    }
+                } else {
+                    // Não é função
+                }
+            }
+        }
+
+        Self {
+            return_type,
+            diagnosis,
+        }
+    }
+}
+
 pub struct ExpressionAnalyzer {
     pub return_type: SemanticType,
     pub diagnosis: Vec<SemanticError>,
@@ -28,92 +127,50 @@ impl ExpressionAnalyzer {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         match expression {
-            Expression::Array(array) => {
+            Expression::Array(array, meta) => {
                 let analyzer = ArrayAnalyzer::analyze(array, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
                 return_type = analyzer.return_type;
             }
-            Expression::Parenthesized(parenthesized) => {
+            Expression::Parenthesized(parenthesized, meta) => {
                 let analyzer = ParenthesizedAnalyzer::analyze(parenthesized, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
-                return_type = analyzer.return_type;
+
+                if let Some(meta) = &meta {
+                    let analyzer = ExpressionMetaAnalyzer::analyze_meta(
+                        &analyzer.return_type,
+                        &meta,
+                        Rc::clone(&scope),
+                    );
+                    diagnosis.extend(analyzer.diagnosis);
+                    return_type = analyzer.return_type;
+                } else {
+                    return_type = analyzer.return_type;
+                }
             }
-            Expression::Identifier(identifier) => {
+            Expression::Identifier(identifier, meta) => {
                 let identifier_name = identifier.name.clone();
 
                 if let Some(symbol) = scope.borrow().get(&identifier_name) {
                     match symbol {
                         Symbol::Variable { symbol_type, .. }
                         | Symbol::Const { symbol_type, .. }
-                        | Symbol::Parameter { symbol_type, .. } => {
-                            if let Some(meta) = &identifier.meta {
-                                match meta {
-                                    IdentifierMeta::Index(expression, meta) => {
-                                        match symbol_type {
-                                            SemanticType::Array(r#type, ..) => {
-                                                let analyzer = Self::analyze(
-                                                    expression.as_ref(),
-                                                    Rc::clone(&scope),
-                                                );
-
-                                                diagnosis.extend(analyzer.diagnosis);
-
-                                                if let None = meta.as_ref() {
-                                                    return_type = r#type.as_ref().clone();
-                                                }
-
-                                                // TODO: Recursion for checking indexes.
-                                            }
-                                            _ => diagnosis
-                                                .push(SemanticError::IdentifierNotIndexable),
-                                        }
-                                    }
-                                }
+                        | Symbol::Parameter { symbol_type, .. }
+                        | Symbol::Function { symbol_type, .. } => {
+                            if let Some(meta) = &meta {
+                                let analyzer = ExpressionMetaAnalyzer::analyze_meta(
+                                    &symbol_type,
+                                    &meta,
+                                    Rc::clone(&scope),
+                                );
+                                diagnosis.extend(analyzer.diagnosis);
+                                return_type = analyzer.return_type;
                             } else {
                                 return_type = symbol_type.clone();
                             }
                         }
                         _ => {
                             diagnosis.push(SemanticError::IdentifierNotVariableConstOrParam);
-                        }
-                    }
-                } else {
-                    diagnosis.push(SemanticError::IdentifierNotFound);
-                }
-            }
-            Expression::FunctionCall(function_call) => {
-                let function_name = function_call.identifier.name.clone();
-
-                if let Some(symbol) = scope.borrow().get(&function_name) {
-                    match symbol {
-                        Symbol::Function {
-                            params,
-                            symbol_type,
-                            ..
-                        } => {
-                            return_type = symbol_type.clone();
-
-                            if params.len() != function_call.params.expressions.len() {
-                                diagnosis.push(SemanticError::InvalidNumberOfParameters);
-                            } else {
-                                for i in 0..params.len() {
-                                    let expected_param_type = params.get(i).unwrap();
-                                    let expression =
-                                        function_call.params.expressions.get(i).unwrap();
-
-                                    let analyzer = Self::analyze(expression, Rc::clone(&scope));
-
-                                    if expected_param_type.clone() != analyzer.return_type
-                                        && (!expected_param_type.is_number()
-                                            || !analyzer.return_type.is_number())
-                                    {
-                                        diagnosis.push(SemanticError::InvalidParameterType);
-                                    }
-                                }
-                            }
-                        }
-                        _ => {
-                            diagnosis.push(SemanticError::IdentifierNotCallable);
                         }
                     }
                 } else {

@@ -23,6 +23,7 @@ pub enum SemanticType {
     // Custom(String),
     Ref(Box<SemanticType>),
     Array(Box<SemanticType>, usize),
+    Function(Vec<SemanticType>, Box<SemanticType>),
 }
 
 impl SemanticType {
@@ -128,6 +129,9 @@ impl fmt::Display for SemanticType {
             }
             SemanticType::Array(inner_type, size) => {
                 format!("[{}; {}]", inner_type.to_string(), size)
+            }
+            SemanticType::Function(_, _) => {
+                format!("")
             }
         };
 

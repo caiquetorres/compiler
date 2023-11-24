@@ -2,7 +2,7 @@ use crate::lang::syntax::tree_display::TreeDisplay;
 
 use super::expression::Expression;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Array {
     pub expressions: Vec<Expression>,
 }

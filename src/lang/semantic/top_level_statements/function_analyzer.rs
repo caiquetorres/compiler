@@ -17,30 +17,12 @@ impl FunctionAnalyzer {
     pub fn analyze_declaration(function: &Function, global_scope: Rc<RefCell<Scope>>) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
-        let function_return_type: SemanticType;
+        let function_type: SemanticType;
         let function_name = function.identifier.name.clone();
 
         // Verify if the function was already declared or if some builtin identifier has the same name.
         if let Some(_) = global_scope.borrow().get(&function_name) {
             diagnosis.push(SemanticError::DuplicatedIdentifier);
-        }
-
-        // Verify the function return type.
-        if let Some(r#type) = &function.r#type {
-            let analyzer = TypeAnalyzer::analyze(r#type, Rc::clone(&global_scope));
-            diagnosis.extend(analyzer.diagnosis);
-            function_return_type = analyzer.result_type;
-        } else {
-            function_return_type = SemanticType::Void;
-        }
-
-        // Verify is the main function and if it has parameters.
-        if function_name == "main" && function.params_declaration.params.len() != 0 {
-            diagnosis.push(SemanticError::MainFunctionWithParameters);
-        }
-
-        if function_name == "main" && function_return_type != SemanticType::Void {
-            diagnosis.push(SemanticError::MainFunctionWithReturn);
         }
 
         let mut params_types: Vec<SemanticType> = vec![];
@@ -61,11 +43,32 @@ impl FunctionAnalyzer {
             params_types.push(param_type);
         }
 
+        // Verify the function return type.
+        if let Some(r#type) = &function.r#type {
+            let analyzer = TypeAnalyzer::analyze(r#type, Rc::clone(&global_scope));
+            diagnosis.extend(analyzer.diagnosis);
+            function_type = SemanticType::Function(params_types, Box::new(analyzer.result_type));
+        } else {
+            function_type = SemanticType::Function(params_types, Box::new(SemanticType::Void));
+        }
+
+        // Verify is the main function and if it has parameters.
+        if function_name == "main" && function.params_declaration.params.len() != 0 {
+            diagnosis.push(SemanticError::MainFunctionWithParameters);
+        }
+
+        if function_name == "main" {
+            if let SemanticType::Function(_, function_return_type) = &function_type {
+                if function_return_type.as_ref().clone() != SemanticType::Void {
+                    diagnosis.push(SemanticError::MainFunctionWithReturn);
+                }
+            }
+        }
+
         // Save the function in the global scope.
         global_scope.borrow_mut().insert(Symbol::Function {
             name: function_name.clone(),
-            symbol_type: function_return_type.clone(),
-            params: params_types,
+            symbol_type: function_type,
         });
 
         Self { diagnosis }

@@ -8,8 +8,11 @@ use crate::lang::{
     },
     syntax::parser::{
         compilation_unit::CompilationUnit,
-        expressions::{expression::Expression, literal::Literal},
-        shared::{block::Block, function_call::FunctionCall, identifier::IdentifierMeta},
+        expressions::{
+            expression::{Expression, ExpressionMeta},
+            literal::Literal,
+        },
+        shared::{block::Block, function_call::FunctionCall},
         statements::{
             assignment::Assignment, do_while::DoWhile, print::Print, r#break::Break,
             r#const::Const, r#continue::Continue, r#for::For, r#if::If, r#let::Let,
@@ -272,6 +275,37 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         code.push_str(";");
     }
 
+    fn generate_meta(&self, meta: &ExpressionMeta, scope: Rc<RefCell<Scope>>, code: &mut String) {
+        match meta {
+            ExpressionMeta::Call(expressions, meta) => {
+                code.push_str("(");
+
+                for (index, expression) in expressions.iter().enumerate() {
+                    self.generate_expression(expression, Rc::clone(&scope), code);
+
+                    if index != expressions.len() - 1 {
+                        code.push_str(",");
+                    }
+                }
+
+                code.push_str(")");
+
+                if let Some(meta) = meta.as_ref() {
+                    self.generate_meta(meta, Rc::clone(&scope), code);
+                }
+            }
+            ExpressionMeta::Index(expression, meta) => {
+                code.push_str("[");
+                self.generate_expression(expression, Rc::clone(&scope), code);
+                code.push_str("]");
+
+                if let Some(meta) = meta.as_ref() {
+                    self.generate_meta(meta, Rc::clone(&scope), code);
+                }
+            }
+        }
+    }
+
     fn generate_expression(
         &self,
         expression: &Expression,
@@ -279,19 +313,15 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         code: &mut String,
     ) {
         match expression {
-            Expression::Identifier(identifier) => {
-                match &identifier.meta {
+            Expression::Identifier(identifier, meta) => {
+                match &meta {
                     None => code.push_str(&identifier.name),
-                    Some(meta) => match meta {
-                        IdentifierMeta::Index(expression, _) => {
-                            code.push_str(&format!("*({}+", identifier.name));
-                            self.generate_expression(expression, Rc::clone(&scope), code);
-                            code.push_str(")");
-                        }
-                    },
+                    Some(meta) => {
+                        self.generate_meta(meta, Rc::clone(&scope), code);
+                    }
                 };
             }
-            Expression::Array(array) => {
+            Expression::Array(array, meta) => {
                 code.push_str("(");
 
                 if array.expressions.len() != 0 {
@@ -317,19 +347,6 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
 
                 code.push_str("}");
             }
-            Expression::FunctionCall(call) => {
-                code.push_str(&call.identifier.name);
-                code.push_str("(");
-
-                for (index, expression) in call.params.expressions.iter().enumerate() {
-                    self.generate_expression(expression, Rc::clone(&scope), code);
-                    if index != call.params.expressions.len() - 1 {
-                        code.push_str(",");
-                    }
-                }
-
-                code.push_str(")");
-            }
             Expression::Unary(unary) => {
                 code.push_str(&unary.operator.token.value);
                 self.generate_expression(&unary.expression, Rc::clone(&scope), code);
@@ -348,10 +365,14 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
                 code.push_str(&binary.operator.token.value);
                 self.generate_expression(&binary.right, Rc::clone(&scope), code);
             }
-            Expression::Parenthesized(parenthesized) => {
+            Expression::Parenthesized(parenthesized, meta) => {
                 code.push_str("(");
                 self.generate_expression(&parenthesized.expression, Rc::clone(&scope), code);
                 code.push_str(")");
+
+                if let Some(meta) = meta.as_ref() {
+                    self.generate_meta(meta, Rc::clone(&scope), code);
+                }
             }
             _ => {}
         }
@@ -382,23 +403,23 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         scope: Rc<RefCell<Scope>>,
         code: &mut String,
     ) {
-        if let Some(meta) = &assignment.identifier.meta {
-            match &meta {
-                IdentifierMeta::Index(expression, _) => {
-                    code.push_str(&format!("*({}+", assignment.identifier.name));
-                    self.generate_expression(expression, Rc::clone(&scope), code);
-                    code.push_str(")");
-                }
-            }
-        } else {
-            code.push_str(&assignment.identifier.name);
-        }
+        // if let Some(meta) = &assignment.identifier.meta {
+        //     match &meta {
+        //         ExpressionMeta::Index(expression, _) => {
+        //             code.push_str(&format!("*({}+", assignment.identifier.name));
+        //             self.generate_expression(expression, Rc::clone(&scope), code);
+        //             code.push_str(")");
+        //         }
+        //     }
+        // } else {
+        //     code.push_str(&assignment.identifier.name);
+        // }
 
-        code.push_str(&assignment.operator.name);
+        // code.push_str(&assignment.operator.name);
 
-        self.generate_expression(&assignment.expression, Rc::clone(&scope), code);
+        // self.generate_expression(&assignment.expression, Rc::clone(&scope), code);
 
-        code.push_str(";");
+        // code.push_str(";");
     }
 
     pub fn generate_if_statement(&self, r#if: &If, scope: Rc<RefCell<Scope>>, code: &mut String) {

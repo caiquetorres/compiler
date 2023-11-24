@@ -4,7 +4,7 @@ use crate::lang::syntax::parser::shared::identifier::Identifier;
 use crate::lang::syntax::parser::shared::r#type::Type;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Let {
     pub identifier: Identifier,
     pub r#type: Option<Type>,

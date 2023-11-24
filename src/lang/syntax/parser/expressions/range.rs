@@ -2,7 +2,7 @@ use crate::lang::{lexer::token::Token, syntax::tree_display::TreeDisplay};
 
 use super::expression::Expression;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RangeOperator {
     pub token: Token,
 }
@@ -20,7 +20,7 @@ impl TreeDisplay for RangeOperator {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Range {
     pub left: Box<Expression>,
     pub operator: RangeOperator,

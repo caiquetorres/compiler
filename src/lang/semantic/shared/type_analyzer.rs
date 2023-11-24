@@ -51,14 +51,15 @@ impl TypeAnalyzer {
     /// A `TypeAnalyzer` instance containing the analysis results.
     fn analyze_simple_type(token_identifier: &Token, scope: Rc<RefCell<Scope>>) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
+        let mut result_type = SemanticType::Any;
 
         let variable_type_name = token_identifier.value.clone();
 
-        if let None = scope.borrow().get(&variable_type_name) {
+        if let Some(_) = scope.borrow().get(&variable_type_name) {
+            result_type = SemanticType::from(variable_type_name);
+        } else {
             diagnosis.push(SemanticError::IdentifierNotFound);
         }
-
-        let result_type = SemanticType::from(variable_type_name);
 
         Self {
             result_type,

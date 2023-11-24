@@ -6,7 +6,7 @@ use crate::lang::syntax::{
     tree_display::TreeDisplay,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct For {
     pub identifier: Identifier,
     pub expression: Expression,

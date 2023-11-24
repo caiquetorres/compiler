@@ -26,7 +26,7 @@ impl ReturnAnalyzer {
     pub fn analyze(r#return: &Return, scope: Rc<RefCell<Scope>>) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
-        if let Some(function_return_type) = scope.borrow().get_return_type() {
+        if let Some(function_type) = scope.borrow().get_function_type() {
             let return_type = match &r#return.expression {
                 None => SemanticType::Void,
                 Some(expression) => {
@@ -38,13 +38,15 @@ impl ReturnAnalyzer {
                 }
             };
 
-            if function_return_type != return_type
-                && (!function_return_type.is_number() || !return_type.is_number())
-            {
-                diagnosis.push(SemanticError::ExpectedType {
-                    expected: function_return_type,
-                    found: return_type,
-                })
+            if let SemanticType::Function(_, function_return_type) = function_type {
+                if function_return_type.as_ref().clone() != return_type
+                    && (!function_return_type.is_number() || !return_type.is_number())
+                {
+                    diagnosis.push(SemanticError::ExpectedType {
+                        expected: function_return_type.as_ref().clone(),
+                        found: return_type,
+                    })
+                }
             }
         } else {
             diagnosis.push(SemanticError::InvalidReturn)

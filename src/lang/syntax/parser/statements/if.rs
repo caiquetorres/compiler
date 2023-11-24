@@ -3,7 +3,7 @@ use crate::lang::syntax::{
     tree_display::TreeDisplay,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Else {
     pub block: Block,
 }
@@ -21,7 +21,7 @@ impl TreeDisplay for Else {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct If {
     pub expression: Expression,
     pub block: Block,
