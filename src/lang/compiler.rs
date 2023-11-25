@@ -5,7 +5,7 @@ use std::{
 
 use super::{
     generators::c_code_generator::CCodeGenerator, lexer::lexer::Lexer,
-    semantic::analyzer::Analyzer, syntax::parser::parser::Parser,
+    semantic::analyzer::Analyzer, syntax::parser::Parser,
 };
 
 pub struct Compiler {

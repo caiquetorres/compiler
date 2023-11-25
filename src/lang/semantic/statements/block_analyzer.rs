@@ -9,13 +9,13 @@ use super::print_analyzer::PrintAnalyzer;
 use super::return_analyzer::ReturnAnalyzer;
 use super::while_analyzer::WhileAnalyzer;
 
+use crate::lang::syntax::shared::block::Block;
+use crate::lang::syntax::statements::statement::Statement;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::{
     analyzer::Scopes, expressions::expression_analyzer::ExpressionAnalyzer,
 };
-use crate::lang::syntax::parser::shared::block::Block;
-use crate::lang::syntax::parser::statements::statement::Statement;
 
 use std::{cell::RefCell, rc::Rc};
 

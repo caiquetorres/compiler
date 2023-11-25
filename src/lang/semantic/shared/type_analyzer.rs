@@ -1,9 +1,9 @@
 use crate::lang::lexer::token::Token;
 use crate::lang::lexer::token_kind::TokenKind;
+use crate::lang::syntax::shared::syntax_type::SyntaxType;
 use crate::lang::semantic::{
     scope::Scope, semantic_error::SemanticError, semantic_type::SemanticType,
 };
-use crate::lang::syntax::parser::shared::syntax_type::SyntaxType;
 
 use std::{cell::RefCell, rc::Rc};
 

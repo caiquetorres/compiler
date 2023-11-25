@@ -1,4 +1,4 @@
-use crate::lang::{lexer::token::Token, syntax::tree_display::TreeDisplay};
+use crate::lang::lexer::token::Token;
 
 #[derive(Clone, Debug)]
 pub enum SyntaxType {
@@ -42,26 +42,5 @@ impl ToString for SyntaxType {
                 format!("[{}; {}]", r#type.to_string(), size.value.clone())
             }
         }
-    }
-}
-
-impl TreeDisplay for SyntaxType {
-    fn display(&self, layer: usize) {
-        print!("{}", " ".repeat(layer));
-
-        // match &self {
-        //     Self::Simple { identifier } => {
-        //         // print!("array ");
-        //         // identifier.display(0);
-        //     }
-        //     Self::Array { r#type, size } => {
-        //         // print!("array ");
-        //         // identifier.display(0);
-        //     }
-        //     Self::Reference { inner_type } => {
-        //         print!("ref ");
-        //         inner_type.display(0);
-        //     }
-        // }
     }
 }

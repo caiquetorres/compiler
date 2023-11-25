@@ -1,5 +1,5 @@
-use crate::lang::syntax::parser::expressions::expression::Expression;
-use crate::lang::syntax::parser::shared::assignment_operator::AssignmentOperator;
+use crate::lang::syntax::expressions::expression::Expression;
+use crate::lang::syntax::shared::assignment_operator::AssignmentOperator;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
 #[derive(Clone, Debug)]

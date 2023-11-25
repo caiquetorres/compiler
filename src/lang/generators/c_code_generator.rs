@@ -2,11 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::lang::{
     lexer::token_kind::TokenKind,
-    semantic::{
-        analyzer::Scopes, expressions::expression_analyzer::ExpressionAnalyzer, scope::Scope,
-        semantic_type::SemanticType, symbol::Symbol,
-    },
-    syntax::parser::{
+    syntax::{
         compilation_unit::CompilationUnit,
         expressions::{
             expression::{Expression, ExpressionMeta},
@@ -19,6 +15,10 @@ use crate::lang::{
             r#while::While, statement::Statement,
         },
         top_level_statements::{function::Function, top_level_statement::TopLevelStatement},
+    },
+    semantic::{
+        analyzer::Scopes, expressions::expression_analyzer::ExpressionAnalyzer, scope::Scope,
+        semantic_type::SemanticType, symbol::Symbol,
     },
 };
 

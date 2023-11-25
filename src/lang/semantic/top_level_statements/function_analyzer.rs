@@ -1,3 +1,4 @@
+use crate::lang::syntax::top_level_statements::function::Function;
 use crate::lang::semantic::analyzer::Scopes;
 use crate::lang::semantic::scope::Func;
 use crate::lang::semantic::semantic_type::SemanticType;
@@ -5,7 +6,6 @@ use crate::lang::semantic::shared::type_analyzer::TypeAnalyzer;
 use crate::lang::semantic::statements::block_analyzer::BlockAnalyzer;
 use crate::lang::semantic::symbol::Symbol;
 use crate::lang::semantic::{scope::Scope, semantic_error::SemanticError};
-use crate::lang::syntax::parser::top_level_statements::function::Function;
 
 use std::{cell::RefCell, rc::Rc};
 

@@ -6,7 +6,7 @@ use super::literal::Literal;
 use super::parenthesized::Parenthesized;
 use super::range::Range;
 use super::unary::Unary;
-use crate::lang::syntax::parser::shared::identifier::Identifier;
+use crate::lang::syntax::shared::identifier::Identifier;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
 #[derive(Clone, Debug)]

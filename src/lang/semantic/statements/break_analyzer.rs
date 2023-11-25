@@ -1,6 +1,6 @@
+use crate::lang::syntax::statements::r#break::Break;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
-use crate::lang::syntax::parser::statements::r#break::Break;
 
 use std::{cell::RefCell, rc::Rc};
 

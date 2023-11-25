@@ -1,7 +1,7 @@
-use crate::lang::syntax::parser::expressions::expression::Expression;
-use crate::lang::syntax::parser::shared::identifier::Identifier;
+use crate::lang::syntax::expressions::expression::Expression;
+use crate::lang::syntax::shared::identifier::Identifier;
 
-use crate::lang::syntax::parser::shared::syntax_type::SyntaxType;
+use crate::lang::syntax::shared::syntax_type::SyntaxType;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
 #[derive(Clone, Debug)]
@@ -38,10 +38,6 @@ impl TreeDisplay for Let {
             );
         } else {
             println!("{}LetStatement ({})", "  ".repeat(layer), identifier_name);
-        }
-
-        if let Some(r#type) = &self.r#type {
-            r#type.display(0);
         }
 
         if let Some(expression) = &self.expression {

@@ -4,8 +4,8 @@ use super::semantic_type::SemanticType;
 use super::symbol::Symbol;
 use super::top_level_statements::function_analyzer::FunctionAnalyzer;
 
-use crate::lang::syntax::parser::compilation_unit::CompilationUnit;
-use crate::lang::syntax::parser::top_level_statements::top_level_statement::TopLevelStatement;
+use crate::lang::syntax::compilation_unit::CompilationUnit;
+use crate::lang::syntax::top_level_statements::top_level_statement::TopLevelStatement;
 
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use uuid::Uuid;

@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::lang::{
+    syntax::expressions::{expression::Expression, literal::Literal},
     semantic::{scope::Scope, semantic_error::SemanticError, semantic_type::SemanticType},
-    syntax::parser::expressions::{expression::Expression, literal::Literal},
 };
 
 use super::{

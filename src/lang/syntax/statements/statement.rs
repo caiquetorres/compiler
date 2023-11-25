@@ -9,8 +9,8 @@ use super::r#let::Let;
 use super::r#return::Return;
 use super::r#while::While;
 
-use crate::lang::syntax::parser::expressions::expression::Expression;
-use crate::lang::syntax::parser::shared::block::Block;
+use crate::lang::syntax::expressions::expression::Expression;
+use crate::lang::syntax::shared::block::Block;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
 #[derive(Clone, Debug)]

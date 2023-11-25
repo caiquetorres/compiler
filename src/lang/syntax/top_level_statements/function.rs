@@ -1,5 +1,5 @@
 use crate::lang::syntax::{
-    parser::shared::{block::Block, identifier::Identifier, syntax_type::SyntaxType},
+    shared::{block::Block, identifier::Identifier, syntax_type::SyntaxType},
     tree_display::TreeDisplay,
 };
 

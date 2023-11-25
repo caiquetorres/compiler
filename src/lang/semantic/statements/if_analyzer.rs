@@ -1,11 +1,11 @@
 use std::{cell::RefCell, rc::Rc};
 
+use crate::lang::syntax::statements::r#if::If;
 use crate::lang::semantic::analyzer::Scopes;
 use crate::lang::semantic::expressions::expression_analyzer::ExpressionAnalyzer;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
-use crate::lang::syntax::parser::statements::r#if::If;
 
 use super::block_analyzer::BlockAnalyzer;
 

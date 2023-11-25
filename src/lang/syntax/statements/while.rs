@@ -1,6 +1,5 @@
 use crate::lang::syntax::{
-    parser::{expressions::expression::Expression, shared::block::Block},
-    tree_display::TreeDisplay,
+    expressions::expression::Expression, shared::block::Block, tree_display::TreeDisplay,
 };
 
 #[derive(Clone, Debug)]

@@ -1,11 +1,11 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::lang::syntax::expressions::expression::{Expression, ExpressionMeta};
+use crate::lang::syntax::expressions::parenthesized::Parenthesized;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
-use crate::lang::syntax::parser::expressions::expression::{Expression, ExpressionMeta};
-use crate::lang::syntax::parser::expressions::parenthesized::Parenthesized;
 
 use super::expression_analyzer::ExpressionAnalyzer;
 use super::expression_meta_analyzer::ExpressionMetaAnalyzer;

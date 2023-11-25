@@ -1,8 +1,6 @@
 use crate::lang::syntax::{
-    parser::{
-        expressions::expression::Expression,
-        shared::{block::Block, identifier::Identifier},
-    },
+    expressions::expression::Expression,
+    shared::{block::Block, identifier::Identifier},
     tree_display::TreeDisplay,
 };
 

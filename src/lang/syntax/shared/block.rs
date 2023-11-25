@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::lang::syntax::{parser::statements::statement::Statement, tree_display::TreeDisplay};
+use crate::lang::syntax::{statements::statement::Statement, tree_display::TreeDisplay};
 
 #[derive(Clone, Debug)]
 pub struct Block {

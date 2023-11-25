@@ -1,4 +1,4 @@
-use crate::lang::syntax::parser::shared::syntax_type::SyntaxType;
+use crate::lang::syntax::shared::syntax_type::SyntaxType;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SemanticType {

@@ -752,7 +752,7 @@ fn get_binary_operator_precedence(kind: TokenKind) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::Parser;
-    use crate::lang::syntax::parser::{
+    use crate::lang::syntax::{
         expressions::expression::Expression, shared::syntax_type::SyntaxType,
         statements::statement::Statement,
         top_level_statements::top_level_statement::TopLevelStatement,

@@ -1,7 +1,7 @@
+use crate::lang::syntax::statements::r#return::Return;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
 use crate::lang::semantic::{expressions::expression_analyzer::ExpressionAnalyzer, scope::Scope};
-use crate::lang::syntax::parser::statements::r#return::Return;
 
 use std::{cell::RefCell, rc::Rc};
 
