@@ -250,6 +250,10 @@ impl Lexer {
             '-' => {
                 self.next_char();
                 match self.get_current_char() {
+                    '>' => {
+                        self.next_char();
+                        Token::new(TokenKind::ArrowRight, position, "->")
+                    }
                     '=' => {
                         self.next_char();
                         Token::new(TokenKind::MinusEquals, position, "-=")

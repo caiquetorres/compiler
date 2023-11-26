@@ -1,13 +1,26 @@
-use crate::lang::syntax::{expressions::expression::Expression, tree_display::TreeDisplay};
+use crate::lang::{
+    position::{Position, Positioned},
+    syntax::{expressions::expression::Expression, tree_display::TreeDisplay},
+};
 
 #[derive(Clone, Debug)]
 pub struct Return {
+    position: Position,
     pub expression: Option<Expression>,
 }
 
 impl Return {
-    pub fn new(expression: Option<Expression>) -> Self {
-        Self { expression }
+    pub fn new(expression: Option<Expression>, position: Position) -> Self {
+        Self {
+            expression,
+            position,
+        }
+    }
+}
+
+impl Positioned for Return {
+    fn get_position(&self) -> Position {
+        self.position
     }
 }
 

@@ -1,5 +1,6 @@
 use super::expression::Expression;
 use crate::lang::lexer::token::Token;
+use crate::lang::position::Positioned;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
 #[derive(Clone, Debug)]
@@ -10,6 +11,12 @@ pub struct BinaryOperator {
 impl BinaryOperator {
     pub fn new(token: Token) -> Self {
         Self { token }
+    }
+}
+
+impl Positioned for BinaryOperator {
+    fn get_position(&self) -> crate::lang::position::Position {
+        self.token.position
     }
 }
 
@@ -34,6 +41,12 @@ impl Binary {
             operator,
             right: Box::new(right),
         }
+    }
+}
+
+impl Positioned for Binary {
+    fn get_position(&self) -> crate::lang::position::Position {
+        todo!()
     }
 }
 

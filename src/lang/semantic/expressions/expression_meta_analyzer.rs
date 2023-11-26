@@ -1,10 +1,11 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::lang::syntax::expressions::expression::{Expression, ExpressionMeta};
+use crate::lang::position::Positioned;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
+use crate::lang::syntax::expressions::expression::{Expression, ExpressionMeta};
 
 use super::expression_analyzer::ExpressionAnalyzer;
 
@@ -25,19 +26,19 @@ impl ExpressionMetaAnalyzer {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         match meta {
-            ExpressionMeta::Index(expression, meta) => {
+            ExpressionMeta::Index(expression, meta, position) => {
                 let analyzer = ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
 
                 if let Expression::Array(_) = expression.as_ref() {
-                    diagnosis.push(SemanticError::ImmediateArrayUsageWithoutAssignment);
+                    diagnosis.push(SemanticError::ImmediateArrayUsageWithoutAssignment {
+                        position: expression.get_position(),
+                    });
                 }
 
                 match r#type {
-                    SemanticType::String => {
-                        changeable = true;
-                        return_type = SemanticType::Char;
-                    }
+                    SemanticType::Any => changeable = true,
+                    SemanticType::String => changeable = true,
                     SemanticType::Array(array_type, _) => {
                         if let Some(meta) = &meta.as_ref() {
                             let analyzer = ExpressionMetaAnalyzer::analyze(
@@ -56,59 +57,79 @@ impl ExpressionMetaAnalyzer {
                         }
                     }
                     _ => {
-                        diagnosis.push(SemanticError::IdentifierNotIndexable);
+                        diagnosis.push(SemanticError::IdentifierNotIndexable {
+                            position: *position,
+                        });
                         changeable = true;
                     }
                 }
             }
-            ExpressionMeta::Call(expressions, meta) => {
+            ExpressionMeta::Call(expressions, meta, position) => {
                 for expression in expressions {
                     let analyzer = ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
                     diagnosis.extend(analyzer.diagnosis);
                 }
 
-                if let SemanticType::Function(params, function_return_type) = r#type {
-                    if params.len() != expressions.len() {
-                        diagnosis.push(SemanticError::InvalidNumberOfParameters);
-                    } else {
-                        for i in 0..params.len() {
-                            let expected_param_type = params.get(i).unwrap();
-                            let expression = expressions.get(i).unwrap();
+                match r#type {
+                    SemanticType::Any => changeable = true,
+                    SemanticType::Function(params, function_return_type) => {
+                        if params.len() != expressions.len() {
+                            diagnosis.push(SemanticError::InvalidNumberOfParameters {
+                                expected: params.len(),
+                                found: expressions.len(),
+                                position: *position,
+                            });
+                        } else {
+                            for i in 0..params.len() {
+                                let expected_param_type = params.get(i).unwrap();
+                                let expression = expressions.get(i).unwrap();
 
-                            let analyzer =
-                                ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
+                                let analyzer =
+                                    ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
 
-                            if let Expression::Array(_) = &expression {
-                                diagnosis.push(SemanticError::ImmediateArrayUsageWithoutAssignment);
-                            }
+                                if let Expression::Array(_) = &expression {
+                                    diagnosis.push(
+                                        SemanticError::ImmediateArrayUsageWithoutAssignment {
+                                            position: *position,
+                                        },
+                                    );
+                                }
 
-                            if expected_param_type.clone() != analyzer.return_type
-                                && (!expected_param_type.is_number()
-                                    || !analyzer.return_type.is_number())
-                            {
-                                diagnosis.push(SemanticError::InvalidParameterType);
+                                if expected_param_type.clone() != analyzer.return_type
+                                    && (!expected_param_type.is_number()
+                                        || !analyzer.return_type.is_number())
+                                {
+                                    diagnosis.push(SemanticError::InvalidParameterType {
+                                        expected: expected_param_type.clone(),
+                                        found: analyzer.return_type,
+                                        position: expression.get_position(),
+                                    });
+                                }
                             }
                         }
+
+                        if let Some(meta) = &meta.as_ref() {
+                            let analyzer = ExpressionMetaAnalyzer::analyze(
+                                &function_return_type,
+                                &meta,
+                                Rc::clone(&scope),
+                            );
+
+                            diagnosis.extend(analyzer.diagnosis);
+
+                            changeable = analyzer.changeable;
+                            return_type = analyzer.return_type;
+                        } else {
+                            changeable = false;
+                            return_type = function_return_type.as_ref().clone();
+                        }
                     }
-
-                    if let Some(meta) = &meta.as_ref() {
-                        let analyzer = ExpressionMetaAnalyzer::analyze(
-                            &function_return_type,
-                            &meta,
-                            Rc::clone(&scope),
-                        );
-
-                        diagnosis.extend(analyzer.diagnosis);
-
-                        changeable = analyzer.changeable;
-                        return_type = analyzer.return_type;
-                    } else {
-                        changeable = false;
-                        return_type = function_return_type.as_ref().clone();
+                    _ => {
+                        diagnosis.push(SemanticError::IdentifierNotCallable {
+                            position: *position,
+                        });
+                        changeable = true;
                     }
-                } else {
-                    diagnosis.push(SemanticError::IdentifierNotCallable);
-                    changeable = true;
                 }
             }
         }

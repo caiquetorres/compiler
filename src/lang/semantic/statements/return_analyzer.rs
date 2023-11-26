@@ -1,7 +1,8 @@
-use crate::lang::syntax::statements::r#return::Return;
+use crate::lang::position::Positioned;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
 use crate::lang::semantic::{expressions::expression_analyzer::ExpressionAnalyzer, scope::Scope};
+use crate::lang::syntax::statements::r#return::Return;
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -44,11 +45,14 @@ impl ReturnAnalyzer {
                     diagnosis.push(SemanticError::ExpectedType {
                         expected: function_return_type.as_ref().clone(),
                         found: return_type,
+                        position: r#return.expression.as_ref().unwrap().get_position(),
                     })
                 }
             }
         } else {
-            diagnosis.push(SemanticError::InvalidReturn)
+            diagnosis.push(SemanticError::InvalidReturn {
+                position: r#return.get_position(),
+            })
         }
 
         Self { diagnosis }

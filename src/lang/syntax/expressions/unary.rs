@@ -1,5 +1,6 @@
 use super::expression::Expression;
 use crate::lang::{lexer::token::Token, syntax::tree_display::TreeDisplay};
+use crate::lang::position::{Position, Positioned};
 
 #[derive(Clone, Debug)]
 pub struct UnaryOperator {
@@ -31,6 +32,12 @@ impl Unary {
             operator,
             expression: Box::new(expression),
         }
+    }
+}
+
+impl Positioned for Unary {
+    fn get_position(&self) -> Position {
+        self.operator.token.position
     }
 }
 

@@ -1,4 +1,8 @@
-use crate::lang::{lexer::token::Token, syntax::tree_display::TreeDisplay};
+use crate::lang::{
+    lexer::token::Token,
+    position::{Position, Positioned},
+    syntax::tree_display::TreeDisplay,
+};
 
 use super::expression::Expression;
 
@@ -10,6 +14,12 @@ pub struct RangeOperator {
 impl RangeOperator {
     pub fn new(token: Token) -> Self {
         Self { token }
+    }
+}
+
+impl Positioned for RangeOperator {
+    fn get_position(&self) -> crate::lang::position::Position {
+        self.token.position
     }
 }
 
@@ -34,6 +44,12 @@ impl Range {
             operator,
             right: Box::new(right),
         }
+    }
+}
+
+impl Positioned for Range {
+    fn get_position(&self) -> Position {
+        todo!()
     }
 }
 

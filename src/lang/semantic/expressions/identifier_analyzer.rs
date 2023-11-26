@@ -1,12 +1,13 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::lang::syntax::expressions::expression::ExpressionMeta;
-use crate::lang::syntax::shared::identifier::Identifier;
+use crate::lang::position::Positioned;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
 use crate::lang::semantic::symbol::Symbol;
+use crate::lang::syntax::expressions::expression::ExpressionMeta;
+use crate::lang::syntax::shared::identifier::Identifier;
 
 use super::expression_meta_analyzer::ExpressionMetaAnalyzer;
 
@@ -41,21 +42,27 @@ impl IdentifierAnalyzer {
                         changeable = analyzer.changeable;
                         return_type = analyzer.return_type;
                     } else {
-                        // REVIEW: Even for Symbol::Function?
-                        changeable = true;
+                        changeable = !matches!(
+                            symbol_type,
+                            SemanticType::Array(_, _) | SemanticType::Function(_, _)
+                        );
                         return_type = symbol_type.clone();
                     }
                 }
                 _ => {
                     changeable = true;
-                    diagnosis.push(SemanticError::IdentifierNotVariableConstOrParam);
+                    diagnosis.push(SemanticError::IdentifierNotVariableOrParam {
+                        position: identifier.get_position(),
+                    });
                 }
             }
         } else {
             // The variable/constant/param/function is not registered on the symbol table
 
             changeable = true;
-            diagnosis.push(SemanticError::IdentifierNotFound);
+            diagnosis.push(SemanticError::IdentifierNotFound {
+                position: identifier.get_position(),
+            });
         }
 
         Self {

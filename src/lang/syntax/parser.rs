@@ -114,11 +114,22 @@ impl Parser {
         }
     }
 
+    fn parse_return_type_optional(&mut self) -> Result<Option<SyntaxType>, SyntaxError> {
+        let current_token = self.get_current_token();
+
+        if let TokenKind::ArrowRight = current_token.kind {
+            self.next_token();
+            Ok(Some(self.parse_type()?))
+        } else {
+            Ok(None)
+        }
+    }
+
     fn parse_type_optional(&mut self) -> Result<Option<SyntaxType>, SyntaxError> {
         let current_token = self.get_current_token();
 
         if let TokenKind::Colon = current_token.kind {
-            self.next_token(); // consumes the colon
+            self.next_token();
             Ok(Some(self.parse_type()?))
         } else {
             Ok(None)
@@ -130,17 +141,43 @@ impl Parser {
             TokenKind::Identifier,
             TokenKind::LeftBracket,
             TokenKind::Ref,
+            TokenKind::LeftParenthesis,
         ])?;
-
-        // i32
-        // ref i32
-        // [i32; 3]
-        // [[i32; 1]; 1]
 
         match &token.kind {
             TokenKind::Identifier => {
                 let type_identifier_token = token;
                 Ok(SyntaxType::new_simple(type_identifier_token))
+            }
+            TokenKind::LeftParenthesis => {
+                // (i32, i32) -> i32
+
+                let mut params: Vec<SyntaxType> = vec![];
+
+                if self.get_current_token().kind != TokenKind::RightParenthesis {
+                    loop {
+                        let r#type = self.parse_type()?;
+                        params.push(r#type);
+
+                        let current_token = self.get_current_token();
+                        if current_token.kind == TokenKind::RightParenthesis {
+                            break;
+                        }
+
+                        self.use_token(&[TokenKind::Comma])?;
+                    }
+                }
+
+                self.use_token(&[TokenKind::RightParenthesis])?;
+                self.use_token(&[TokenKind::ArrowRight])?;
+
+                let return_type = self.parse_type()?;
+
+                Ok(SyntaxType::new_function(
+                    params,
+                    return_type,
+                    token.position,
+                ))
             }
             TokenKind::LeftBracket => {
                 let r#type = self.parse_type()?;
@@ -150,11 +187,15 @@ impl Parser {
 
                 self.use_token(&[TokenKind::RightBracket])?;
 
-                Ok(SyntaxType::new_array(r#type, array_size_token))
+                Ok(SyntaxType::new_array(
+                    r#type,
+                    array_size_token,
+                    token.position,
+                ))
             }
             TokenKind::Ref => {
                 let r#type = self.parse_type()?;
-                Ok(SyntaxType::new_reference(r#type))
+                Ok(SyntaxType::new_reference(r#type, token.position))
             }
             _ => unreachable!(),
         }
@@ -176,7 +217,7 @@ impl Parser {
 
         self.use_token(&[TokenKind::RightParenthesis])?;
 
-        let identifier_type = self.parse_type_optional()?;
+        let identifier_type = self.parse_return_type_optional()?;
         let block = self.parse_block()?;
 
         Ok(TopLevelStatement::Function(Function::new(
@@ -295,9 +336,9 @@ impl Parser {
     }
 
     fn parse_continue_statement(&mut self) -> Result<Statement, SyntaxError> {
-        self.use_token(&[TokenKind::ContinueKeyword])?;
+        let continue_token = self.use_token(&[TokenKind::ContinueKeyword])?;
         self.use_token(&[TokenKind::Semicolon])?;
-        Ok(Statement::Continue(Continue))
+        Ok(Statement::Continue(Continue::new(continue_token.position)))
     }
 
     fn parse_print_statement(&mut self) -> Result<Statement, SyntaxError> {
@@ -324,9 +365,9 @@ impl Parser {
     }
 
     fn parse_break_statement(&mut self) -> Result<Statement, SyntaxError> {
-        self.use_token(&[TokenKind::BreakKeyword])?;
+        let break_token = self.use_token(&[TokenKind::BreakKeyword])?;
         self.use_token(&[TokenKind::Semicolon])?;
-        Ok(Statement::Break(Break))
+        Ok(Statement::Break(Break::new(break_token.position)))
     }
 
     /// Parses a 'return' statement.
@@ -335,7 +376,7 @@ impl Parser {
     /// - `Ok(Statement)`: Parsed 'return' statement.
     /// - `Err(SyntaxError)`: Syntax error if parsing fails.
     fn parse_return_statement(&mut self) -> Result<Statement, SyntaxError> {
-        self.use_token(&[TokenKind::ReturnKeyword])?;
+        let return_token = self.use_token(&[TokenKind::ReturnKeyword])?;
 
         let current_token = self.get_current_token();
 
@@ -343,14 +384,17 @@ impl Parser {
             TokenKind::Semicolon => {
                 self.use_token(&[TokenKind::Semicolon])?;
 
-                Ok(Statement::Return(Return::new(None)))
+                Ok(Statement::Return(Return::new(None, return_token.position)))
             }
             _ => {
                 let expression = self.parse_expression(0)?;
 
                 self.use_token(&[TokenKind::Semicolon])?;
 
-                Ok(Statement::Return(Return::new(Some(expression))))
+                Ok(Statement::Return(Return::new(
+                    Some(expression),
+                    return_token.position,
+                )))
             }
         }
     }
@@ -610,6 +654,7 @@ impl Parser {
                     meta = Some(ExpressionMeta::Index(
                         Box::new(expression),
                         Box::new(self.parse_expression_meta()?),
+                        token.position,
                     ));
                 }
                 TokenKind::LeftParenthesis => {
@@ -631,6 +676,7 @@ impl Parser {
                     meta = Some(ExpressionMeta::Call(
                         expressions,
                         Box::new(self.parse_expression_meta()?),
+                        token.position,
                     ));
                 }
                 _ => {}
@@ -669,7 +715,7 @@ impl Parser {
                     self.use_token(&[TokenKind::Comma])?;
                 }
 
-                Ok(Expression::Array(Array::new(expressions)))
+                Ok(Expression::Array(Array::new(expressions, token.position)))
             }
             TokenKind::LeftParenthesis => {
                 let expression = self.parse_expression(0)?;
@@ -678,7 +724,7 @@ impl Parser {
                 let meta = self.parse_expression_meta()?;
 
                 Ok(Expression::Parenthesized(
-                    Parenthesized::new(expression),
+                    Parenthesized::new(expression, token.position),
                     meta,
                 ))
             }

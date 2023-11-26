@@ -1,5 +1,4 @@
-use crate::lang::syntax::expressions::expression::Expression;
-use crate::lang::syntax::statements::r#for::For;
+use crate::lang::position::Positioned;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
@@ -7,6 +6,8 @@ use crate::lang::semantic::symbol::Symbol;
 use crate::lang::semantic::{
     analyzer::Scopes, expressions::expression_analyzer::ExpressionAnalyzer,
 };
+use crate::lang::syntax::expressions::expression::Expression;
+use crate::lang::syntax::statements::r#for::For;
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -38,7 +39,9 @@ impl ForAnalyzer {
         let identifier_name = r#for.identifier.name.clone();
 
         if let Some(_) = scope.borrow().get(&identifier_name) {
-            diagnosis.push(SemanticError::DuplicatedIdentifier);
+            diagnosis.push(SemanticError::DuplicatedIdentifier {
+                position: r#for.identifier.get_position(),
+            });
         }
 
         let identifier_type = SemanticType::Any;
@@ -52,7 +55,11 @@ impl ForAnalyzer {
 
             // Verifies whether the both types are numbers or not.
             if !right_analyzer.return_type.is_number() || !left_analyzer.return_type.is_number() {
-                diagnosis.push(SemanticError::InvalidRangeOperands);
+                diagnosis.push(SemanticError::InvalidRangeOperands {
+                    left: left_analyzer.return_type.clone(),
+                    right: right_analyzer.return_type.clone(),
+                    position: range.operator.get_position(),
+                });
             }
 
             // REVIEW: Should web check the type? In order to ensure that the types are both integers?
@@ -73,6 +80,7 @@ impl ForAnalyzer {
             diagnosis.push(SemanticError::ExpectedType {
                 expected: SemanticType::Range,
                 found: analyzer.return_type,
+                position: r#for.expression.get_position(),
             });
 
             scope.borrow_mut().insert(Symbol::Variable {

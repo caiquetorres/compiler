@@ -1,8 +1,8 @@
-use crate::lang::lexer::token_kind::TokenKind;
-use crate::lang::syntax::statements::assignment::Assignment;
 use crate::lang::semantic::expressions::expression_analyzer::ExpressionAnalyzer;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
+use crate::lang::syntax::statements::assignment::Assignment;
+use crate::lang::{lexer::token_kind::TokenKind, position::Positioned};
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -18,7 +18,9 @@ impl AssignmentAnalyzer {
         diagnosis.extend(left_analyzer.diagnosis);
 
         if !left_analyzer.changeable {
-            diagnosis.push(SemanticError::ValueCannotBeReassigned);
+            diagnosis.push(SemanticError::ValueCannotBeReassigned {
+                position: assignment.left.get_position(),
+            });
         }
 
         let right_analyzer = ExpressionAnalyzer::analyze(&assignment.right, Rc::clone(&scope));
@@ -33,16 +35,24 @@ impl AssignmentAnalyzer {
         | TokenKind::CircumflexEquals = &assignment.operator.token.kind
         {
             if !left_analyzer.return_type.is_number() {
-                diagnosis.push(SemanticError::InvalidLeftOperand)
+                diagnosis.push(SemanticError::InvalidLeftOperand {
+                    position: assignment.left.get_position(),
+                })
             } else if !right_analyzer.return_type.is_number() {
-                diagnosis.push(SemanticError::InvalidRightOperand)
+                diagnosis.push(SemanticError::InvalidRightOperand {
+                    position: assignment.right.get_position(),
+                })
             }
         }
 
         if left_analyzer.return_type != right_analyzer.return_type
             && (!left_analyzer.return_type.is_number() || !right_analyzer.return_type.is_number())
         {
-            diagnosis.push(SemanticError::TypeMismatch)
+            diagnosis.push(SemanticError::TypeMismatch {
+                left: left_analyzer.return_type,
+                right: right_analyzer.return_type,
+                position: assignment.operator.get_position(),
+            })
         }
 
         Self { diagnosis }

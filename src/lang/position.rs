@@ -4,6 +4,10 @@ pub struct Position {
     pub column: usize,
 }
 
+pub trait Positioned {
+    fn get_position(&self) -> Position;
+}
+
 impl Position {
     pub fn new(column: usize, line: usize) -> Self {
         Self { column, line }

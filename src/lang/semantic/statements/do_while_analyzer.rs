@@ -1,11 +1,12 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::lang::syntax::statements::do_while::DoWhile;
+use crate::lang::position::Positioned;
 use crate::lang::semantic::analyzer::Scopes;
 use crate::lang::semantic::expressions::expression_analyzer::ExpressionAnalyzer;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
+use crate::lang::syntax::statements::do_while::DoWhile;
 
 use super::block_analyzer::BlockAnalyzer;
 
@@ -45,6 +46,7 @@ impl DoWhileAnalyzer {
             diagnosis.push(SemanticError::ExpectedType {
                 expected: SemanticType::Bool,
                 found: analyzer.return_type,
+                position: do_while.expression.get_position(),
             })
         }
 

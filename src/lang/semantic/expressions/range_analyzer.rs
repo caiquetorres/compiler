@@ -1,10 +1,11 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::lang::lexer::token_kind::TokenKind;
-use crate::lang::syntax::expressions::range::Range;
+use crate::lang::position::Positioned;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
+use crate::lang::syntax::expressions::range::Range;
 
 use super::expression_analyzer::ExpressionAnalyzer;
 
@@ -32,7 +33,11 @@ impl RangeAnalyzer {
             if left_return_type.is_number() && right_return_type.is_number() {
                 return_type = SemanticType::Range;
             } else {
-                diagnosis.push(SemanticError::InvalidRangeOperands)
+                diagnosis.push(SemanticError::InvalidRangeOperands {
+                    left: left_return_type,
+                    right: right_return_type,
+                    position: range.operator.get_position(),
+                })
             }
         }
 

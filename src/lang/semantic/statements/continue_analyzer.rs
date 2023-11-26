@@ -1,8 +1,9 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::lang::syntax::statements::r#continue::Continue;
+use crate::lang::position::Positioned;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
+use crate::lang::syntax::statements::r#continue::Continue;
 
 /// Analyzer responsible for semantic analysis of 'continue' statements.
 pub struct ContinueAnalyzer {
@@ -21,11 +22,13 @@ impl ContinueAnalyzer {
     /// # Returns
     ///
     /// A `ContinueAnalyzer` instance containing the analysis results.
-    pub fn analyze(_: &Continue, scope: Rc<RefCell<Scope>>) -> Self {
+    pub fn analyze(r#continue: &Continue, scope: Rc<RefCell<Scope>>) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         if !scope.borrow().is_loop() {
-            diagnosis.push(SemanticError::InvalidContinue);
+            diagnosis.push(SemanticError::InvalidContinue {
+                position: r#continue.get_position(),
+            });
         }
 
         Self { diagnosis }

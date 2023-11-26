@@ -1,4 +1,4 @@
-use crate::lang::{lexer::token::Token, syntax::tree_display::TreeDisplay};
+use crate::lang::{lexer::token::Token, position::Positioned, syntax::tree_display::TreeDisplay};
 
 #[derive(Clone, Debug)]
 pub struct AssignmentOperator {
@@ -10,6 +10,12 @@ impl AssignmentOperator {
     pub fn new(token: Token) -> Self {
         let name = token.value.clone();
         Self { name, token }
+    }
+}
+
+impl Positioned for AssignmentOperator {
+    fn get_position(&self) -> crate::lang::position::Position {
+        self.token.position
     }
 }
 

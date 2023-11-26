@@ -1,6 +1,6 @@
-use crate::lang::syntax::statements::r#break::Break;
-use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
+use crate::lang::syntax::statements::r#break::Break;
+use crate::lang::{position::Positioned, semantic::scope::Scope};
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -21,11 +21,13 @@ impl BreakAnalyzer {
     /// # Returns
     ///
     /// A `BreakAnalyzer` instance containing the analysis results.
-    pub fn analyze(_: &Break, scope: Rc<RefCell<Scope>>) -> Self {
+    pub fn analyze(r#break: &Break, scope: Rc<RefCell<Scope>>) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         if !scope.borrow().is_loop() {
-            diagnosis.push(SemanticError::InvalidBreak);
+            diagnosis.push(SemanticError::InvalidBreak {
+                position: r#break.get_position(),
+            });
         }
 
         Self { diagnosis }

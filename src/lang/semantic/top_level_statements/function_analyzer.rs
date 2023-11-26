@@ -1,4 +1,4 @@
-use crate::lang::syntax::top_level_statements::function::Function;
+use crate::lang::position::Positioned;
 use crate::lang::semantic::analyzer::Scopes;
 use crate::lang::semantic::scope::Func;
 use crate::lang::semantic::semantic_type::SemanticType;
@@ -6,6 +6,7 @@ use crate::lang::semantic::shared::type_analyzer::TypeAnalyzer;
 use crate::lang::semantic::statements::block_analyzer::BlockAnalyzer;
 use crate::lang::semantic::symbol::Symbol;
 use crate::lang::semantic::{scope::Scope, semantic_error::SemanticError};
+use crate::lang::syntax::top_level_statements::function::Function;
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -22,7 +23,9 @@ impl FunctionAnalyzer {
 
         // Verify if the function was already declared or if some builtin identifier has the same name.
         if let Some(_) = global_scope.borrow().get(&function_name) {
-            diagnosis.push(SemanticError::DuplicatedIdentifier);
+            diagnosis.push(SemanticError::DuplicatedIdentifier {
+                position: function.identifier.get_position(),
+            });
         }
 
         let mut params_types: Vec<SemanticType> = vec![];
@@ -32,7 +35,9 @@ impl FunctionAnalyzer {
 
             // Verify if the parameter was already declared or if some builtin identifier has the same name.
             if let Some(_) = global_scope.borrow().get(&param_name) {
-                diagnosis.push(SemanticError::DuplicatedIdentifier);
+                diagnosis.push(SemanticError::DuplicatedIdentifier {
+                    position: param_declaration.identifier.get_position(),
+                });
             }
 
             let analyzer =
@@ -54,19 +59,33 @@ impl FunctionAnalyzer {
 
         if let SemanticType::Function(_, function_return_type) = &function_type {
             if matches!(function_return_type.as_ref(), SemanticType::Array(_, _)) {
-                diagnosis.push(SemanticError::CannotReturnArray)
+                diagnosis.push(SemanticError::CannotReturnArray {
+                    position: function.r#type.as_ref().unwrap().get_position(),
+                })
+            }
+        }
+
+        if let SemanticType::Function(_, function_return_type) = &function_type {
+            if matches!(function_return_type.as_ref(), SemanticType::Function(_, _)) {
+                diagnosis.push(SemanticError::CannotReturnFunction {
+                    position: function.r#type.as_ref().unwrap().get_position(),
+                })
             }
         }
 
         // Verify is the main function and if it has parameters.
         if function_name == "main" && function.params_declaration.params.len() != 0 {
-            diagnosis.push(SemanticError::MainFunctionWithParameters);
+            diagnosis.push(SemanticError::MainFunctionWithParameters {
+                position: function.identifier.get_position(),
+            });
         }
 
         if function_name == "main" {
             if let SemanticType::Function(_, function_return_type) = &function_type {
                 if function_return_type.as_ref().clone() != SemanticType::Void {
-                    diagnosis.push(SemanticError::MainFunctionWithReturn);
+                    diagnosis.push(SemanticError::MainFunctionWithReturn {
+                        position: function.r#type.as_ref().unwrap().get_position(),
+                    });
                 }
             }
         }
@@ -111,7 +130,9 @@ impl FunctionAnalyzer {
 
             // Verify if the parameter was already declared or if some builtin identifier has the same name.
             if let Some(_) = function_scope.get(&param_name) {
-                diagnosis.push(SemanticError::DuplicatedIdentifier);
+                diagnosis.push(SemanticError::DuplicatedIdentifier {
+                    position: param_declaration.identifier.get_position(),
+                });
             }
 
             let analyzer =

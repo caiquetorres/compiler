@@ -1,6 +1,7 @@
-use crate::lang::syntax::expressions::array::Array;
+use crate::lang::position::Positioned;
 use crate::lang::semantic::semantic_type::SemanticType;
 use crate::lang::semantic::{scope::Scope, semantic_error::SemanticError};
+use crate::lang::syntax::expressions::array::Array;
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -41,7 +42,6 @@ impl ArrayAnalyzer {
             // REVIEW: Save the elements which the type is invalid.
             // REVIEW: Improve the following logic
 
-            let mut all_same = true;
             for (_, expression) in array.expressions.iter().enumerate() {
                 let analyzer = ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
 
@@ -50,11 +50,11 @@ impl ArrayAnalyzer {
                 let same_or_compatible_types = analyzer.return_type == first_element_type
                     || analyzer.return_type.is_number() && first_element_type.is_number();
 
-                all_same = all_same && same_or_compatible_types;
-            }
-
-            if !all_same {
-                diagnosis.push(SemanticError::InvalidArrayElement)
+                if !same_or_compatible_types {
+                    diagnosis.push(SemanticError::InvalidArrayElement {
+                        position: expression.get_position(),
+                    });
+                }
             }
 
             return_type =

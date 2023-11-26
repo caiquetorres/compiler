@@ -1,9 +1,10 @@
-use crate::lang::syntax::statements::r#let::Let;
+use crate::lang::position::Positioned;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
 use crate::lang::semantic::shared::type_analyzer::TypeAnalyzer;
 use crate::lang::semantic::symbol::Symbol;
 use crate::lang::semantic::{expressions::expression_analyzer::ExpressionAnalyzer, scope::Scope};
+use crate::lang::syntax::statements::r#let::Let;
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -33,7 +34,9 @@ impl LetAnalyzer {
 
         // Verify if the function was already declared or if some builtin identifier has the same name.
         if let Some(_) = scope.borrow().get(&variable_name) {
-            diagnosis.push(SemanticError::DuplicatedIdentifier);
+            diagnosis.push(SemanticError::DuplicatedIdentifier {
+                position: r#let.identifier.get_position(),
+            });
         }
 
         if let Some(expression) = &r#let.expression {
@@ -49,6 +52,12 @@ impl LetAnalyzer {
             let analyzer = TypeAnalyzer::analyze(r#type, Rc::clone(&scope));
             diagnosis.extend(analyzer.diagnosis);
             variable_type = analyzer.result_type;
+
+            if let SemanticType::Void = variable_type {
+                diagnosis.push(SemanticError::MissingTypeOrExpression {
+                    position: r#let.identifier.get_position(),
+                })
+            }
         }
 
         // The code will always use the explicit type in case mismatched types. That's way the variable_type receives the result of the TypeAnalyzer analyses.
@@ -61,12 +70,15 @@ impl LetAnalyzer {
                 diagnosis.push(SemanticError::ExpectedType {
                     expected: variable_type.clone(),
                     found: expression_type.clone(),
+                    position: r#let.expression.as_ref().unwrap().get_position(),
                 });
             }
         }
 
         if r#let.r#type.is_none() && r#let.expression.is_none() {
-            diagnosis.push(SemanticError::MissingTypeOrExpression);
+            diagnosis.push(SemanticError::MissingTypeOrExpression {
+                position: r#let.identifier.get_position(),
+            });
         }
 
         // Adds the new variable in the symbol table.

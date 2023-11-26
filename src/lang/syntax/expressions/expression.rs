@@ -6,19 +6,29 @@ use super::literal::Literal;
 use super::parenthesized::Parenthesized;
 use super::range::Range;
 use super::unary::Unary;
+use crate::lang::position::{Position, Positioned};
 use crate::lang::syntax::shared::identifier::Identifier;
 use crate::lang::syntax::tree_display::TreeDisplay;
 
 #[derive(Clone, Debug)]
 pub enum ExpressionMeta {
-    Index(Box<Expression>, Box<Option<ExpressionMeta>>),
-    Call(Vec<Expression>, Box<Option<ExpressionMeta>>),
+    Index(Box<Expression>, Box<Option<ExpressionMeta>>, Position),
+    Call(Vec<Expression>, Box<Option<ExpressionMeta>>, Position),
+}
+
+impl Positioned for ExpressionMeta {
+    fn get_position(&self) -> crate::lang::position::Position {
+        match &self {
+            Self::Index(_, _, position) => *position,
+            Self::Call(_, _, position) => *position,
+        }
+    }
 }
 
 impl TreeDisplay for ExpressionMeta {
     fn display(&self, layer: usize) {
         match &self {
-            Self::Index(expression, meta) => {
+            Self::Index(expression, meta, _) => {
                 println!("{}Index", "  ".repeat(layer));
                 expression.display(layer + 1);
 
@@ -26,7 +36,7 @@ impl TreeDisplay for ExpressionMeta {
                     meta.display(layer + 1);
                 }
             }
-            Self::Call(expressions, meta) => {
+            Self::Call(expressions, meta, _) => {
                 println!("{}Call", "  ".repeat(layer));
 
                 for expression in expressions {
@@ -50,6 +60,20 @@ pub enum Expression {
     Parenthesized(Parenthesized, Option<ExpressionMeta>),
     Range(Range),
     Array(Array),
+}
+
+impl Positioned for Expression {
+    fn get_position(&self) -> crate::lang::position::Position {
+        match &self {
+            Self::Identifier(identifier, _) => identifier.get_position(),
+            Self::Literal(literal) => literal.get_position(),
+            Self::Unary(unary) => unary.get_position(),
+            Self::Binary(binary) => binary.get_position(),
+            Self::Parenthesized(parenthesized, _) => parenthesized.get_position(),
+            Self::Range(range) => range.get_position(),
+            Self::Array(array) => array.get_position(),
+        }
+    }
 }
 
 impl Display for Expression {

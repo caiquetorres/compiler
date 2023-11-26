@@ -89,13 +89,20 @@ impl SemanticType {
     pub fn from_syntax(r#type: SyntaxType) -> Self {
         match r#type {
             SyntaxType::Simple { identifier } => Self::from(identifier.value),
-            SyntaxType::Array { r#type, size } => {
+            SyntaxType::Array { r#type, size, .. } => {
                 let size = size.value.parse::<usize>().unwrap();
                 Self::Array(Box::new(Self::from_syntax(r#type.as_ref().clone())), size)
             }
-            SyntaxType::Reference { inner_type } => {
+            SyntaxType::Reference { inner_type, .. } => {
                 Self::Ref(Box::new(Self::from_syntax(inner_type.as_ref().clone())))
             }
+            SyntaxType::Function { params, r#type, .. } => Self::Function(
+                params
+                    .iter()
+                    .map(|param| Self::from_syntax(param.clone()))
+                    .collect(),
+                Box::new(Self::from_syntax(r#type.as_ref().clone())),
+            ),
         }
     }
 }
@@ -126,8 +133,16 @@ impl ToString for SemanticType {
             SemanticType::Array(inner_type, size) => {
                 format!("[{}; {}]", inner_type.to_string(), size)
             }
-            SemanticType::Function(_, _) => {
-                format!("")
+            SemanticType::Function(params, return_type) => {
+                format!(
+                    "({}) -> {}",
+                    params
+                        .iter()
+                        .map(|param| param.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    return_type.to_string()
+                )
             }
         }
     }

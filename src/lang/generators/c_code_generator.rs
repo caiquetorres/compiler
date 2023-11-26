@@ -2,6 +2,10 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::lang::{
     lexer::token_kind::TokenKind,
+    semantic::{
+        analyzer::Scopes, expressions::expression_analyzer::ExpressionAnalyzer, scope::Scope,
+        semantic_type::SemanticType, symbol::Symbol,
+    },
     syntax::{
         compilation_unit::CompilationUnit,
         expressions::{
@@ -16,13 +20,16 @@ use crate::lang::{
         },
         top_level_statements::{function::Function, top_level_statement::TopLevelStatement},
     },
-    semantic::{
-        analyzer::Scopes, expressions::expression_analyzer::ExpressionAnalyzer, scope::Scope,
-        semantic_type::SemanticType, symbol::Symbol,
-    },
 };
 
-fn convert_to_c_type(lang_type: SemanticType) -> String {
+fn generate_array_description(r#type: &SemanticType, code: &mut String) {
+    if let SemanticType::Array(array_type, size) = r#type {
+        code.push_str(&format!("[{}]", size));
+        generate_array_description(&array_type, code);
+    }
+}
+
+fn convert_to_c_type(identifier: Option<String>, lang_type: SemanticType) -> String {
     match lang_type {
         SemanticType::Void => "void",
         SemanticType::Char => "unsigned char",
@@ -39,6 +46,37 @@ fn convert_to_c_type(lang_type: SemanticType) -> String {
         SemanticType::F64 => "double",
         SemanticType::String => "char*",
         SemanticType::Any => "void *",
+        SemanticType::Function(params, return_type) => {
+            let return_type_name =
+                convert_to_c_type(identifier.clone(), return_type.as_ref().clone());
+
+            let param_names: String = params
+                .iter()
+                .map(|param: &SemanticType| {
+                    let mut result = String::new();
+
+                    result.push_str(&convert_to_c_type(None, param.clone()));
+
+                    generate_array_description(param, &mut result);
+
+                    return result;
+                })
+                .collect::<Vec<String>>()
+                .join(",");
+
+            if let Some(identifier_name) = identifier {
+                let result = format!(
+                    "{}(*{})({})",
+                    return_type_name,
+                    identifier_name.clone(),
+                    param_names
+                );
+                return result;
+            } else {
+                let result = format!("{}(*)({})", return_type_name, param_names);
+                return result;
+            }
+        }
         SemanticType::Array(array_type, _) => {
             let mut root_type = array_type.as_ref().clone();
 
@@ -50,7 +88,7 @@ fn convert_to_c_type(lang_type: SemanticType) -> String {
                 }
             }
 
-            let result = convert_to_c_type(root_type.clone());
+            let result = convert_to_c_type(identifier, root_type.clone());
             return result;
         }
         _ => unreachable!(),
@@ -108,19 +146,27 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
 
         code.push_str(&format!(
             "{} {}(",
-            convert_to_c_type(function_return_type),
-            function_name
+            convert_to_c_type(Some(function_name.clone()), function_return_type),
+            function_name.clone()
         ));
 
         for (index, param) in function.params_declaration.params.iter().enumerate() {
             let r#type = SemanticType::from_syntax(param.r#type.clone());
-            code.push_str(&format!(
-                "{} {}",
-                convert_to_c_type(r#type.clone()),
-                param.identifier.name
-            ));
 
-            self.generate_array_description(&r#type, code);
+            if let SemanticType::Function(_, _) = r#type {
+                code.push_str(&format!(
+                    "{}",
+                    convert_to_c_type(Some(param.identifier.name.clone()), r#type.clone())
+                ));
+            } else {
+                code.push_str(&format!(
+                    "{} {}",
+                    convert_to_c_type(Some(param.identifier.name.clone()), r#type.clone()),
+                    param.identifier.name
+                ));
+            }
+
+            generate_array_description(&r#type, code);
 
             if index != function.params_declaration.params.len() - 1 {
                 code.push_str(",");
@@ -145,19 +191,27 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
 
         code.push_str(&format!(
             "{} {}(",
-            convert_to_c_type(function_return_type),
-            function_name
+            convert_to_c_type(Some(function_name.clone()), function_return_type),
+            function_name.clone()
         ));
 
         for (index, param) in function.params_declaration.params.iter().enumerate() {
             let r#type = SemanticType::from_syntax(param.r#type.clone());
-            code.push_str(&format!(
-                "{} {}",
-                convert_to_c_type(r#type.clone()),
-                param.identifier.name
-            ));
 
-            self.generate_array_description(&r#type, code);
+            if let SemanticType::Function(_, _) = r#type {
+                code.push_str(&format!(
+                    "{}",
+                    convert_to_c_type(Some(param.identifier.name.clone()), r#type.clone())
+                ));
+            } else {
+                code.push_str(&format!(
+                    "{} {}",
+                    convert_to_c_type(Some(param.identifier.name.clone()), r#type.clone()),
+                    param.identifier.name
+                ));
+            }
+
+            generate_array_description(&r#type, code);
 
             if index != function.params_declaration.params.len() - 1 {
                 code.push_str(",");
@@ -241,25 +295,25 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         }
     }
 
-    fn generate_array_description(&self, r#type: &SemanticType, code: &mut String) {
-        if let SemanticType::Array(array_type, size) = r#type {
-            code.push_str(&format!("[{}]", size));
-            self.generate_array_description(&array_type, code);
-        }
-    }
-
     fn generate_let_statement(&self, r#let: &Let, scope: Rc<RefCell<Scope>>, code: &mut String) {
         let identifier_name = r#let.identifier.name.clone();
         let type_identifier = scope.borrow().get(&identifier_name).unwrap();
 
         if let Symbol::Variable { symbol_type, .. } = type_identifier {
-            code.push_str(&format!(
-                "{} {}",
-                convert_to_c_type(symbol_type.clone()),
-                identifier_name
-            ));
+            if let SemanticType::Function(_, _) = symbol_type {
+                code.push_str(&format!(
+                    "{}",
+                    convert_to_c_type(Some(identifier_name.clone()), symbol_type.clone()),
+                ));
+            } else {
+                code.push_str(&format!(
+                    "{} {}",
+                    convert_to_c_type(Some(identifier_name.clone()), symbol_type.clone()),
+                    identifier_name.clone()
+                ));
+            }
 
-            self.generate_array_description(&symbol_type, code);
+            generate_array_description(&symbol_type, code);
         }
 
         if let Some(expression) = &r#let.expression {
@@ -272,7 +326,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
 
     fn generate_meta(&self, meta: &ExpressionMeta, scope: Rc<RefCell<Scope>>, code: &mut String) {
         match meta {
-            ExpressionMeta::Call(expressions, meta) => {
+            ExpressionMeta::Call(expressions, meta, _) => {
                 code.push_str("(");
 
                 for (index, expression) in expressions.iter().enumerate() {
@@ -289,7 +343,7 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
                     self.generate_meta(meta, Rc::clone(&scope), code);
                 }
             }
-            ExpressionMeta::Index(expression, meta) => {
+            ExpressionMeta::Index(expression, meta, _) => {
                 code.push_str("[");
                 self.generate_expression(expression, Rc::clone(&scope), code);
                 code.push_str("]");
@@ -419,7 +473,10 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
 
             match &symbol {
                 Symbol::Variable { symbol_type, .. } => {
-                    code.push_str(&format!("{} ", convert_to_c_type(symbol_type.clone())));
+                    code.push_str(&format!(
+                        "{} ",
+                        convert_to_c_type(Some(r#for.identifier.name.clone()), symbol_type.clone())
+                    ));
                 }
                 _ => unreachable!(),
             }

@@ -1,11 +1,12 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::lang::syntax::expressions::expression::{Expression, ExpressionMeta};
-use crate::lang::syntax::expressions::parenthesized::Parenthesized;
+use crate::lang::position::Positioned;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
+use crate::lang::syntax::expressions::expression::{Expression, ExpressionMeta};
+use crate::lang::syntax::expressions::parenthesized::Parenthesized;
 
 use super::expression_analyzer::ExpressionAnalyzer;
 use super::expression_meta_analyzer::ExpressionMetaAnalyzer;
@@ -31,7 +32,9 @@ impl ParenthesizedAnalyzer {
         diagnosis.extend(analyzer.diagnosis);
 
         if let Expression::Array(_) = parenthesized.expression.as_ref() {
-            diagnosis.push(SemanticError::ImmediateArrayUsageWithoutAssignment);
+            diagnosis.push(SemanticError::ImmediateArrayUsageWithoutAssignment {
+                position: parenthesized.expression.get_position(),
+            });
             return_type = SemanticType::Any;
             changeable = analyzer.changeable;
         } else {

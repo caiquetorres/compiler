@@ -1,9 +1,9 @@
 use crate::lang::lexer::token::Token;
 use crate::lang::lexer::token_kind::TokenKind;
-use crate::lang::syntax::shared::syntax_type::SyntaxType;
 use crate::lang::semantic::{
     scope::Scope, semantic_error::SemanticError, semantic_type::SemanticType,
 };
+use crate::lang::syntax::shared::syntax_type::SyntaxType;
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -32,12 +32,39 @@ impl TypeAnalyzer {
             SyntaxType::Simple { identifier } => {
                 Self::analyze_simple_type(identifier, Rc::clone(&scope))
             }
-            SyntaxType::Array { r#type, size } => {
+            SyntaxType::Array { r#type, size, .. } => {
                 Self::analyze_array_type(r#type, size, Rc::clone(&scope))
             }
-            SyntaxType::Reference { inner_type } => {
+            SyntaxType::Reference { inner_type, .. } => {
                 Self::analyze_reference_type(inner_type, Rc::clone(&scope))
             }
+            SyntaxType::Function { params, r#type, .. } => {
+                Self::analyze_function_type(params, r#type, Rc::clone(&scope))
+            }
+        }
+    }
+
+    fn analyze_function_type(
+        params: &Vec<SyntaxType>,
+        r#type: &Box<SyntaxType>,
+        scope: Rc<RefCell<Scope>>,
+    ) -> Self {
+        let mut semantic_params: Vec<SemanticType> = vec![];
+
+        let mut diagnosis: Vec<SemanticError> = vec![];
+
+        for param in params {
+            let analyzer = Self::analyze(param, Rc::clone(&scope));
+            diagnosis.extend(analyzer.diagnosis);
+            semantic_params.push(analyzer.result_type);
+        }
+
+        let analyzer = Self::analyze(r#type, Rc::clone(&scope));
+        diagnosis.extend(analyzer.diagnosis);
+
+        Self {
+            diagnosis,
+            result_type: SemanticType::Function(semantic_params, Box::new(analyzer.result_type)),
         }
     }
 
@@ -60,7 +87,9 @@ impl TypeAnalyzer {
         if let Some(_) = scope.borrow().get(&variable_type_name) {
             result_type = SemanticType::from(variable_type_name);
         } else {
-            diagnosis.push(SemanticError::IdentifierNotFound);
+            diagnosis.push(SemanticError::IdentifierNotFound {
+                position: token_identifier.position,
+            });
         }
 
         Self {
@@ -121,8 +150,8 @@ impl TypeAnalyzer {
     /// A `TypeAnalyzer` instance containing the analysis results.
     fn analyze_reference_type(inner_type: &Box<SyntaxType>, scope: Rc<RefCell<Scope>>) -> Self {
         let mut diagnosis: Vec<SemanticError> = vec![];
-        let analyzer = Self::analyze(inner_type, Rc::clone(&scope));
 
+        let analyzer = Self::analyze(inner_type, Rc::clone(&scope));
         diagnosis.extend(analyzer.diagnosis);
 
         let result_type = SemanticType::Ref(Box::new(analyzer.result_type));

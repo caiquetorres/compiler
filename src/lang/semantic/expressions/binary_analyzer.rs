@@ -2,10 +2,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::lang::lexer::token_kind::TokenKind;
-use crate::lang::syntax::expressions::binary::Binary;
+use crate::lang::position::Positioned;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
+use crate::lang::syntax::expressions::binary::Binary;
 
 use super::expression_analyzer::ExpressionAnalyzer;
 
@@ -36,7 +37,11 @@ impl BinaryAnalyzer {
                 } else if left_return_type == right_return_type {
                     return_type = SemanticType::Bool;
                 } else {
-                    diagnosis.push(SemanticError::EqualityTypeMismatch)
+                    diagnosis.push(SemanticError::EqualityTypeMismatch {
+                        position: binary.operator.get_position(),
+                        left: left_return_type,
+                        right: right_return_type,
+                    })
                 }
             }
             TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash => {
@@ -46,7 +51,11 @@ impl BinaryAnalyzer {
                         right_return_type,
                     ]);
                 } else {
-                    diagnosis.push(SemanticError::InvalidOperator)
+                    diagnosis.push(SemanticError::InvalidOperator {
+                        position: binary.operator.get_position(),
+                        left: left_return_type,
+                        right: right_return_type,
+                    })
                 }
             }
             TokenKind::Mod
@@ -60,7 +69,11 @@ impl BinaryAnalyzer {
                         right_return_type,
                     ]);
                 } else {
-                    diagnosis.push(SemanticError::InvalidOperator)
+                    diagnosis.push(SemanticError::InvalidOperator {
+                        position: binary.operator.get_position(),
+                        left: left_return_type,
+                        right: right_return_type,
+                    })
                 }
             }
             TokenKind::GreaterThan
@@ -70,7 +83,11 @@ impl BinaryAnalyzer {
                 if left_return_type.is_number() && right_return_type.is_number() {
                     return_type = SemanticType::Bool;
                 } else {
-                    diagnosis.push(SemanticError::InvalidOperator)
+                    diagnosis.push(SemanticError::InvalidOperator {
+                        position: binary.operator.get_position(),
+                        left: left_return_type,
+                        right: right_return_type,
+                    })
                 }
             }
             TokenKind::AmpersandAmpersand | TokenKind::PipePipe => {
@@ -78,7 +95,11 @@ impl BinaryAnalyzer {
                 {
                     return_type = SemanticType::Bool;
                 } else {
-                    diagnosis.push(SemanticError::InvalidOperator)
+                    diagnosis.push(SemanticError::InvalidOperator {
+                        position: binary.operator.get_position(),
+                        left: left_return_type,
+                        right: right_return_type,
+                    })
                 }
             }
             _ => unreachable!(),

@@ -1,4 +1,5 @@
 use crate::lang::lexer::token::Token;
+use crate::lang::position::{Position, Positioned};
 use crate::lang::syntax::tree_display::TreeDisplay;
 
 #[derive(Clone, Debug)]
@@ -7,6 +8,17 @@ pub enum Literal {
     Char(Token),
     Number(Token),
     String(Token),
+}
+
+impl Positioned for Literal {
+    fn get_position(&self) -> Position {
+        match &self {
+            Literal::Boolean(token)
+            | Literal::Char(token)
+            | Literal::String(token)
+            | Literal::Number(token) => token.position,
+        }
+    }
 }
 
 impl TreeDisplay for Literal {

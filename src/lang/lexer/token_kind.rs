@@ -67,6 +67,7 @@ pub enum TokenKind {
     PrintlnKeyword,
     Ref,
     Deref,
+    ArrowRight,
 }
 
 impl Display for TokenKind {
