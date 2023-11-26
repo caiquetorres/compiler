@@ -11,7 +11,7 @@ fun main() {
     }
 }
 
-fun fib(n: i32): i32 {
+fun fib(n: i32) -> i32 {
     let a = 0;
     let b = 1;
     let c: i32;

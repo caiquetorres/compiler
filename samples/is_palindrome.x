@@ -9,7 +9,7 @@ fun main() {
     }
 }
 
-fun isPalindrome(str: string, size: i32): bool {
+fun isPalindrome(str: string, size: i32) -> bool {
     let left = 0;
     let right = size - 1;
 

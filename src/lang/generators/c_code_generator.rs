@@ -8,10 +8,7 @@ use crate::lang::{
     },
     syntax::{
         compilation_unit::CompilationUnit,
-        expressions::{
-            expression::{Expression, ExpressionMeta},
-            literal::Literal,
-        },
+        expressions::expression::Expression,
         shared::block::Block,
         statements::{
             assignment::Assignment, do_while::DoWhile, print::Print, r#break::Break,
@@ -21,6 +18,8 @@ use crate::lang::{
         top_level_statements::{function::Function, top_level_statement::TopLevelStatement},
     },
 };
+
+use super::{array_generator::ArrayGenerator, expression_generator::ExpressionGenerator};
 
 fn generate_array_description(r#type: &SemanticType, code: &mut String) {
     if let SemanticType::Array(array_type, size) = r#type {
@@ -153,20 +152,24 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         for (index, param) in function.params_declaration.params.iter().enumerate() {
             let r#type = SemanticType::from_syntax(param.r#type.clone());
 
-            if let SemanticType::Function(_, _) = r#type {
-                code.push_str(&format!(
-                    "{}",
-                    convert_to_c_type(Some(param.identifier.name.clone()), r#type.clone())
-                ));
-            } else {
-                code.push_str(&format!(
-                    "{} {}",
-                    convert_to_c_type(Some(param.identifier.name.clone()), r#type.clone()),
-                    param.identifier.name
-                ));
+            match r#type {
+                SemanticType::Function(_, _) => {
+                    code.push_str(&format!(
+                        "{}",
+                        convert_to_c_type(Some(param.identifier.name.clone()), r#type.clone())
+                    ));
+                }
+                SemanticType::Array(_, _) => {
+                    code.push_str(&ArrayGenerator::generate_declaration(None, &r#type))
+                }
+                _ => {
+                    code.push_str(&format!(
+                        "{} {}",
+                        convert_to_c_type(Some(param.identifier.name.clone()), r#type.clone()),
+                        param.identifier.name
+                    ));
+                }
             }
-
-            generate_array_description(&r#type, code);
 
             if index != function.params_declaration.params.len() - 1 {
                 code.push_str(",");
@@ -198,20 +201,25 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         for (index, param) in function.params_declaration.params.iter().enumerate() {
             let r#type = SemanticType::from_syntax(param.r#type.clone());
 
-            if let SemanticType::Function(_, _) = r#type {
-                code.push_str(&format!(
-                    "{}",
-                    convert_to_c_type(Some(param.identifier.name.clone()), r#type.clone())
-                ));
-            } else {
-                code.push_str(&format!(
-                    "{} {}",
-                    convert_to_c_type(Some(param.identifier.name.clone()), r#type.clone()),
-                    param.identifier.name
-                ));
+            match r#type {
+                SemanticType::Function(_, _) => {
+                    code.push_str(&format!(
+                        "{}",
+                        convert_to_c_type(Some(param.identifier.name.clone()), r#type.clone())
+                    ));
+                }
+                SemanticType::Array(_, _) => code.push_str(&ArrayGenerator::generate_declaration(
+                    Some(param.identifier.name.clone()),
+                    &r#type,
+                )),
+                _ => {
+                    code.push_str(&format!(
+                        "{} {}",
+                        convert_to_c_type(Some(param.identifier.name.clone()), r#type.clone()),
+                        param.identifier.name
+                    ));
+                }
             }
-
-            generate_array_description(&r#type, code);
 
             if index != function.params_declaration.params.len() - 1 {
                 code.push_str(",");
@@ -305,6 +313,11 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
                     "{}",
                     convert_to_c_type(Some(identifier_name.clone()), symbol_type.clone()),
                 ));
+            } else if let SemanticType::Array(_, _) = symbol_type {
+                code.push_str(&ArrayGenerator::generate_declaration(
+                    Some(r#let.identifier.name.clone()),
+                    &symbol_type,
+                ));
             } else {
                 code.push_str(&format!(
                     "{} {}",
@@ -313,46 +326,23 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
                 ));
             }
 
-            generate_array_description(&symbol_type, code);
-        }
-
-        if let Some(expression) = &r#let.expression {
-            code.push_str("=");
-            self.generate_expression(expression, Rc::clone(&scope), code);
+            if let Some(expression) = &r#let.expression {
+                code.push_str("=");
+                self.generate_expression(expression, Rc::clone(&scope), code);
+            } else {
+                if let SemanticType::Array(_, _) = symbol_type {
+                    code.push_str("=");
+                    code.push_str(&ArrayGenerator::generate_expression(
+                        &symbol_type,
+                        &vec![],
+                        &None,
+                        Rc::clone(&scope),
+                    ));
+                }
+            }
         }
 
         code.push_str(";")
-    }
-
-    fn generate_meta(&self, meta: &ExpressionMeta, scope: Rc<RefCell<Scope>>, code: &mut String) {
-        match meta {
-            ExpressionMeta::Call(expressions, meta, _) => {
-                code.push_str("(");
-
-                for (index, expression) in expressions.iter().enumerate() {
-                    self.generate_expression(expression, Rc::clone(&scope), code);
-
-                    if index != expressions.len() - 1 {
-                        code.push_str(",");
-                    }
-                }
-
-                code.push_str(")");
-
-                if let Some(meta) = meta.as_ref() {
-                    self.generate_meta(meta, Rc::clone(&scope), code);
-                }
-            }
-            ExpressionMeta::Index(expression, meta, _) => {
-                code.push_str("[");
-                self.generate_expression(expression, Rc::clone(&scope), code);
-                code.push_str("]");
-
-                if let Some(meta) = meta.as_ref() {
-                    self.generate_meta(meta, Rc::clone(&scope), code);
-                }
-            }
-        }
     }
 
     fn generate_expression(
@@ -361,53 +351,10 @@ impl<'s, 'a> CCodeGenerator<'s, 'a> {
         scope: Rc<RefCell<Scope>>,
         code: &mut String,
     ) {
-        match expression {
-            Expression::Identifier(identifier, meta) => {
-                code.push_str(&identifier.name);
-
-                if let Some(meta) = &meta {
-                    self.generate_meta(meta, Rc::clone(&scope), code);
-                }
-            }
-            Expression::Array(array) => {
-                code.push_str("{");
-
-                for expression in &array.expressions {
-                    self.generate_expression(expression, Rc::clone(&scope), code);
-                    code.push_str(",");
-                }
-
-                code.push_str("}");
-            }
-            Expression::Unary(unary) => {
-                code.push_str(&unary.operator.token.value);
-                self.generate_expression(&unary.expression, Rc::clone(&scope), code);
-            }
-            Expression::Literal(literal) => match literal {
-                Literal::Number(token) => code.push_str(&token.value),
-                Literal::Char(token) => code.push_str(&format!("'{}'", token.value)),
-                Literal::String(token) => code.push_str(&format!("\"{}\"", token.value)),
-                Literal::Boolean(token) => match &token.value[..] {
-                    "true" => code.push_str("1"),
-                    _ => code.push_str("0"),
-                },
-            },
-            Expression::Binary(binary) => {
-                self.generate_expression(&binary.left, Rc::clone(&scope), code);
-                code.push_str(&binary.operator.token.value);
-                self.generate_expression(&binary.right, Rc::clone(&scope), code);
-            }
-            Expression::Parenthesized(parenthesized, meta) => {
-                code.push_str("(");
-                self.generate_expression(&parenthesized.expression, Rc::clone(&scope), code);
-                code.push_str(")");
-
-                if let Some(meta) = meta.as_ref() {
-                    self.generate_meta(meta, Rc::clone(&scope), code);
-                }
-            }
-            _ => {}
-        }
+        code.push_str(&ExpressionGenerator::generate(
+            expression,
+            Rc::clone(&scope),
+        ));
     }
 
     pub fn generate_assignment_statement(

@@ -121,10 +121,6 @@ pub enum SemanticError {
         position: Position,
     },
 
-    ImmediateArrayUsageWithoutAssignment {
-        position: Position,
-    },
-
     ExpectedType {
         expected: SemanticType,
         found: SemanticType,
@@ -330,13 +326,6 @@ impl Display for SemanticError {
                 write!(
                     f,
                     "Cannot return a function at Line {} and Column {}",
-                    position.line, position.column
-                )
-            }
-            Self::ImmediateArrayUsageWithoutAssignment { position } => {
-                write!(
-                    f,
-                    "Immediate array usage without assignment at Line {} and Column {}",
                     position.line, position.column
                 )
             }

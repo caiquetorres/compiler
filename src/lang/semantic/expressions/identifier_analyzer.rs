@@ -42,10 +42,7 @@ impl IdentifierAnalyzer {
                         changeable = analyzer.changeable;
                         return_type = analyzer.return_type;
                     } else {
-                        changeable = !matches!(
-                            symbol_type,
-                            SemanticType::Array(_, _) | SemanticType::Function(_, _)
-                        );
+                        changeable = !matches!(symbol_type, SemanticType::Function(_, _));
                         return_type = symbol_type.clone();
                     }
                 }

@@ -13,7 +13,7 @@ fun main() {
 }
 
 fun mergeSort(array: [i32; 10], left: i32, right: i32) {
-    if left < right {
+    if left < right {fua
         let mid = left + (right - left) / 2;
 
         mergeSort(array, left, mid);

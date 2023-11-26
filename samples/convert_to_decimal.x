@@ -12,7 +12,7 @@ fun main() {
     }
 }
 
-fun convertToDecimal(number: u64): u32 {
+fun convertToDecimal(number: u64) -> u32 {
     let n = number;
     let i = 0;
     let decimal = 0;
@@ -26,7 +26,7 @@ fun convertToDecimal(number: u64): u32 {
     return decimal;
 }
 
-fun pow(base: i32, exponent: i32): i32 {
+fun pow(base: i32, exponent: i32) -> i32 {
     if exponent == 0 {
         return 1;
     }

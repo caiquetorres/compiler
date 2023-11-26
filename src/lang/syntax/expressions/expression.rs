@@ -59,7 +59,7 @@ pub enum Expression {
     Binary(Binary),
     Parenthesized(Parenthesized, Option<ExpressionMeta>),
     Range(Range),
-    Array(Array),
+    Array(Array, Option<ExpressionMeta>),
 }
 
 impl Positioned for Expression {
@@ -71,7 +71,7 @@ impl Positioned for Expression {
             Self::Binary(binary) => binary.get_position(),
             Self::Parenthesized(parenthesized, _) => parenthesized.get_position(),
             Self::Range(range) => range.get_position(),
-            Self::Array(array) => array.get_position(),
+            Self::Array(array, _) => array.get_position(),
         }
     }
 }
@@ -85,7 +85,7 @@ impl Display for Expression {
             Self::Unary(_) => write!(f, "unary expression"),
             Self::Parenthesized(_, _) => write!(f, "parenthesized expression"),
             Self::Range(_) => write!(f, "range expression"),
-            Self::Array(_) => write!(f, "array expression"),
+            Self::Array(_, _) => write!(f, "array expression"),
         }
     }
 }
@@ -111,7 +111,13 @@ impl TreeDisplay for Expression {
                 }
             }
             Self::Range(range) => range.display(layer),
-            Self::Array(array) => array.display(layer),
+            Self::Array(array, meta) => {
+                array.display(layer);
+
+                if let Some(meta) = meta {
+                    meta.display(layer + 1);
+                }
+            }
         }
     }
 }

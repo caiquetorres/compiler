@@ -715,7 +715,12 @@ impl Parser {
                     self.use_token(&[TokenKind::Comma])?;
                 }
 
-                Ok(Expression::Array(Array::new(expressions, token.position)))
+                let meta = self.parse_expression_meta()?;
+
+                Ok(Expression::Array(
+                    Array::new(expressions, token.position),
+                    meta,
+                ))
             }
             TokenKind::LeftParenthesis => {
                 let expression = self.parse_expression(0)?;

@@ -5,7 +5,7 @@ use crate::lang::position::Positioned;
 use crate::lang::semantic::scope::Scope;
 use crate::lang::semantic::semantic_error::SemanticError;
 use crate::lang::semantic::semantic_type::SemanticType;
-use crate::lang::syntax::expressions::expression::{Expression, ExpressionMeta};
+use crate::lang::syntax::expressions::expression::ExpressionMeta;
 
 use super::expression_analyzer::ExpressionAnalyzer;
 
@@ -29,12 +29,6 @@ impl ExpressionMetaAnalyzer {
             ExpressionMeta::Index(expression, meta, position) => {
                 let analyzer = ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
-
-                if let Expression::Array(_) = expression.as_ref() {
-                    diagnosis.push(SemanticError::ImmediateArrayUsageWithoutAssignment {
-                        position: expression.get_position(),
-                    });
-                }
 
                 match r#type {
                     SemanticType::Any => changeable = true,
@@ -86,14 +80,6 @@ impl ExpressionMetaAnalyzer {
 
                                 let analyzer =
                                     ExpressionAnalyzer::analyze(expression, Rc::clone(&scope));
-
-                                if let Expression::Array(_) = &expression {
-                                    diagnosis.push(
-                                        SemanticError::ImmediateArrayUsageWithoutAssignment {
-                                            position: *position,
-                                        },
-                                    );
-                                }
 
                                 if expected_param_type.clone() != analyzer.return_type
                                     && (!expected_param_type.is_number()

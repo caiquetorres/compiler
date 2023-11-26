@@ -1,14 +1,15 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::lang::{
-    syntax::expressions::{expression::Expression, literal::Literal},
     semantic::{scope::Scope, semantic_error::SemanticError, semantic_type::SemanticType},
+    syntax::expressions::{expression::Expression, literal::Literal},
 };
 
 use super::{
     array_analyzer::ArrayAnalyzer, binary_analyzer::BinaryAnalyzer,
-    identifier_analyzer::IdentifierAnalyzer, parenthesized_analyzer::ParenthesizedAnalyzer,
-    range_analyzer::RangeAnalyzer, unary_analyzer::UnaryAnalyzer,
+    expression_meta_analyzer::ExpressionMetaAnalyzer, identifier_analyzer::IdentifierAnalyzer,
+    parenthesized_analyzer::ParenthesizedAnalyzer, range_analyzer::RangeAnalyzer,
+    unary_analyzer::UnaryAnalyzer,
 };
 
 pub struct ExpressionAnalyzer {
@@ -24,12 +25,24 @@ impl ExpressionAnalyzer {
         let mut diagnosis: Vec<SemanticError> = vec![];
 
         match expression {
-            Expression::Array(array) => {
+            Expression::Array(array, meta) => {
                 let analyzer = ArrayAnalyzer::analyze(array, Rc::clone(&scope));
                 diagnosis.extend(analyzer.diagnosis);
 
-                changeable = true;
-                return_type = analyzer.return_type;
+                changeable = false;
+
+                if let Some(meta) = &meta {
+                    let analyzer = ExpressionMetaAnalyzer::analyze(
+                        &analyzer.return_type,
+                        &meta,
+                        Rc::clone(&scope),
+                    );
+                    diagnosis.extend(analyzer.diagnosis);
+
+                    return_type = analyzer.return_type;
+                } else {
+                    return_type = analyzer.return_type;
+                }
             }
             Expression::Parenthesized(parenthesized, meta) => {
                 let analyzer =
