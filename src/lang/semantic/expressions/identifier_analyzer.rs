@@ -30,7 +30,7 @@ impl IdentifierAnalyzer {
         let identifier_name = identifier.name.clone();
 
         if let Some(symbol) = scope.borrow().get(&identifier_name) {
-            match symbol {
+            match &symbol {
                 Symbol::Variable { symbol_type, .. }
                 | Symbol::Parameter { symbol_type, .. }
                 | Symbol::Function { symbol_type, .. } => {
@@ -42,7 +42,7 @@ impl IdentifierAnalyzer {
                         changeable = analyzer.changeable;
                         return_type = analyzer.return_type;
                     } else {
-                        changeable = !matches!(symbol_type, SemanticType::Function(_, _));
+                        changeable = !matches!(symbol, Symbol::Function { .. });
                         return_type = symbol_type.clone();
                     }
                 }

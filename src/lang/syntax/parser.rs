@@ -701,6 +701,17 @@ impl Parser {
             TokenKind::LeftBracket => {
                 let mut expressions: Vec<Expression> = vec![];
 
+                if self.get_current_token().kind == TokenKind::RightBracket {
+                    self.next_token();
+
+                    let meta = self.parse_expression_meta()?;
+
+                    return Ok(Expression::Array(
+                        Array::new(expressions, token.position),
+                        meta,
+                    ));
+                }
+
                 loop {
                     let expression = self.parse_expression(0)?;
                     expressions.push(expression);
@@ -842,7 +853,7 @@ mod tests {
             }
         }
 
-        let code = " fun say(): string { } ";
+        let code = " fun say() -> string { } ";
         let mut parser = Parser::from_code(code);
 
         let result = parser.parse_function_declaration();

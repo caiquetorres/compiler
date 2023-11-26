@@ -39,6 +39,12 @@ impl ArrayAnalyzer {
 
             diagnosis.extend(analyzer.diagnosis);
 
+            if let SemanticType::Function(_, _) = first_element_type {
+                diagnosis.push(SemanticError::ArraysCannotHaveFunctions {
+                    position: first_array_expression.get_position(),
+                });
+            }
+
             // REVIEW: Save the elements which the type is invalid.
             // REVIEW: Improve the following logic
 
@@ -52,6 +58,8 @@ impl ArrayAnalyzer {
 
                 if !same_or_compatible_types {
                     diagnosis.push(SemanticError::InvalidArrayElement {
+                        expected: first_element_type.clone(),
+                        found: analyzer.return_type,
                         position: expression.get_position(),
                     });
                 }

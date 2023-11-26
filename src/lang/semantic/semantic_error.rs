@@ -128,6 +128,12 @@ pub enum SemanticError {
     },
 
     InvalidArrayElement {
+        expected: SemanticType,
+        found: SemanticType,
+        position: Position,
+    },
+
+    ArraysCannotHaveFunctions {
         position: Position,
     },
 }
@@ -343,10 +349,23 @@ impl Display for SemanticError {
                     position.column
                 )
             }
-            Self::InvalidArrayElement { position } => {
+            Self::InvalidArrayElement {
+                expected,
+                found,
+                position,
+            } => {
                 write!(
                     f,
-                    "Invalid array element at Line {} and Column {}",
+                    "Invalid array element. Expected type '{}' but found '{}' at Line {} and Column {}",
+                    expected.to_string(),
+                    found.to_string(),
+                    position.line, position.column
+                )
+            }
+            Self::ArraysCannotHaveFunctions { position } => {
+                write!(
+                    f,
+                    "Arrays cannot have functions at Line {} and Column {}",
                     position.line, position.column
                 )
             }
