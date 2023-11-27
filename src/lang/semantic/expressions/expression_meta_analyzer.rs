@@ -32,7 +32,10 @@ impl ExpressionMetaAnalyzer {
 
                 match r#type {
                     SemanticType::Any => changeable = true,
-                    SemanticType::String => changeable = true,
+                    SemanticType::String => {
+                        changeable = true;
+                        return_type = SemanticType::Char;
+                    },
                     SemanticType::Array(array_type, _) => {
                         if let Some(meta) = &meta.as_ref() {
                             let analyzer = ExpressionMetaAnalyzer::analyze(
