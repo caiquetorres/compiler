@@ -6,7 +6,7 @@ fun main() {
 
     mergeSort(array, 0, 9);
 
-    println "";
+    println;
     println "After sorting the result is: ";
 
     printArray(array);
@@ -74,5 +74,5 @@ fun printArray(array: [i32; 10]) {
             print " ";
         }
     }
-    println "";
+    println;
 }

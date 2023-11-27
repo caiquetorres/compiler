@@ -42,7 +42,7 @@ impl Compiler {
             let generator = CCodeGenerator::new(&ast, &analyzer.scopes);
             let code = generator.generate();
 
-            let mut file = File::create("main.c").unwrap();
+            let mut file = File::create("output.c").unwrap();
             file.write_all(code.as_bytes()).unwrap();
         }
 

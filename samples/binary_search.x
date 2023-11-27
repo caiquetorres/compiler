@@ -12,7 +12,7 @@ fun main() {
     }
 }
 
-fun binarySearch(array: [i32; 10], left: i32, right: i32, target: i32): i32 {
+fun binarySearch(array: [i32; 10], left: i32, right: i32, target: i32) -> i32 {
     while left <= right {
         let mid = left + (right - left) / 2;
 
