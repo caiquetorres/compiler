@@ -58,7 +58,7 @@ fun main() {
     println "Result: ", convertToDecimal(bin);
 }
 
-fun convertToDecimal(number: u64): u32 {
+fun convertToDecimal(number: u64) -> u32 {
     let n = number;
     let i = 0;
     let decimal = 0;
@@ -72,7 +72,7 @@ fun convertToDecimal(number: u64): u32 {
     return decimal;
 }
 
-fun pow(base: i32, exponent: i32): i32 {
+fun pow(base: i32, exponent: i32) -> i32 {
     if exponent == 0 {
         return 1;
     }
@@ -90,8 +90,8 @@ The compiler translates the code into C language. Below is an example demonstrat
 
 ```c
 #include <stdio.h>
-unsigned int convertToDecimal(unsigned long long int);
-signed int pow(signed int, signed int);
+unsigned int convertToDecimal(unsigned long long int number);
+signed int pow(signed int base, signed int exponent);
 signed int main() {
   signed int bin = 1101001;
   printf("%s", "Result: ");
