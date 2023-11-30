@@ -1,6 +1,6 @@
 use crate::lang::syntax::shared::syntax_type::SyntaxType;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub enum SemanticType {
     U8,
     I8,

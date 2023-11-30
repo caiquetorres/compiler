@@ -6,95 +6,40 @@ use crate::lang::{
     syntax::expressions::expression::{Expression, ExpressionMeta},
 };
 
-use super::expression_generator::ExpressionGenerator;
-
-fn convert_type(r#type: SemanticType) -> String {
-    match r#type {
-        SemanticType::Void => "void",
-        SemanticType::Char => "unsigned char",
-        SemanticType::Bool => "unsigned char",
-        SemanticType::U8 => "unsigned char",
-        SemanticType::I8 => "signed char",
-        SemanticType::U16 => "unsigned short int",
-        SemanticType::I16 => "signed short int",
-        SemanticType::U32 => "unsigned int",
-        SemanticType::I32 => "signed int",
-        SemanticType::U64 => "unsigned long long int",
-        SemanticType::I64 => "signed long long int",
-        SemanticType::F32 => "float",
-        SemanticType::F64 => "double",
-        SemanticType::String => "char*",
-        SemanticType::Any => "void *",
-        _ => panic!("Something wrong is not right"),
-    }
-    .to_string()
-}
+use super::{c_code_generator2::CCode, expression_generator::ExpressionGenerator};
 
 pub struct ArrayGenerator;
 
 impl ArrayGenerator {
-    pub fn generate_declaration(
-        identifier_name: Option<String>,
-        array_type: &SemanticType,
-    ) -> String {
-        let root_type = Self::get_array_root_type(&array_type);
-
-        let dimensions = Self::get_next_array_dimensions(&array_type);
-
-        if let Some(identifier_name) = identifier_name {
-            format!(
-                "{}(*{}){}",
-                convert_type(root_type),
-                identifier_name,
-                dimensions
-                    .iter()
-                    .skip(1)
-                    .map(|d| format!("[{}]", d))
-                    .collect::<Vec<String>>()
-                    .join("")
-            )
-        } else {
-            format!(
-                "{}(*){}",
-                convert_type(root_type),
-                dimensions
-                    .iter()
-                    .skip(1)
-                    .map(|d| format!("[{}]", d))
-                    .collect::<Vec<String>>()
-                    .join("")
-            )
-        }
-    }
-
     pub fn generate_expression(
         array_type: &SemanticType,
         expressions: &Vec<Expression>,
         meta: &Option<ExpressionMeta>,
         scope: Rc<RefCell<Scope>>,
+        ccode: &mut CCode,
     ) -> String {
         let root_type = Self::get_array_root_type(&array_type);
 
         let dimensions = Self::get_next_array_dimensions(&array_type);
 
-        let expressions = Self::generate_expressions(expressions, Rc::clone(&scope));
+        let expressions = Self::generate_expressions(expressions, Rc::clone(&scope), ccode);
 
         if let Some(meta) = meta {
             format!(
                 "({}{}){{{}}}{}",
-                convert_type(root_type),
+                ccode.get_type(root_type),
                 dimensions
                     .iter()
                     .map(|d| format!("[{}]", d))
                     .collect::<Vec<String>>()
                     .join(""),
                 expressions.join(","),
-                ExpressionMetaGenerator::generate(meta, Rc::clone(&scope)),
+                ExpressionMetaGenerator::generate(meta, Rc::clone(&scope), ccode),
             )
         } else {
             format!(
                 "({}{}){{{}}}",
-                convert_type(root_type),
+                ccode.get_type(root_type),
                 dimensions
                     .iter()
                     .map(|d| format!("[{}]", d))
@@ -108,6 +53,7 @@ impl ArrayGenerator {
     fn generate_expressions(
         expressions: &Vec<Expression>,
         scope: Rc<RefCell<Scope>>,
+        ccode: &mut CCode,
     ) -> Vec<String> {
         let mut results: Vec<String> = vec![];
 
@@ -116,9 +62,14 @@ impl ArrayGenerator {
                 results.extend(Self::generate_expressions(
                     &array.expressions,
                     Rc::clone(&scope),
+                    ccode,
                 ));
             } else {
-                results.push(ExpressionGenerator::generate(expression, Rc::clone(&scope)));
+                results.push(ExpressionGenerator::generate(
+                    expression,
+                    Rc::clone(&scope),
+                    ccode,
+                ));
             }
         }
 

@@ -113,14 +113,6 @@ pub enum SemanticError {
         position: Position,
     },
 
-    CannotReturnArray {
-        position: Position,
-    },
-
-    CannotReturnFunction {
-        position: Position,
-    },
-
     ExpectedType {
         expected: SemanticType,
         found: SemanticType,
@@ -130,10 +122,6 @@ pub enum SemanticError {
     InvalidArrayElement {
         expected: SemanticType,
         found: SemanticType,
-        position: Position,
-    },
-
-    ArraysCannotHaveFunctions {
         position: Position,
     },
 }
@@ -321,20 +309,6 @@ impl Display for SemanticError {
                     position.line, position.column
                 )
             }
-            Self::CannotReturnArray { position } => {
-                write!(
-                    f,
-                    "Cannot return an array at Line {} and Column {}",
-                    position.line, position.column
-                )
-            }
-            Self::CannotReturnFunction { position } => {
-                write!(
-                    f,
-                    "Cannot return a function at Line {} and Column {}",
-                    position.line, position.column
-                )
-            }
             Self::ExpectedType {
                 expected,
                 found,
@@ -359,13 +333,6 @@ impl Display for SemanticError {
                     "Invalid array element. Expected type '{}' but found '{}' at Line {} and Column {}",
                     expected.to_string(),
                     found.to_string(),
-                    position.line, position.column
-                )
-            }
-            Self::ArraysCannotHaveFunctions { position } => {
-                write!(
-                    f,
-                    "Arrays cannot have functions at Line {} and Column {}",
                     position.line, position.column
                 )
             }

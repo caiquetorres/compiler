@@ -57,21 +57,21 @@ impl FunctionAnalyzer {
             function_type = SemanticType::Function(params_types, Box::new(SemanticType::Void));
         }
 
-        if let SemanticType::Function(_, function_return_type) = &function_type {
-            if matches!(function_return_type.as_ref(), SemanticType::Array(_, _)) {
-                diagnosis.push(SemanticError::CannotReturnArray {
-                    position: function.r#type.as_ref().unwrap().get_position(),
-                })
-            }
-        }
+        // if let SemanticType::Function(_, function_return_type) = &function_type {
+        //     if matches!(function_return_type.as_ref(), SemanticType::Array(_, _)) {
+        //         diagnosis.push(SemanticError::CannotReturnArray {
+        //             position: function.r#type.as_ref().unwrap().get_position(),
+        //         })
+        //     }
+        // }
 
-        if let SemanticType::Function(_, function_return_type) = &function_type {
-            if matches!(function_return_type.as_ref(), SemanticType::Function(_, _)) {
-                diagnosis.push(SemanticError::CannotReturnFunction {
-                    position: function.r#type.as_ref().unwrap().get_position(),
-                })
-            }
-        }
+        // if let SemanticType::Function(_, function_return_type) = &function_type {
+        //     if matches!(function_return_type.as_ref(), SemanticType::Function(_, _)) {
+        //         diagnosis.push(SemanticError::CannotReturnFunction {
+        //             position: function.r#type.as_ref().unwrap().get_position(),
+        //         })
+        //     }
+        // }
 
         // Verify is the main function and if it has parameters.
         if function_name == "main" && function.params_declaration.params.len() != 0 {

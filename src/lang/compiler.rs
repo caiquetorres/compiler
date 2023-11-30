@@ -4,7 +4,7 @@ use std::{
 };
 
 use super::{
-    generators::c_code_generator::CCodeGenerator, lexer::lexer::Lexer,
+    generators::c_code_generator2::CCodeGenerator2, lexer::lexer::Lexer,
     semantic::analyzer::Analyzer, syntax::parser::Parser,
 };
 
@@ -39,11 +39,11 @@ impl Compiler {
                 println!("{}", error);
             }
         } else {
-            let generator = CCodeGenerator::new(&ast, &analyzer.scopes);
+            let mut generator = CCodeGenerator2::new(&ast, &analyzer.scopes);
             let code = generator.generate();
 
             let mut file = File::create("output.c").unwrap();
-            file.write_all(code.as_bytes()).unwrap();
+            file.write_all(code.content().as_bytes()).unwrap();
         }
 
         Ok(())

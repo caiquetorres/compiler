@@ -24,6 +24,7 @@ impl AssignmentAnalyzer {
         }
 
         let right_analyzer = ExpressionAnalyzer::analyze(&assignment.right, Rc::clone(&scope));
+        diagnosis.extend(right_analyzer.diagnosis);
 
         if let TokenKind::PlusEquals
         | TokenKind::MinusEquals
