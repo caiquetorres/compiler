@@ -8,6 +8,8 @@ Ele foi projetado para converter códigos inseridos da nossa linguagem de progra
 
 ## Instalação
 
+Inicialmente deve-se ter o rust instalado na máquina, para isso acesse: https://www.rust-lang.org/tools/install e siga os processos da página.
+
 Para começar a usar o compilador, siga estas etapas simples:
 
 Clonar o Repositório: Primeiro, clone o repositório usando o seguinte comando:

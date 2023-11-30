@@ -3,7 +3,7 @@
 
 # IDEs
 /.vscode
-/.ideia
+/.idea
 
 a.out
 main.c
